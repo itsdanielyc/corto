@@ -140,3 +140,10 @@ Repeated-run finding: CI 43846937476 passed Intel real-I/O integration but the f
 | 2026-11-16 10:35 | L6 regression | Native journeys await the actual backend completion event, then retain every existing UI/pixel/audio/duration assertion | local windows-x64 | Existing overall 60-second test budget and five-second presentation assertion are unchanged. Full native suite: 6 passed. Fresh deliberate blank subtitle and title layers each made their corresponding journey fail (expected positive pixels, received 0); sources restored and positive journeys rerun. |
 
 The completion watcher also rejects real export error alerts and disposes its subscription/observer. No test timeout or retry count was increased. Intel quarantine remains until the 20-repeat verification finishes and is then removed; release gates remain held.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 10:46 | L6 repeated verification | The corrected native journey passes 20 consecutive attempts, with actual encoded movie checks and zero retries | macos-x64 | [Verification 43850799759](https://github.com/itsdanielyc/corto/actions/runs/43850799759): 20 passed in 5.9 minutes, export completion 2,893–7,073 ms. All original subtitle/audio/duration/dimension assertions remain. The Intel-only skip is removed and issue #12 is resolved. |
+| 2026-11-16 10:18 | L5 harness | Per-runner snapshot staging works on all three hosted OS families | windows-x64, macos-arm64, linux-x64 | [Snapshots 43847067976](https://github.com/itsdanielyc/corto/actions/runs/43847067976), all capture and merge jobs green; no stale cross-OS image overwrite. |
+
+There are no quarantined v0.1.1 feature journeys. Ruling: the application code already has green cross-platform feature proof, and the only final edit removes the Intel skip after its 20 clean real-shell repetitions. Merge the release candidate normally, then require full CI and installer proof on the exact merged main commit before tagging. Installer/release status is still pending; no release claim is made by this row.

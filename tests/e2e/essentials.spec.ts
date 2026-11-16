@@ -64,12 +64,6 @@ function subtitlePixels(path: string, time: number): number {
 
 test("phone originals, placed sound, subtitles, sharing sample and named films work through native IPC", async () => {
   test.setTimeout(60_000);
-  test.skip(
-    process.platform === "darwin" &&
-      process.arch === "x64" &&
-      process.env.CORTO_INCLUDE_QUARANTINED !== "1",
-    "Intel export timing quarantine: https://github.com/itsdanielyc/corto/issues/12",
-  );
   const directory = await mkdtemp(join(tmpdir(), "corto-essentials-shell-"));
   const output = join(directory, "Phone memories-sample.mp4");
   const app = await electron.launch({
