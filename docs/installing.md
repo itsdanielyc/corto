@@ -32,7 +32,7 @@ On systems without FUSE, the AppImage runtime supports `--appimage-extract-and-r
 
 Open [Corto in the browser](https://itsdanielyc.github.io/corto/). No account is required. After the first successful load and offline-cache installation, the application and bundled example are available offline in compatible browsers. Personal media stays in local browser storage.
 
-Browser export runs in real time; keep the tab visible. The export window reports the actual available MP4 or WebM format. Desktop MP4 export uses the bundled native encoder and can run independently of the preview.
+Browser export runs in real time; keep the tab visible. The export window offers MP4 where supported, or a portable project for desktop export. Experimental WebM capture is deferred; see ADR 004 and issue 8. Desktop MP4 export uses the bundled native encoder and can run independently of the preview.
 
 ## Keeping your projects
 

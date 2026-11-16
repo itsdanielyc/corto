@@ -16,7 +16,7 @@ Corto is a home video and slideshow maker for **Windows, macOS, Linux and the we
 3. Add titles, choose a frame and fade through black. Adjust original sound and the soundtrack.
 4. Export in landscape, portrait or square at 720p or 1080p.
 
-Desktop builds export local H.264/AAC MP4 files using a bundled, checksum-verified FFmpeg executable. The browser detects its supported MP4/WebM recording format and records locally in real time. Keep the tab visible during web export.
+Desktop builds export local H.264/AAC MP4 files using a bundled, checksum-verified FFmpeg executable. The browser offers MP4 recording where its encoder is supported; other browsers can transfer a portable project to the desktop app. Keep the tab visible during web export.
 
 ## Your projects stay with you
 
