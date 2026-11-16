@@ -1,0 +1,78 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      installer_url: ${{ steps.gate.outputs.installer_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-release-gate.mjs
+
+  packages:
+    needs: gate
+    uses: ./.github/workflows/installers.yml
+
+  web:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: zip -q -r Corto-web.zip dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-release
+          path: Corto-web.zip
+
+  publish:
+    needs: [gate, packages, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bundles-*
+          path: publish
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: provenance-*
+          path: publish
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-release
+          path: publish
+      - env:
+          INSTALLER_GATE_URL: ${{ needs.gate.outputs.installer_url }}
+        run: node scripts/assemble-release.mjs
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          prerelease=""
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then prerelease="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" publish/*.exe publish/*.dmg publish/*.deb publish/*.AppImage publish/*.zip publish/SHA256SUMS.txt --verify-tag --title "Corto $GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
