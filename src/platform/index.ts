@@ -69,6 +69,7 @@ class WebPlatform extends BrowserProjectRepository implements CortoPlatform {
     request: MovieRequest,
     progress: (value: ExportProgress) => void,
     signal: AbortSignal,
+    surface?: HTMLCanvasElement,
   ): Promise<MovieResult> {
     const { renderBrowserMovie } = await import("../export/browser");
     return renderBrowserMovie(
@@ -76,6 +77,7 @@ class WebPlatform extends BrowserProjectRepository implements CortoPlatform {
       (id) => this.assetUrl(id),
       progress,
       signal,
+      surface,
     );
   }
 }
