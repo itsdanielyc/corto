@@ -6,9 +6,15 @@ import {
   type IpcMainInvokeEvent,
 } from "electron";
 import { join } from "node:path";
+import { createRequire } from "node:module";
 import { nativeChannels } from "../contracts/platform";
-import { mediaAssetSchema, parseProject } from "../contracts/project";
+import {
+  identifierSchema,
+  mediaAssetSchema,
+  parseProject,
+} from "../contracts/project";
 import type { FileProjectRepository } from "./storage";
+import { importPhoneVideo } from "./phone-import";
 
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
@@ -58,6 +64,37 @@ export function registerProjectCommands(
   handle(nativeChannels.saveProject, (input) =>
     repository.saveProject(parseProject(input)),
   );
+  handle(nativeChannels.listProjects, () => repository.listProjects());
+  handle(nativeChannels.openProject, (id, recover) => {
+    if (recover !== undefined && typeof recover !== "boolean")
+      throw new Error("Invalid recovery request");
+    return repository.openProject(identifierSchema.parse(id), recover === true);
+  });
+  let importingPhone = false;
+  handle(nativeChannels.importPhoneVideo, async (source, name) => {
+    if (
+      typeof source !== "string" ||
+      source.length > 32768 ||
+      typeof name !== "string" ||
+      name.length > 255
+    )
+      throw new Error("Invalid phone video selection");
+    if (importingPhone)
+      throw new Error("A phone video is already being prepared");
+    const binary = app.isPackaged
+      ? join(
+          process.resourcesPath,
+          "ffmpeg",
+          process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+        )
+      : (createRequire(import.meta.url)("ffmpeg-static") as string);
+    importingPhone = true;
+    try {
+      return await importPhoneVideo(binary, repository, source, name);
+    } finally {
+      importingPhone = false;
+    }
+  });
   handle(nativeChannels.putAsset, async (input, source) => {
     const asset = mediaAssetSchema.parse(input);
     if (

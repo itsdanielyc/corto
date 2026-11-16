@@ -3,6 +3,7 @@ import type {
   MovieRequest,
   MovieResult,
   ProjectRepository,
+  ImportedMedia,
 } from "../../contracts/platform";
 import type { MediaAsset, Project } from "../../contracts/project";
 
@@ -10,6 +11,7 @@ import type { MediaAsset, Project } from "../../contracts/project";
 export interface CortoPlatform extends ProjectRepository {
   readonly kind: "native" | "web" | "mock";
   putAsset(asset: MediaAsset, file: File): Promise<void>;
+  importPhoneVideo?(file: File): Promise<ImportedMedia>;
   assetUrl(id: string): Promise<string>;
   openPortable(file?: File): Promise<Project | null>;
   savePortable(project: Project): Promise<boolean>;

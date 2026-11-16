@@ -1,12 +1,20 @@
 import { encodeBundleHeader, readBundleIndex } from "../../contracts/bundle";
-import type { ProjectRepository } from "../../contracts/platform";
+import type { ProjectRepository, SavedProject } from "../../contracts/platform";
 import {
   mediaAssetSchema,
+  identifierSchema,
   parseProject,
   type MediaAsset,
   type Project,
 } from "../../contracts/project";
 import { rekeyProjectAssets } from "../domain/rekey";
+import {
+  parseSavedRecord,
+  recoverRecord,
+  saveRecord,
+  summarizeProject,
+  unavailableSummary,
+} from "../domain/catalogue";
 
 const DATABASE_NAME = "corto-local-v1";
 const PROJECT_STORE = "projects";
@@ -97,11 +105,68 @@ export class BrowserProjectRepository implements ProjectRepository {
         const database = await this.database;
         const transaction = database.transaction(PROJECT_STORE, "readwrite");
         const finished = complete(transaction);
-        transaction.objectStore(PROJECT_STORE).put(project, CURRENT_PROJECT);
+        const store = transaction.objectStore(PROJECT_STORE);
+        const previous = await requestValue<SavedProject | undefined>(
+          store.get(project.id),
+        );
+        store.put(
+          saveRecord(
+            project,
+            previous ? parseSavedRecord(previous) : undefined,
+          ),
+          project.id,
+        );
+        store.put(project, CURRENT_PROJECT);
         await finished;
       });
     this.pendingSave = save;
     return save;
+  }
+
+  async listProjects() {
+    await this.pendingSave.catch(() => undefined);
+    const database = await this.database;
+    const store = database
+      .transaction(PROJECT_STORE)
+      .objectStore(PROJECT_STORE);
+    const [keys, values] = await Promise.all([
+      requestValue(store.getAllKeys()),
+      requestValue(store.getAll()),
+    ]);
+    return values
+      .flatMap((value: unknown, index) => {
+        const key = keys[index];
+        if (key === CURRENT_PROJECT || typeof key !== "string") return [];
+        try {
+          const record = parseSavedRecord(value);
+          if (record.project.id !== key)
+            throw new Error("Saved film identifiers do not match");
+          return [summarizeProject(record)];
+        } catch {
+          let recovery: Project | undefined;
+          try {
+            if (value && typeof value === "object" && "previous" in value)
+              recovery = parseProject(value.previous);
+          } catch {
+            /* Keep the unreadable entry visible without inventing recovery. */
+          }
+          return [unavailableSummary(key, recovery)];
+        }
+      })
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async openProject(id: string, recover = false): Promise<Project> {
+    await this.pendingSave.catch(() => undefined);
+    const database = await this.database;
+    const record: SavedProject | undefined = await requestValue(
+      database
+        .transaction(PROJECT_STORE)
+        .objectStore(PROJECT_STORE)
+        .get(identifierSchema.parse(id)),
+    );
+    if (!record) throw new Error("This saved film could not be found");
+    return recover ? recoverRecord(record) : parseSavedRecord(record).project;
   }
 
   async putAsset(input: MediaAsset, file: Blob): Promise<void> {
@@ -184,6 +249,9 @@ export class BrowserProjectRepository implements ProjectRepository {
     transaction
       .objectStore(PROJECT_STORE)
       .put(remapped.project, CURRENT_PROJECT);
+    transaction
+      .objectStore(PROJECT_STORE)
+      .put(saveRecord(remapped.project), remapped.project.id);
     await finished;
     return remapped.project;
   }

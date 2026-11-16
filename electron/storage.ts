@@ -4,12 +4,13 @@ import {
   mkdir,
   open,
   readFile,
+  readdir,
   rm,
   stat,
   writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
-import type { ProjectRepository } from "../contracts/platform";
+import type { ProjectRepository, SavedProject } from "../contracts/platform";
 import { encodeBundleHeader, readBundleIndex } from "../contracts/bundle";
 import {
   identifierSchema,
@@ -21,21 +22,33 @@ import {
 } from "../contracts/project";
 import { rekeyProjectAssets } from "../src/domain/rekey";
 import { hasFileErrorCode, writeAtomic } from "./atomic-file";
+import {
+  parseSavedRecord,
+  recoverRecord,
+  saveRecord,
+  summarizeProject,
+  unavailableSummary,
+} from "../src/domain/catalogue";
+import type { ProjectSummary } from "../contracts/platform";
 
 /** File-backed working copy. Opaque media IDs never become caller-controlled paths. */
 export class FileProjectRepository implements ProjectRepository {
   private readonly mediaDirectory: string;
   private readonly manifestPath: string;
   private readonly initialized: Promise<void>;
+  private readonly projectsDirectory: string;
   private pendingSave: Promise<void> = Promise.resolve();
 
   constructor(private readonly directory: string) {
     this.mediaDirectory = join(directory, "media");
     this.manifestPath = join(directory, "current.json");
+    this.projectsDirectory = join(directory, "projects");
     this.initialized = mkdir(this.mediaDirectory, {
       recursive: true,
       mode: 0o700,
-    }).then(() => undefined);
+    }).then(async () => {
+      await mkdir(this.projectsDirectory, { recursive: true, mode: 0o700 });
+    });
   }
 
   /** Resolve only an opaque identifier inside this repository's private media directory. */
@@ -83,6 +96,34 @@ export class FileProjectRepository implements ProjectRepository {
       .then(async () => {
         await this.initialized;
         await this.verifyMedia(project);
+        const path = join(this.projectsDirectory, `${project.id}.json`);
+        let previous: SavedProject | undefined;
+        try {
+          if ((await stat(path)).size > LIMITS.manifestBytes * 2)
+            throw new Error("The saved record is too large");
+          previous = parseSavedRecord(JSON.parse(await readFile(path, "utf8")));
+        } catch (error) {
+          if (!hasFileErrorCode(error, "ENOENT"))
+            throw new Error(
+              "This film's saved record is damaged. Recover it or save a portable copy before continuing.",
+            );
+        }
+        const record = saveRecord(project, previous);
+        if (record.previous)
+          await writeAtomic(
+            join(this.projectsDirectory, `${project.id}.previous.json`),
+            (temporary) =>
+              writeFile(temporary, JSON.stringify(record.previous), {
+                flag: "wx",
+                mode: 0o600,
+              }),
+          );
+        await writeAtomic(path, (temporary) =>
+          writeFile(temporary, JSON.stringify(record), {
+            flag: "wx",
+            mode: 0o600,
+          }),
+        );
         try {
           await copyFile(
             this.manifestPath,
@@ -100,6 +141,69 @@ export class FileProjectRepository implements ProjectRepository {
       });
     this.pendingSave = save;
     return save;
+  }
+
+  async listProjects() {
+    await this.initialized;
+    await this.pendingSave.catch(() => undefined);
+    const summaries: ProjectSummary[] = [];
+    for (const name of await readdir(this.projectsDirectory)) {
+      if (!/^[A-Za-z0-9_-]+\.json$/.test(name)) continue;
+      const path = join(this.projectsDirectory, name);
+      const id = name.slice(0, -5);
+      try {
+        if ((await stat(path)).size > LIMITS.manifestBytes * 2)
+          throw new Error("A saved film record is damaged");
+        const record = parseSavedRecord(
+          JSON.parse(await readFile(path, "utf8")),
+        );
+        if (record.project.id !== id)
+          throw new Error("Saved film identifiers do not match");
+        summaries.push(summarizeProject(record));
+      } catch {
+        const recovery = await this.readRecovery(id).catch(() => undefined);
+        summaries.push(unavailableSummary(id, recovery));
+      }
+    }
+    return summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async openProject(id: string, recover = false): Promise<Project> {
+    await this.initialized;
+    await this.pendingSave.catch(() => undefined);
+    const path = join(
+      this.projectsDirectory,
+      `${identifierSchema.parse(id)}.json`,
+    );
+    let project: Project;
+    try {
+      if ((await stat(path)).size > LIMITS.manifestBytes * 2)
+        throw new Error("This saved film record is damaged");
+      const record = parseSavedRecord(JSON.parse(await readFile(path, "utf8")));
+      if (record.project.id !== id)
+        throw new Error("Saved film identifiers do not match");
+      project = recover ? recoverRecord(record) : record.project;
+    } catch (error) {
+      if (!recover) throw error;
+      const previous = await this.readRecovery(id);
+      project = recoverRecord({
+        project: previous,
+        previous,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    await this.verifyMedia(project);
+    return project;
+  }
+
+  private async readRecovery(id: string): Promise<Project> {
+    const path = join(
+      this.projectsDirectory,
+      `${identifierSchema.parse(id)}.previous.json`,
+    );
+    if ((await stat(path)).size > LIMITS.manifestBytes)
+      throw new Error("The recovery snapshot is damaged");
+    return parseProject(JSON.parse(await readFile(path, "utf8")));
   }
 
   /** Copy an immutable original in bounded chunks, failing rather than overwriting another ID. */

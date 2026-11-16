@@ -99,3 +99,12 @@ Release source is `9ed80a7df08a30e88b2da923fbeeef4aee0efc1f`, tagged `v0.1.0` on
 | 2026-11-16 05:29 | public web | Production app deploys and runs from its public URL; example and portable project work with the real browser adapter | GitHub Pages; local verification on windows-x64 / Chromium | [Pages 43810223347](https://github.com/itsdanielyc/corto/actions/runs/43810223347); public Playwright check: adapter `web`, CORTO001 project signature, 2,327,177-byte portable copy, zero page errors and zero non-GET/HEAD network requests. Screenshot visually reviewed. |
 
 Final known exclusions: experimental browser WebM capture (disabled, advisory issue #8), signing/notarization, native mobile packages, HEIC/RAW/HDR workflows, unsupported CPU architectures/distributions and manual screen-reader certification. Native MP4 on the declared desktop platforms is verified; browser MP4 is capability-dependent and other browsers transfer portable projects to desktop.
+
+## v0.1.1 contract and storage preparation
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 09:33 | L1/L2 | Strict v1-to-v2 migration, new sound/subtitle validation and future rejection | local windows-x64 | `npm run test:unit -- tests/unit/essentials-contract.test.ts`, exit 0, 2 tests. Observed red first: expected schema 2, received 1; unknown audio/subtitle keys. |
+| 2026-11-16 09:33 | L2/L3 | Multiple named films, independent recovery after catalogue corruption and immutable phone originals through portable files | local windows-x64 | `npm run test:integration -- tests/integration/storage.test.ts tests/integration/phone.test.ts`, exit 0, 9 tests. Reds: missing listProjects; malformed latest catalogue blocked healthy films; deliberate original-link removal produced expected original ID / received undefined. |
+
+This is contract/backend preparation, not a v0.1.1 release claim. Editor controls, browser phone conversion, audio/subtitle rendering and sharing remain in progress. Hosted platform and installer proof for v0.1.1 is pending.

@@ -4,6 +4,29 @@ import type { ExportResolution, MediaAsset, Project } from "./project";
 export interface ProjectRepository {
   loadProject(): Promise<Project | null>;
   saveProject(project: Project): Promise<void>;
+  listProjects(): Promise<ProjectSummary[]>;
+  openProject(id: string, recover?: boolean): Promise<Project>;
+}
+
+/** Small catalogue entries keep project-home reads independent of original media size. */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  updatedAt: string;
+  sceneCount: number;
+  duration: number;
+  thumbnail: MediaAsset | null;
+  hasRecovery: boolean;
+  unavailableReason?: string;
+}
+export interface SavedProject {
+  project: Project;
+  updatedAt: string;
+  previous: Project | null;
+}
+export interface ImportedMedia {
+  asset: MediaAsset;
+  original?: MediaAsset;
 }
 
 export interface PlatformDetails {
@@ -20,6 +43,9 @@ export interface MovieRequest {
   project: Project;
   resolution: ExportResolution;
   overlays: CaptionOverlay[];
+  subtitleOverlays?: { cueId: string; png: Uint8Array }[];
+  preset?: "tv" | "phone" | "small";
+  sample?: boolean;
 }
 export interface ExportProgress {
   fraction: number;
@@ -35,6 +61,7 @@ export interface MovieResult {
 export interface NativeBridge extends ProjectRepository {
   platformInfo(): Promise<PlatformDetails>;
   putAsset(asset: MediaAsset, file: File): Promise<void>;
+  importPhoneVideo(file: File): Promise<ImportedMedia>;
   assetUrl(id: string): string;
   openPortable(): Promise<Project | null>;
   savePortable(project: Project): Promise<boolean>;
@@ -47,6 +74,9 @@ export interface NativeBridge extends ProjectRepository {
 export const nativeChannels = {
   loadProject: "corto:load-project",
   saveProject: "corto:save-project",
+  listProjects: "corto:list-projects",
+  openProject: "corto:open-project",
+  importPhoneVideo: "corto:import-phone-video",
   putAsset: "corto:put-asset",
   openPortable: "corto:open-portable",
   savePortable: "corto:save-portable",
