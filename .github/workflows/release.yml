@@ -84,7 +84,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
+        include:
+          - os: ubuntu-latest
+            pattern: '*.deb'
+          - os: windows-latest
+            pattern: '*-setup.exe'
+          - os: macos-latest
+            pattern: '*arm64.dmg'
+          - os: macos-15-intel
+            pattern: '*x64.dmg'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -93,7 +101,11 @@ jobs:
       - name: Download the published installers on a fresh runner
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download ${{ github.ref_name }} --dir release --pattern '*.exe' --pattern '*.dmg' --pattern '*.deb' --pattern '*.AppImage'
+        run: gh release download ${{ github.ref_name }} --dir release --pattern '${{ matrix.pattern }}'
+      - if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --dir release --pattern '*.AppImage'
       - name: Linux runtime
         if: runner.os == 'Linux'
         env:
