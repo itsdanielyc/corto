@@ -13,6 +13,7 @@ on:
         type: choice
         options: ['1', '30']
         default: '1'
+  workflow_call:
 
 concurrency:
   group: installers-${{ github.ref }}
@@ -76,4 +77,13 @@ jobs:
             release/*.deb
             release/*.AppImage
           if-no-files-found: warn
+          retention-days: 7
+      - name: Media-engine provenance
+        run: node scripts/collect-media-provenance.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: provenance-${{ matrix.os }}
+          path: |
+            release/source-info
+            release/media-engine-*.json
           retention-days: 7

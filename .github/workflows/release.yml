@@ -1,0 +1,122 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      installer_url: ${{ steps.gate.outputs.installer_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-release-gate.mjs
+
+  packages:
+    needs: gate
+    uses: ./.github/workflows/installers.yml
+
+  web:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - run: zip -q -r Corto-web.zip dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-release
+          path: Corto-web.zip
+
+  publish:
+    needs: [gate, packages, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bundles-*
+          path: publish
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: provenance-*
+          path: publish
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: web-release
+          path: publish
+      - env:
+          INSTALLER_GATE_URL: ${{ needs.gate.outputs.installer_url }}
+        run: node scripts/assemble-release.mjs
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          prerelease=""
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then prerelease="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" publish/*.exe publish/*.dmg publish/*.deb publish/*.AppImage publish/*.zip publish/SHA256SUMS.txt --verify-tag --title "Corto $GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
+
+  published-smoke:
+    needs: publish
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            pattern: '*.deb'
+          - os: windows-latest
+            pattern: '*-setup.exe'
+          - os: macos-latest
+            pattern: '*arm64.dmg'
+          - os: macos-15-intel
+            pattern: '*x64.dmg'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download the published installers on a fresh runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --dir release --pattern '${{ matrix.pattern }}'
+      - if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --dir release --pattern '*.AppImage'
+      - name: Linux runtime
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0t64 libgtk-3-0t64 libgbm1 libasound2t64 libfuse2t64
+      - if: runner.os == 'Windows'
+        run: ./scripts/installer-test.ps1
+      - if: runner.os == 'macOS'
+        run: bash scripts/installer-test.sh
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a bash scripts/installer-test.sh
