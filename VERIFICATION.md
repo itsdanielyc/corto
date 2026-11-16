@@ -66,3 +66,11 @@ The WebM defect was a metadata-index problem, not a justification to relax frame
 | Date (UTC) | Level | Claim | Platforms | Evidence |
 |---|---|---|---|---|
 | 2026-11-16 04:33 | L4 browser timing | Delayed decoder startup does not extend the storyboard's recorded duration; prepared media, capture and scene timing share one epoch | local windows-x64 / Chromium | `playwright test tests/ui/export.spec.ts tests/ui/webm.spec.ts`, exit 0, five checks. Delaying play promises by 200 ms first produced 2.6 s and failed the unchanged <2.25 s assertion; priming while paused fixes it. Fast-seek caption and dual-tone checks remain required. |
+
+## 2026-11-16: shipping boundary and product-only code
+
+Experimental WebM capture remains unverified and is disabled in production (ADR 004, issue #8). The desktop export path is native MP4 on all declared OSes; browser MP4 is offered only when available. Browser editing/offline persistence and portable project transfer remain supported. Historical WebM successes above do not override the observed Linux truncated-video finding. Those tests and code remain in advisory coverage; no video/duration/audio assertion was weakened.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 05:08 | L0/L1/L6 | Layout separated from controller/dialog/shortcut policy; unused greeting scaffold retired after replacement journeys existed | local windows-x64 | Strict typecheck and build exit 0; 19 product unit checks and five native-shell checks pass. The removed three unit checks and native greeting call covered only the scaffold; replacement mapping is in PLAN.md. Actual user editing/export coverage is retained. |

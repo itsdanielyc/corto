@@ -1,7 +1,3 @@
-// The main process: the "backend" of this app, the way Rust is in the Tauri
-// template. It answers the bridge's IPC calls. The greeting is implemented
-// here on its own, not imported from contracts/, so the real-shell suite
-// (tests/e2e) is what holds it to the contract.
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
@@ -53,10 +49,6 @@ function reportInstallerReadiness(): void {
         ),
       ),
     );
-}
-
-function greet(name: string): string {
-  return `Hello, ${name}! You've been greeted from the main process!`;
 }
 
 function platformInfo(): PlatformInfo {
@@ -145,7 +137,6 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler(
     (_contents, _permission, callback) => callback(false),
   );
-  ipcMain.handle(channels.greet, (_e, name: unknown) => greet(String(name)));
   ipcMain.handle(channels.platformInfo, () => platformInfo());
   createWindow();
   app.on("activate", () => {
