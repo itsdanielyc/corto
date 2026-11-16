@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Project, Subtitle } from "../../contracts/project";
 import { parseSrt, serializeSrt, validateSubtitles } from "../domain/subtitles";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
@@ -19,7 +19,15 @@ export function SubtitlesDialog({
 }) {
   const [error, setError] = useState("");
   const input = useRef<HTMLInputElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const commit = (cues: Subtitle[]) => {
+    if (!mounted.current) return;
     try {
       const subtitles = validateSubtitles(
         [...cues].sort((a, b) => a.start - b.start),
