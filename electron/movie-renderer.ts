@@ -136,10 +136,13 @@ export class MovieRenderer {
           signal,
           onSeconds: (seconds) =>
             progress({
-              fraction: Math.min(
-                0.85,
-                ((completed + Math.min(scene.duration, seconds)) / total) *
+              fraction: Math.max(
+                0,
+                Math.min(
                   0.85,
+                  ((completed + Math.min(scene.duration, seconds)) / total) *
+                    0.85,
+                ),
               ),
               message: `Rendering scene ${index + 1} of ${project.scenes.length}`,
             }),

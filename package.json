@@ -48,7 +48,8 @@
     "react-dom": "19.3.1",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "webm-duration-fix": "1.0.4"
   },
   "dependencies": {
     "zod": "4.6.7"

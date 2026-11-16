@@ -5,6 +5,12 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "./",
+  resolve: {
+    alias: [
+      { find: /^buffer$/, replacement: "buffer/" },
+      { find: /^events$/, replacement: "events/" },
+    ],
+  },
   clearScreen: false,
   server: {
     port: 1420,

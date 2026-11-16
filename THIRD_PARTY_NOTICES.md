@@ -20,6 +20,7 @@ The distribution tag is not a uniform FFmpeg version across operating systems. T
 - Manrope: SIL Open Font License 1.1, Mikhail Sharanda and contributors.
 - DM Serif Display: SIL Open Font License 1.1, Colophon Foundry.
 - Fontsource packages retain the upstream font licenses.
+- Browser WebM finalization uses `webm-duration-fix` and its EBML, Buffer and EventEmitter helpers. Upstream MIT/ISC notices are preserved in `public/licenses`; original repository: https://github.com/buynao/webm-duration-fix. No finalization service receives the recording.
 
 ## Example media
 See `public/demo/CREDITS.md` and the acknowledgements in About Corto. The example photographs use the Unsplash License. The original synthesized example music and synthetic test media are CC0. No third-party audio recording or musical sample is included.

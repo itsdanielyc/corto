@@ -21,6 +21,12 @@ export default defineConfig({
     },
   },
   renderer: {
+    resolve: {
+      alias: [
+        { find: /^buffer$/, replacement: "buffer/" },
+        { find: /^events$/, replacement: "events/" },
+      ],
+    },
     root: ".",
     server: { port: 1420, strictPort: true },
     build: {

@@ -16,6 +16,7 @@ import { MediaPool } from "../preview/media-pool";
 import { renderFrame } from "../preview/render-frame";
 import { seekVideo } from "../preview/seek";
 import { browserRecordingFormat } from "./format";
+import { finalizeWebm } from "./finalize-webm";
 
 const AUDIO_SAMPLE_RATE = 48000;
 const AUDIO_BITRATE = 192000;
@@ -187,8 +188,12 @@ export async function renderBrowserMovie(
       pool.retain(new Set());
     }
     recorder.stop();
-    const movie = await recorded;
+    let movie = await recorded;
     activeSignal.throwIfAborted();
+    if (format.extension === "webm") {
+      progress({ fraction: 0.995, message: "Finishing your movie" });
+      movie = await finalizeWebm(movie, activeSignal);
+    }
     if (!movie.size)
       throw new Error(
         "The browser produced an empty movie. Try the desktop app.",
