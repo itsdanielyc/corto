@@ -12,12 +12,19 @@ export function rekeyProjectAssets(project: Project): {
   const assets: Project["assets"] = {};
   for (const [oldId, asset] of Object.entries(project.assets)) {
     const id = identifiers.get(oldId)!;
-    assets[id] = { ...asset, id };
+    assets[id] = {
+      ...asset,
+      id,
+      ...(asset.originalAssetId
+        ? { originalAssetId: identifiers.get(asset.originalAssetId)! }
+        : {}),
+    };
   }
   return {
     identifiers,
     project: {
       ...project,
+      id: crypto.randomUUID(),
       assets,
       scenes: project.scenes.map((scene) => ({
         ...scene,
@@ -26,6 +33,10 @@ export function rekeyProjectAssets(project: Project): {
       music: project.music
         ? { ...project.music, assetId: identifiers.get(project.music.assetId)! }
         : null,
+      audioClips: project.audioClips.map((clip) => ({
+        ...clip,
+        assetId: identifiers.get(clip.assetId)!,
+      })),
     },
   };
 }

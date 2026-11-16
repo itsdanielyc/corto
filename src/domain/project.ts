@@ -12,13 +12,16 @@ import {
 /** Create an empty, versioned project with a stable opaque identifier. */
 export function createProject(name = "Untitled film"): Project {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: crypto.randomUUID(),
     name,
     ratio: "landscape",
     assets: {},
     scenes: [],
     music: null,
+    audioClips: [],
+    subtitles: [],
+    duckMusic: false,
   };
 }
 

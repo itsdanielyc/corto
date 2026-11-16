@@ -9,8 +9,19 @@ const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 const bridge: ElectronBridge = {
   platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
   loadProject: () => ipcRenderer.invoke(nativeChannels.loadProject),
+  listProjects: () => ipcRenderer.invoke(nativeChannels.listProjects),
+  openProject: (id, recover) =>
+    ipcRenderer.invoke(nativeChannels.openProject, id, recover),
   saveProject: (project) =>
     ipcRenderer.invoke(nativeChannels.saveProject, project),
+  importPhoneVideo: (file) => {
+    const path = webUtils.getPathForFile(file);
+    if (!path)
+      return Promise.reject(
+        new Error("Choose this phone video from your device to import it"),
+      );
+    return ipcRenderer.invoke(nativeChannels.importPhoneVideo, path, file.name);
+  },
   putAsset: async (asset, file) => {
     const path = webUtils.getPathForFile(file);
     if (!path && file.size > MAX_FALLBACK_BYTES)

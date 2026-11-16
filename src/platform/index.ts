@@ -17,6 +17,15 @@ class NativePlatform implements CortoPlatform {
   saveProject(project: Project): Promise<void> {
     return this.bridge.saveProject(project);
   }
+  listProjects() {
+    return this.bridge.listProjects();
+  }
+  openProject(id: string, recover = false) {
+    return this.bridge.openProject(id, recover);
+  }
+  importPhoneVideo(file: File) {
+    return this.bridge.importPhoneVideo(file);
+  }
   putAsset(asset: MediaAsset, file: File): Promise<void> {
     return this.bridge.putAsset(asset, file);
   }

@@ -24,6 +24,31 @@ afterEach(async () => {
 describe.each(["memory", "native"] as const)(
   "%s persistence conformance",
   (kind) => {
+    it("keeps multiple named films and restores the previous edit into a separate film", async () => {
+      const repository: ProjectRepository =
+        kind === "native"
+          ? new FileProjectRepository(directory)
+          : new MemoryProjectRepository();
+      const first = createProject("First holiday");
+      await repository.saveProject(first);
+      await repository.saveProject({ ...first, name: "Final holiday" });
+      const second = createProject("Birthday");
+      await repository.saveProject(second);
+      expect(
+        (await repository.listProjects()).map((entry) => entry.name).sort(),
+      ).toEqual(["Birthday", "Final holiday"]);
+      const reopened = await repository.openProject(first.id);
+      expect(reopened.name).toBe("Final holiday");
+      const recovered = await repository.openProject(first.id, true);
+      expect(recovered.id).not.toBe(first.id);
+      expect(recovered.name).toContain("First holiday");
+      await repository.saveProject(recovered);
+      expect(await repository.listProjects()).toHaveLength(3);
+      expect((await repository.openProject(first.id)).name).toBe(
+        "Final holiday",
+      );
+      await expect(repository.openProject("../outside")).rejects.toThrow();
+    });
     it("starts empty, round-trips, rejects malformed writes and survives caller mutations", async () => {
       const repository: ProjectRepository =
         kind === "native"
@@ -43,6 +68,25 @@ describe.each(["memory", "native"] as const)(
 );
 
 describe("native original media and portable files", () => {
+  it("keeps healthy films accessible and recovers a damaged catalogue entry from its independent snapshot", async () => {
+    const repository = new FileProjectRepository(directory);
+    const first = createProject("Recover this");
+    await repository.saveProject(first);
+    await repository.saveProject({ ...first, name: "Latest edit" });
+    await repository.saveProject(createProject("Healthy film"));
+    await writeFile(
+      join(directory, "projects", `${first.id}.json`),
+      "{damaged",
+    );
+    const summaries = await repository.listProjects();
+    expect(summaries.some((entry) => entry.name === "Healthy film")).toBe(true);
+    expect(summaries.find((entry) => entry.id === first.id)?.hasRecovery).toBe(
+      true,
+    );
+    expect((await repository.openProject(first.id, true)).name).toBe(
+      "Recover this (recovered)",
+    );
+  });
   it("streams a self-contained copy and reopens after the source workspace is gone", async () => {
     const repository = new FileProjectRepository(join(directory, "source"));
     const bytes = new Uint8Array(256 * 1024).fill(73);
