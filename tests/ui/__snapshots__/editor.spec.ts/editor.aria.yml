@@ -4,6 +4,7 @@
     - img "Corto"
   - textbox "Project name": Mountain days
   - text: Saved on this device
+  - button "My films"
   - button "Undo" [disabled]
   - button "Redo" [disabled]
   - button "Project actions"
