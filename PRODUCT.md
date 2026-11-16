@@ -53,7 +53,7 @@ Local image/video/audio import; scene storyboard; title cards and overlays; trim
 |---|---|---|
 | User's product prompt | Local Movie Maker replacement; three desktop systems; photos, clips, music, titles | Treating asserted demand as market data |
 | Supplied brand README and four-page logo guidelines | Original icons/wordmark; graphite, white and greys; Corto by miille | Recolouring or redrawing the identity |
-| [Microsoft storage troubleshooting](https://support.microsoft.com/en-us/clipchamp/troubleshooting-cloud-storage-issues-in-clipchamp) and feature comparison | Editing projects can depend on active OneDrive; trim, titles and aspect ratios are baseline tasks | Cloud account and subscription flow |
+| [Microsoft storage troubleshooting](https://support.microsoft.com/en-gb/clipchamp/troubleshooting-onedrive-backed-clipchamp-editing-projects) and feature comparison | Editing projects can depend on active OneDrive; trim, titles and aspect ratios are baseline tasks | Cloud account and subscription flow |
 | [Shotcut feature list](https://www.shotcut.org/features/) | Local format support and export controls are useful | Professional feature density |
 | [OpenShot guide](https://www.openshot.org/user-guide/) | Import, arrange, preview and export is a comprehensible journey | Multitrack complexity |
 
