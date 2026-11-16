@@ -11,8 +11,12 @@ interface Entry {
 export class MediaPool {
   private readonly entries = new Map<string, Entry>();
 
-  get(asset: MediaAsset, url: string): Promise<VisualMedia> {
-    const cached = this.entries.get(asset.id);
+  get(
+    asset: MediaAsset,
+    url: string,
+    cacheKey: string = asset.id,
+  ): Promise<VisualMedia> {
+    const cached = this.entries.get(cacheKey);
     if (cached) return cached.promise;
     const element =
       asset.kind === "image" ? new Image() : document.createElement("video");
@@ -35,7 +39,7 @@ export class MediaPool {
       entry.ready = true;
       return element;
     });
-    this.entries.set(asset.id, entry);
+    this.entries.set(cacheKey, entry);
     return entry.promise;
   }
 

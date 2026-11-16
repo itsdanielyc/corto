@@ -8,8 +8,14 @@ import {
   FADE_SECONDS,
   parseProject,
 } from "../../contracts/project";
-import { fadeOpacity, filmDuration, frameDimensions } from "../domain/timeline";
-import { disposeMedia, waitForMedia } from "../media/import";
+import {
+  buildTimeline,
+  locateScene,
+  fadeOpacity,
+  filmDuration,
+  frameDimensions,
+} from "../domain/timeline";
+import { disposeMedia, waitForMedia, type VisualMedia } from "../media/import";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
 import { loadCaptionFonts } from "../preview/captions";
 import { MediaPool } from "../preview/media-pool";
@@ -38,7 +44,7 @@ function nextFrame(signal: AbortSignal): Promise<number> {
   });
 }
 
-// Time O(output frames × pixels), space O(one decoded scene + recorded output chunks).
+// Time O(output frames × pixels), space O(current/next decoded scenes + recorded output chunks).
 /** Record the real canvas and mixed source audio locally; no network encoder or media upload exists. */
 export async function renderBrowserMovie(
   request: MovieRequest,
@@ -92,7 +98,7 @@ export async function renderBrowserMovie(
   const chunks: Blob[] = [];
   let soundtrack: HTMLAudioElement | null = null;
   let musicSource: MediaElementAudioSourceNode | null = null;
-  const sources = new WeakMap<HTMLVideoElement, MediaElementAudioSourceNode>();
+
   const recorded = new Promise<Blob>((resolve, reject) => {
     recorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data);
@@ -122,88 +128,128 @@ export async function renderBrowserMovie(
       preparedMusic.pause();
       preparedMusic.currentTime = 0;
     }
+    const timeline = buildTimeline(project.scenes);
     const total = filmDuration(project.scenes);
-    let completed = 0;
-    for (let index = 0; index < project.scenes.length; index++) {
-      activeSignal.throwIfAborted();
-      const scene = project.scenes[index];
-      const asset = scene.assetId ? project.assets[scene.assetId] : null;
-      const media = asset
-        ? await pool.get(asset, await assetUrl(asset.id))
-        : null;
-      let source: MediaElementAudioSourceNode | null = null;
-      if (media instanceof HTMLVideoElement) {
-        await seekVideo(media, scene.start, activeSignal);
-        source = sources.get(media) ?? audio.createMediaElementSource(media);
-        sources.set(media, source);
-        source.connect(clipGain);
-        media.volume = 1;
-        const preparedVideo = media;
-        await withCancellation(() => preparedVideo.play(), activeSignal);
-        preparedVideo.pause();
-        await seekVideo(preparedVideo, scene.start, activeSignal);
-      }
-      renderFrame(drawing, scene, media, 0);
-      let playbackError: unknown = null;
-      if (media instanceof HTMLVideoElement)
-        void media.play().catch((error) => {
-          playbackError = error;
-        });
-      if (
-        soundtrack &&
-        project.music &&
-        (project.music.loop || completed < soundtrack.duration)
-      ) {
-        soundtrack.currentTime = project.music.loop
-          ? completed % soundtrack.duration
-          : completed;
-        void soundtrack.play().catch((error) => {
-          playbackError = error;
-        });
-      }
-      // Decoder startup happens while paused; scene time and recording now share one epoch.
-      if (recorder.state === "inactive") recorder.start(250);
-      else recorder.resume();
-      const started = performance.now();
-      let elapsed = 0;
-      let paintedFrame = -1;
-      let notifiedAt = -Infinity;
-      while (elapsed < scene.duration) {
-        activeSignal.throwIfAborted();
-        if (playbackError) throw playbackError;
-        const globalTime = completed + elapsed;
-        const frame = Math.floor(elapsed * EXPORT_FPS);
-        if (frame !== paintedFrame) {
-          musicGain.gain.value =
-            (project.music?.volume ?? 0) *
-            Math.max(
-              0,
-              Math.min(
-                1,
-                globalTime / FADE_SECONDS,
-                (total - globalTime) / FADE_SECONDS,
-              ),
-            );
-          clipGain.gain.value = scene.volume * fadeOpacity(scene, elapsed);
-          renderFrame(drawing, scene, media, elapsed);
-          paintedFrame = frame;
-        }
-        if (elapsed - notifiedAt >= 0.1) {
-          progress({
-            fraction: Math.min(0.99, globalTime / total),
-            message: `Recording scene ${index + 1} of ${project.scenes.length}`,
-          });
-          notifiedAt = elapsed;
-        }
-        elapsed = ((await nextFrame(activeSignal)) - started) / 1000;
-      }
-      recorder.pause();
-      if (media instanceof HTMLVideoElement) media.pause();
-      soundtrack?.pause();
-      source?.disconnect();
-      completed += scene.duration;
-      pool.retain(new Set());
+    interface PreparedScene {
+      media: VisualMedia | null;
+      source: MediaElementAudioSourceNode | null;
     }
+    const prepared = new Map<number, PreparedScene>();
+    const preparing = new Map<number, Promise<void>>();
+    let playbackError: unknown = null;
+    const prepareScene = (index: number): Promise<void> => {
+      if (index >= project.scenes.length) return Promise.resolve();
+      const existing = preparing.get(index);
+      if (existing) return existing;
+      const operation = (async () => {
+        const scene = project.scenes[index];
+        const asset = scene.assetId ? project.assets[scene.assetId] : null;
+        const media = asset
+          ? await withCancellation(
+              async () => pool.get(asset, await assetUrl(asset.id), scene.id),
+              activeSignal,
+            )
+          : null;
+        let source: MediaElementAudioSourceNode | null = null;
+        if (media instanceof HTMLVideoElement) {
+          source = audio.createMediaElementSource(media);
+          await seekVideo(media, scene.start, activeSignal);
+          await withCancellation(() => media.play(), activeSignal);
+          media.pause();
+          await seekVideo(media, scene.start, activeSignal);
+        }
+        prepared.set(index, { media, source });
+      })();
+      preparing.set(index, operation);
+      return operation;
+    };
+    await Promise.all([prepareScene(0), prepareScene(1)]);
+    activeSignal.throwIfAborted();
+    const initial = prepared.get(0)!;
+    renderFrame(drawing, project.scenes[0], initial.media, 0);
+    if (soundtrack)
+      void soundtrack.play().catch((error) => {
+        playbackError = error;
+      });
+    recorder.start(250);
+    const started = performance.now();
+    let elapsed = 0;
+    let activeIndex = -1;
+    let activeMedia: PreparedScene | null = null;
+    let paintedFrame = -1;
+    let notifiedAt = -Infinity;
+    while (elapsed < total) {
+      activeSignal.throwIfAborted();
+      if (playbackError) throw playbackError;
+      const location = locateScene(timeline, elapsed)!;
+      if (activeIndex !== location.index) {
+        if (activeMedia?.media instanceof HTMLVideoElement)
+          activeMedia.media.pause();
+        activeMedia?.source?.disconnect();
+        const next = prepared.get(location.index);
+        if (!next)
+          throw new Error(
+            "This device could not prepare the next scene in real time. Try the desktop app for this film.",
+          );
+        activeMedia = next;
+        activeIndex = location.index;
+        if (next.media instanceof HTMLVideoElement)
+          void next.media.play().catch((error) => {
+            playbackError = error;
+          });
+        next.source?.connect(clipGain);
+        for (const index of prepared.keys())
+          if (index < activeIndex) {
+            prepared.delete(index);
+            preparing.delete(index);
+          }
+        pool.retain(
+          new Set(
+            [
+              project.scenes[activeIndex].id,
+              project.scenes[activeIndex + 1]?.id,
+            ].filter((id): id is string => !!id),
+          ),
+        );
+        void prepareScene(activeIndex + 1).catch((error) => {
+          if (!activeSignal.aborted) playbackError = error;
+        });
+      }
+      const frame = Math.floor(elapsed * EXPORT_FPS);
+      if (frame !== paintedFrame) {
+        musicGain.gain.value =
+          (project.music?.volume ?? 0) *
+          Math.max(
+            0,
+            Math.min(
+              1,
+              elapsed / FADE_SECONDS,
+              (total - elapsed) / FADE_SECONDS,
+            ),
+          );
+        clipGain.gain.value =
+          location.scene.volume *
+          fadeOpacity(location.scene, location.localTime);
+        renderFrame(
+          drawing,
+          location.scene,
+          activeMedia!.media,
+          location.localTime,
+        );
+        paintedFrame = frame;
+      }
+      if (elapsed - notifiedAt >= 0.1) {
+        progress({
+          fraction: Math.min(0.99, elapsed / total),
+          message: `Recording scene ${activeIndex + 1} of ${project.scenes.length}`,
+        });
+        notifiedAt = elapsed;
+      }
+      elapsed = ((await nextFrame(activeSignal)) - started) / 1000;
+    }
+    if (activeMedia?.media instanceof HTMLVideoElement)
+      activeMedia.media.pause();
+    soundtrack?.pause();
     recorder.stop();
     let movie = await recorded;
     activeSignal.throwIfAborted();
