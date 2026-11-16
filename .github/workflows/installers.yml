@@ -7,6 +7,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      appimage_repetitions:
+        description: AppImage diagnostic repetitions
+        type: choice
+        options: ['1', '30']
+        default: '1'
 
 concurrency:
   group: installers-${{ github.ref }}
@@ -28,6 +34,7 @@ jobs:
       # No certificate lookup in the keychain, so macOS builds stay unsigned
       # (ad hoc) and electron-builder never tries to notarize.
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CORTO_APPIMAGE_REPETITIONS: ${{ inputs.appimage_repetitions || '1' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
