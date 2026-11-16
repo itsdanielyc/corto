@@ -11,7 +11,6 @@ import {
 } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { greeting } from "../../contracts/greet";
 import type { PlatformInfo } from "../../electron/bridge";
 
 let app: ElectronApplication;
@@ -63,12 +62,6 @@ test.describe("corto in the real shell", () => {
       require: "undefined",
       process: "undefined",
     });
-  });
-
-  test("round-trips a call to the main process and matches the shared contract", async () => {
-    expect(await win.evaluate(() => window.electronBridge!.greet("Keel"))).toBe(
-      greeting("Keel"),
-    );
   });
 
   test("reports the platform from the main process and saves a screenshot named after it", async () => {

@@ -7,7 +7,6 @@ import { nativeChannels } from "../contracts/platform";
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
 const bridge: ElectronBridge = {
-  greet: (name) => ipcRenderer.invoke(channels.greet, name),
   platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
   loadProject: () => ipcRenderer.invoke(nativeChannels.loadProject),
   saveProject: (project) =>

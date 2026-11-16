@@ -17,7 +17,7 @@ Read cold, mid-task. Every command below is real for this repository.
 - Dev loop with hot reload: `npm run dev` (electron-vite); renderer alone
   in a browser: `npm run dev:web` (Vite on port 1420).
 - Ready means: the main window titled "Corto" is visible and the backend
-  badge reads "native".
+  `editor-shell` has `data-backend="native"` and local save state settles.
 
 ## Doctor (read-only)
 
@@ -30,10 +30,10 @@ Read cold, mid-task. Every command below is real for this repository.
 ## Drive
 
 - Real shell: `npm run test:e2e` launches `out/` through Playwright and
-  checks the badge, the greeting round trip and the console; add journeys
+  checks the sandbox, real persistence and a complete editing/export journey; add journeys
   under `tests/e2e/`.
 - Browser against the mock: `npm run test:ui` (chromium); the badge must
-  read "mock".
+  read "mock" in the test build; production web uses the real browser adapter.
 - Stable handles: `data-testid` attributes and ARIA roles, never pixels.
 
 ## Evidence

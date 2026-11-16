@@ -9,6 +9,7 @@
 | 3 | Editor and actual preview | Import, edit, titles, sound, playback, aspect ratio and keyboard journeys; screenshots reviewed | L4/L5/L6 | tested locally windows-x64; final CI and runner pixels pending |
 | 4 | Movie export | Native MP4 and detected browser format playable; timing, sound, cancellation and destination proven | L1/L3/L4/L6 | tested locally windows-x64; final CI pending |
 | 5 | Distribution | All critical journeys and installers green for release commit; signed status explicit; packages and web build published | L0-L7 | pending |
+| 6 | Product-only verification and maintainability | Controller/dialog/shortcut separation preserves behaviour; sample greeting coverage replaced by real project journeys | L0-L6 | local Windows checks pass; CI pending |
 
 ## Rulings
 - Full autonomy in the user's request overrides phase approval pauses and authorises this new public repository, pushes and delivery. No existing shared repository is modified.
@@ -25,4 +26,10 @@
 - Corrupt/newer project manifests, missing media, quota exhaustion and malformed portable archives.
 - First/last/short scenes, repeated assets, exact trim boundaries and undo after split/reorder.
 - Video/music mixing, silent movies, portrait/square exports, cancellation and export failure cleanup.
+
+## Scaffold retirement mapping
+- Sample greeting contract → versioned project and real/mock repository conformance.
+- Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.
+- Native greeting IPC → real native persistence and complete import/trim/title/music/save/reopen/MP4 journey.
+- Sample home pixels → reviewed editor structure/geometry and per-OS runner pixels.
 <!-- keel:end -->
