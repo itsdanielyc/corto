@@ -14,6 +14,7 @@ import {
   movieAudio,
   toneMagnitude,
 } from "../helpers/movie-inspection";
+import { completeNativeExport } from "../helpers/native-export";
 
 async function menu(page: Page, name: string) {
   await page
@@ -167,37 +168,17 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .click();
     await page.getByRole("radio", { name: /Small file/ }).check();
     const exportStarted = Date.now();
-    await page
-      .getByRole("button", {
+    await completeNativeExport(
+      page,
+      page.getByRole("button", {
         name: "Export first 5 seconds as a sample",
         exact: true,
-      })
-      .click();
+      }),
+    );
     const completed = page.getByText("A little film. All yours.", {
       exact: true,
     });
-    try {
-      await expect(completed).toBeVisible();
-    } catch (failure) {
-      if (process.env.CORTO_EXPORT_DIAGNOSTIC === "1") {
-        const terminal = await completed
-          .waitFor({ state: "visible", timeout: 10_000 })
-          .then(
-            () => true,
-            () => false,
-          );
-        console.log(
-          "NATIVE_EXPORT_DIAGNOSTIC",
-          JSON.stringify({
-            elapsedMs: Date.now() - exportStarted,
-            completed: terminal,
-            status: await page.locator(".export-progress").allTextContents(),
-            errors: await page.getByRole("alert").allTextContents(),
-          }),
-        );
-      }
-      throw failure;
-    }
+    await expect(completed).toBeVisible();
     console.log(
       "NATIVE_EXPORT_DIAGNOSTIC",
       JSON.stringify({
