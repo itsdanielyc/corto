@@ -12,3 +12,5 @@ Corto uses Keel's evidence gate. A release tag must not precede a green installe
 The native installer smoke signal comes from the application renderer's real project request. It identifies the actual main-process PID and additionally proves the packaged FFmpeg executable can encode an MP4. Liveness alone is not enough.
 
 The binary checksum manifest pins the actual FFmpeg release assets, independently of npm package integrity. Platform readmes and licenses ship beside the binary. Record actual engine versions rather than assuming the distribution tag is the FFmpeg version on every OS.
+
+The shipping web app enables MP4 recording only where supported. Experimental WebM remains disabled and runs in advisory coverage (issue #8); browser project portability is independently verified offline.

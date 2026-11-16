@@ -3,13 +3,13 @@
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 0 | Proven Electron scaffold | Tier 1 CI and installers green; runner-captured snapshots reviewed; ledger rows | L0-L7 | initial runs green; later AppImage liveness regression tracked |
+| 0 | Proven Electron scaffold | Tier 1 CI and installers green; runner-captured snapshots reviewed; ledger rows | L0-L7 | done; readiness/PID probe and 30 AppImage launches verified |
 | 1 | Project contract and editing model | Invalid inputs rejected; timeline/trim/split/reorder/undo tests seen red then green | L1/L2 | done; CI 43788513056 |
 | 2 | Local workspace and portable projects | Real I/O round trips; native save/reopen through built app | L2/L3/L6 | done for backend; CI 43790072321; user journey tested locally windows-x64 |
-| 3 | Editor and actual preview | Import, edit, titles, sound, playback, aspect ratio and keyboard journeys; screenshots reviewed | L4/L5/L6 | tested locally windows-x64; final CI and runner pixels pending |
-| 4 | Movie export | Native MP4 and detected browser format playable; timing, sound, cancellation and destination proven | L1/L3/L4/L6 | tested locally windows-x64; final CI pending |
-| 5 | Distribution | All critical journeys and installers green for release commit; signed status explicit; packages and web build published | L0-L7 | pending |
-| 6 | Product-only verification and maintainability | Controller/dialog/shortcut separation preserves behaviour; sample greeting coverage replaced by real project journeys | L0-L6 | local Windows checks pass; CI pending |
+| 3 | Editor and actual preview | Import, edit, titles, sound, playback, aspect ratio and keyboard journeys; screenshots reviewed | L4/L5/L6 | done; CI 43808645430; pixels 43808009004 reviewed |
+| 4 | Movie export | Native MP4 playable; timing, sound, cancellation and destination proven; browser export capability handled honestly | L1/L3/L4/L6 | done for native MP4 and supported browser MP4; experimental WebM deferred in ADR 004 / issue 8 |
+| 5 | Distribution | All critical journeys and installers green for release commit; signed status explicit; packages and web build published | L0-L7 | workflows validated; final exact-commit gate and publication pending |
+| 6 | Product-only verification and maintainability | Controller/dialog/shortcut separation preserves behaviour; sample greeting coverage replaced by real project journeys | L0-L6 | done; CI 43808718412 |
 
 ## Rulings
 - Full autonomy in the user's request overrides phase approval pauses and authorises this new public repository, pushes and delivery. No existing shared repository is modified.

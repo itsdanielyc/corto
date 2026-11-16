@@ -74,3 +74,15 @@ Experimental WebM capture remains unverified and is disabled in production (ADR 
 | Date (UTC) | Level | Claim | Platforms | Evidence |
 |---|---|---|---|---|
 | 2026-11-16 05:08 | L0/L1/L6 | Layout separated from controller/dialog/shortcut policy; unused greeting scaffold retired after replacement journeys existed | local windows-x64 | Strict typecheck and build exit 0; 19 product unit checks and five native-shell checks pass. The removed three unit checks and native greeting call covered only the scaffold; replacement mapping is in PLAN.md. Actual user editing/export coverage is retained. |
+
+## 2026-11-16: release-candidate evidence
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 05:15 | L0-L6 | Shipping editor, real file/movie integration, offline browser persistence, capability handling, accessibility, visual baselines and full native user journey pass | windows-x64, macos-arm64, linux-x64; macos-x64 L6 | [CI 43808645430](https://github.com/itsdanielyc/corto/actions/runs/43808645430), PR #6. Browser WebM is explicitly advisory; shipping scope is ADR 004. |
+| 2026-11-16 05:16 | L0-L6 | Product-only code and refactor preserve behaviour and reviewed per-OS pixels | windows-x64, macos-arm64, linux-x64; macos-x64 L6 | [CI 43808718412](https://github.com/itsdanielyc/corto/actions/runs/43808718412), PR #9. |
+| 2026-11-16 05:20 | L0-L6 / workflow validation | Distribution source checks pass and release/Pages YAML passes actionlint | windows-x64, macos-arm64, linux-x64; macos-x64 L6 | [CI 43808980442](https://github.com/itsdanielyc/corto/actions/runs/43808980442), PR #7; local `actionlint -shellcheck= -pyflakes=` exit 0. Gate script was observed red on an unproven branch SHA. |
+| 2026-11-16 05:20 | L7 | Shipping native editor and bundled MP4 encoder install, launch and uninstall successfully | windows-x64, macos-arm64, macos-x64, linux-x64 (DEB/AppImage) | [Main installers 43809273343](https://github.com/itsdanielyc/corto/actions/runs/43809273343). A new release-candidate metadata commit still requires its own exact-SHA installer gate before tagging. |
+| 2026-11-16 05:11 | L5 reviewed | Editor PNG baselines captured on each OS and visually reviewed; ARIA/geometry shared | windows-x64, macos-arm64, linux-x64 | [Snapshots 43808009004](https://github.com/itsdanielyc/corto/actions/runs/43808009004), committed by the workflow and included in PR #6. |
+
+Remaining: exact release-commit CI/installers, tag publication, public web deployment and published-asset smoke checks. Unsigned status, native mobile, HEIC/RAW/HDR, other architectures/distributions and experimental WebM remain explicitly outside verified preview scope.
