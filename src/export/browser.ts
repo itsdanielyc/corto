@@ -51,6 +51,7 @@ export async function renderBrowserMovie(
   assetUrl: (id: string) => Promise<string>,
   progress: (value: ExportProgress) => void,
   signal: AbortSignal,
+  surface?: HTMLCanvasElement,
 ): Promise<MovieResult> {
   const project = parseProject(request.project);
   const format = browserRecordingFormat();
@@ -69,11 +70,14 @@ export async function renderBrowserMovie(
       );
   };
   document.addEventListener("visibilitychange", hidden);
-  const canvas = document.createElement("canvas");
+  const canvas = surface ?? document.createElement("canvas");
   const dimensions = frameDimensions(project.ratio, request.resolution);
   canvas.width = dimensions.width;
   canvas.height = dimensions.height;
-  const drawing = canvas.getContext("2d", { alpha: false });
+  const drawing = canvas.getContext("2d", {
+    alpha: false,
+    willReadFrequently: true,
+  });
   if (!drawing) throw new Error("A drawing surface could not be created");
   const pool = new MediaPool();
   const audio = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
@@ -86,8 +90,15 @@ export async function renderBrowserMovie(
   silence.offset.value = 0;
   silence.connect(destination);
   silence.start();
+  const videoStream = canvas.captureStream(0);
+  const videoTrack =
+    videoStream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+  if (typeof videoTrack.requestFrame !== "function")
+    throw new Error(
+      "This browser cannot capture individual movie frames. Try the desktop app.",
+    );
   const stream = new MediaStream([
-    ...canvas.captureStream(EXPORT_FPS).getVideoTracks(),
+    ...videoStream.getVideoTracks(),
     ...destination.stream.getAudioTracks(),
   ]);
   const recorder = new MediaRecorder(stream, {
@@ -172,6 +183,7 @@ export async function renderBrowserMovie(
         playbackError = error;
       });
     recorder.start(250);
+    videoTrack.requestFrame();
     const started = performance.now();
     let elapsed = 0;
     let activeIndex = -1;
@@ -236,6 +248,7 @@ export async function renderBrowserMovie(
           activeMedia!.media,
           location.localTime,
         );
+        videoTrack.requestFrame();
         paintedFrame = frame;
       }
       if (elapsed - notifiedAt >= 0.1) {

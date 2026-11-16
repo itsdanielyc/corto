@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   Monitor,
   ShieldCheck,
+  Save,
 } from "lucide-react";
 import type { MovieResult, ExportProgress } from "../../contracts/platform";
 import type { ExportResolution, Project } from "../../contracts/project";
@@ -29,6 +30,7 @@ export function ExportDialog({
   const [result, setResult] = useState<MovieResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+  const surface = useRef<HTMLCanvasElement>(null);
   const browserFormat = browserRecordingFormat();
   const native = platform.kind === "native";
   const format = native ? "MP4" : browserFormat?.label;
@@ -51,6 +53,7 @@ export function ExportDialog({
         { project, resolution, overlays },
         setProgress,
         controller.signal,
+        surface.current ?? undefined,
       );
       if (movie) setResult(movie);
     } catch (failure) {
@@ -72,6 +75,16 @@ export function ExportDialog({
       onClose={close}
       className="export-dialog"
     >
+      {!native && (
+        <canvas
+          ref={surface}
+          className="export-render-preview"
+          hidden={!progress}
+          width={dimensions.width}
+          height={dimensions.height}
+          aria-label="Movie being exported"
+        />
+      )}
       {result ? (
         <div className="export-success">
           <div className="success-symbol">
@@ -186,10 +199,23 @@ export function ExportDialog({
             </div>
           )}
           {!format && (
-            <p className="inline-error">
-              This browser cannot record video. Use a current desktop browser or
-              the Corto desktop app.
-            </p>
+            <div>
+              <p className="inline-error">
+                For MP4 export, open this project in Corto for desktop. Save a
+                portable copy to take your media and edits with you.
+              </p>
+              <button
+                className="button secondary"
+                onClick={() => {
+                  void platform
+                    .savePortable(project)
+                    .catch((failure) => setError(String(failure)));
+                }}
+              >
+                <Save size={15} />
+                Save portable project
+              </button>
+            </div>
           )}
           {progress ? (
             <div className="export-progress">
