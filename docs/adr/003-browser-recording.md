@@ -14,5 +14,5 @@ Ruling: the release fallback is VP8/Opus for broad compatibility and lower encod
 
 References inspected: [upstream streaming implementation](https://github.com/buynao/webm-duration-fix/blob/main/src/index.ts), [Matroska duration definitions](https://www.matroska.org/technical/notes.html), 2026-11-16. CommonJS default-export compatibility is isolated in the worker entry.
 
-Decoder preparation is excluded from recording time. Video/music are primed while the recorder is paused; playback and the scene timer start together. A test that delays each play promise by 200 ms reproduced the prior 2.6-second output for a 1.75-second storyboard and now passes without relaxing the duration or caption assertions.
+Decoder preparation is excluded from composition time. The recorder runs continuously on one timeline clock; only current/next scenes are decoded. Initial decoders are primed before recording and subsequent decoders prepare ahead without connecting their audio to the mix. This avoids platform-dependent pause/resume timestamp behavior. A test delaying each play promise by 200 ms reproduced the prior 2.6-second output for a 1.75-second storyboard; the corrected pipeline passes without relaxing duration, caption or audio assertions.
 <!-- keel:end -->
