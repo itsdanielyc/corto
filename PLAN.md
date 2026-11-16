@@ -3,8 +3,8 @@
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 0 | Proven Electron scaffold | Tier 1 CI and installers green; runner-captured snapshots reviewed; ledger rows | L0-L7 | pending |
-| 1 | Project contract and editing model | Invalid inputs rejected; timeline/trim/split/reorder/undo tests seen red then green | L1/L2 | pending |
+| 0 | Proven Electron scaffold | Tier 1 CI and installers green; runner-captured snapshots reviewed; ledger rows | L0-L7 | initial runs green; later AppImage liveness regression tracked |
+| 1 | Project contract and editing model | Invalid inputs rejected; timeline/trim/split/reorder/undo tests seen red then green | L1/L2 | tested locally windows-x64; CI pending |
 | 2 | Local workspace and portable projects | Real I/O round trips; native save/reopen through built app | L2/L3/L6 | pending |
 | 3 | Editor and actual preview | Import, edit, titles, sound, playback, aspect ratio and keyboard journeys; screenshots reviewed | L4/L5/L6 | pending |
 | 4 | Movie export | Native MP4 and detected browser format playable; timing, sound, cancellation and destination proven | L1/L3/L4/L6 | pending |
