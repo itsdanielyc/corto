@@ -17,6 +17,7 @@ export interface CortoPlatform extends ProjectRepository {
     request: MovieRequest,
     progress: (value: ExportProgress) => void,
     signal: AbortSignal,
+    surface?: HTMLCanvasElement,
   ): Promise<MovieResult | null>;
   revealExport(): Promise<void>;
   releaseMediaUrls(): void;
