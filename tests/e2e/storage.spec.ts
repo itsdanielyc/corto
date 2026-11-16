@@ -9,22 +9,22 @@ test("native project commands save and reopen original media through the sandbox
   const portable = join(directory, "Family film.corto");
   const app = await electron.launch({ args: ["."], env: { ...process.env, CORTO_E2E: "1", CORTO_WORKSPACE_ROOT: join(directory, "workspace"), CORTO_PROJECT_PATH: portable } });
   try {
-    const window = await app.firstWindow();
+    const page = await app.firstWindow();
     const asset = { id: "family-1", name: "Family.png", kind: "image" as const, mime: "image/png", size: 3, duration: 0, width: 1, height: 1 };
     const project = appendScene(addAsset(createProject("Family film"), asset), createScene(asset));
-    await window.evaluate(async ({ asset, project }) => {
+    await page.evaluate(async ({ asset, project }) => {
       const bridge = window.electronBridge!;
       await bridge.putAsset(asset, new File([new Uint8Array([1, 2, 3])], asset.name, { type: asset.mime }));
       await bridge.saveProject(project);
     }, { asset, project });
-    expect(await window.evaluate(() => window.electronBridge!.loadProject())).toEqual(project);
-    expect(await window.evaluate(project => window.electronBridge!.savePortable(project), project)).toBe(true);
+    expect(await page.evaluate(() => window.electronBridge!.loadProject())).toEqual(project);
+    expect(await page.evaluate(project => window.electronBridge!.savePortable(project), project)).toBe(true);
     expect((await readFile(portable)).subarray(0, 8).toString()).toBe("CORTO001");
-    const reopened = await window.evaluate(() => window.electronBridge!.openPortable());
+    const reopened = await page.evaluate(() => window.electronBridge!.openPortable());
     expect(reopened?.name).toBe("Family film");
     expect(reopened?.scenes).toHaveLength(1);
     expect(reopened?.scenes[0].assetId).not.toBe(asset.id);
-    const current = await window.evaluate(() => window.electronBridge!.loadProject());
+    const current = await page.evaluate(() => window.electronBridge!.loadProject());
     expect(current).toEqual(reopened);
   } finally {
     await app.close();
