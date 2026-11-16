@@ -1,0 +1,43 @@
+name: experimental WebM advisory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  webm:
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      CORTO_ADVISORY_WEBM: "1"
+      VITE_CORTO_EXPERIMENTAL_WEBM: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Capture tail regression (issue 8)
+        run: npx playwright test -c playwright.advisory.config.ts
+      - run: npm run build:web
+        if: always()
+      - name: Experimental offline capture
+        if: always()
+        run: npx playwright test -c playwright.advisory-web.config.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: experimental-webm-${{ matrix.os }}
+          path: test-results
+          retention-days: 7

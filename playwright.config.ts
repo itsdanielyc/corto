@@ -39,7 +39,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "npx cross-env VITE_CORTO_MOCK=1 npm run dev:web -- --strictPort --port 1420",
+      `npx cross-env VITE_CORTO_MOCK=1 VITE_CORTO_EXPERIMENTAL_WEBM=${process.env.CORTO_ADVISORY_WEBM ? "1" : "0"} npm run dev:web -- --strictPort --port 1420`,
     url: "http://localhost:1420",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

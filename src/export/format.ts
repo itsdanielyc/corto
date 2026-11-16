@@ -21,8 +21,11 @@ export function browserRecordingFormat(): RecordingFormat | null {
   )
     return null;
   return (
-    recordingFormats.find((format) =>
-      MediaRecorder.isTypeSupported(format.mime),
+    recordingFormats.find(
+      (format) =>
+        (format.extension === "mp4" ||
+          import.meta.env.VITE_CORTO_EXPERIMENTAL_WEBM === "1") &&
+        MediaRecorder.isTypeSupported(format.mime),
     ) ?? null
   );
 }

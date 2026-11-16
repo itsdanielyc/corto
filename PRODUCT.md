@@ -32,7 +32,7 @@ Private media never leaves the device. No analytics, remote fonts, advertising o
 5. Operate essential actions by keyboard with named controls and readable contrast: browser keyboard journey and reviewed screenshots.
 
 ## First release scope
-Local image/video/audio import; scene storyboard; title cards and overlays; trim/split; fit/fill; fade through black; undo/redo; aspect ratio; preview; local autosave; portable project download/open; 720p/1080p exports. Desktop exports MP4 using bundled FFmpeg; browser output depends on supported recording codecs and is identified before export.
+Local image/video/audio import; scene storyboard; title cards and overlays; trim/split; fit/fill; fade through black; undo/redo; aspect ratio; preview; local autosave; portable project download/open; 720p/1080p exports. Desktop exports MP4 using bundled FFmpeg; browser MP4 is offered where supported; other browsers transfer a portable project to desktop. Experimental WebM is deferred (ADR 004).
 
 ## Non-goals
 - Professional multitrack editing, keyframes and compositing: these undermine the simple storyboard workflow.
