@@ -4,6 +4,7 @@
 // (tests/e2e) is what holds it to the contract.
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { join } from "node:path";
+import { writeFile } from "node:fs/promises";
 import { channels, type PlatformInfo } from "./bridge";
 
 function greet(name: string): string {
@@ -33,6 +34,13 @@ function createWindow(): void {
     },
   });
   win.once("ready-to-show", () => win.show());
+  win.webContents.once("did-finish-load", () => {
+    // Installer tests identify the actual loaded app, independent of AppImage's temporary mount name.
+    const output = process.env.CORTO_SMOKE_OUTPUT;
+    if (app.commandLine.hasSwitch("corto-smoke-test") && output) {
+      void writeFile(output, JSON.stringify({ pid: process.pid, executable: app.getPath("exe"), rendererReady: true }));
+    }
+  });
   // Links open in the system browser, never inside the app window.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://")) void shell.openExternal(url);
