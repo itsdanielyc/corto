@@ -21,6 +21,9 @@ import { Storyboard } from "./components/Storyboard";
 import { IconButton } from "./components/primitives";
 import { useEditorController } from "./hooks/use-editor-controller";
 import { EditorDialogs } from "./components/EditorDialogs";
+import { ProjectHome } from "./components/ProjectHome";
+import { SoundDialog } from "./components/SoundDialog";
+import { SubtitlesDialog } from "./components/SubtitlesDialog";
 
 export function App() {
   const {
@@ -74,6 +77,8 @@ export function App() {
     togglePlayback,
     playbackStep,
     modalClose,
+    showProjects,
+    openSavedProject,
   } = useEditorController();
 
   return (
@@ -124,6 +129,15 @@ export function App() {
         }}
         onHelp={() => setDialog("help")}
         onAbout={() => setDialog("about")}
+        onProjects={showProjects}
+        onSound={() => {
+          setPlaying(false);
+          setDialog("sound");
+        }}
+        onSubtitles={() => {
+          setPlaying(false);
+          setDialog("subtitles");
+        }}
       />
       <div className="app-body" inert={!!busy || !editor.loaded}>
         <NavigationRail
@@ -144,6 +158,14 @@ export function App() {
           onExample={showExample}
           onHelp={() => setDialog("help")}
           onMusic={changeMusic}
+          onSound={() => {
+            setPlaying(false);
+            setDialog("sound");
+          }}
+          onSubtitles={() => {
+            setPlaying(false);
+            setDialog("subtitles");
+          }}
         />
         <main className="workspace" aria-label="Film editor">
           <div className="workspace-heading">
@@ -175,6 +197,7 @@ export function App() {
           </div>
           <Preview
             project={project}
+            platform={platform}
             resources={resources}
             time={time}
             playing={playing}
@@ -264,6 +287,11 @@ export function App() {
           onReorder={reorder}
           onTitle={() => addTitle()}
           onMusic={() => {
+            if (project.audioClips.length) {
+              setPlaying(false);
+              setDialog("sound");
+              return;
+            }
             setMode("music");
             if (
               !Object.values(project.assets).some(
@@ -281,7 +309,7 @@ export function App() {
         ref={mediaInput}
         type="file"
         multiple
-        accept=".jpg,.jpeg,.png,.webp,.bmp,.mp4,.mov,.m4v,.webm,.mp3,.wav,.m4a,.aac,.flac,.ogg"
+        accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.mp4,.mov,.m4v,.webm,.mp3,.wav,.m4a,.aac,.flac,.ogg"
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
@@ -360,6 +388,35 @@ export function App() {
         onSave={savePortable}
         onTransition={performTransition}
       />
+      {dialog === "projects" && (
+        <ProjectHome
+          platform={platform}
+          onClose={modalClose}
+          onOpen={openSavedProject}
+          onNew={() => setDialog("new")}
+          onPortable={() => {
+            setDialog(null);
+            requestOpen();
+          }}
+        />
+      )}
+      {dialog === "sound" && (
+        <SoundDialog
+          project={project}
+          platform={platform}
+          time={time}
+          onChange={(next) => edit(() => next)}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "subtitles" && (
+        <SubtitlesDialog
+          project={project}
+          time={time}
+          onChange={(next) => edit(() => next)}
+          onClose={modalClose}
+        />
+      )}
     </div>
   );
 }

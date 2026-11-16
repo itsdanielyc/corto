@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { execFileSync } from "node:child_process";
+import { collectCodecSources } from "./collect-codec-sources.mjs";
 
 const root = "publish";
 const manifest = JSON.parse(await readFile("package.json", "utf8"));
@@ -32,6 +33,7 @@ for (const file of files.filter((name) =>
 }
 if (versions.size === 0)
   throw new Error("No media-engine provenance was downloaded");
+versions.add("5.1.4");
 for (const version of versions) {
   const url = `https://ffmpeg.org/releases/ffmpeg-${version}.tar.xz`;
   const response = await fetch(url);
@@ -42,6 +44,7 @@ for (const version of versions) {
     createWriteStream(join(information, `ffmpeg-${version}.tar.xz`)),
   );
 }
+await collectCodecSources(information);
 await copyFile(
   "THIRD_PARTY_NOTICES.md",
   join(information, "THIRD_PARTY_NOTICES.md"),

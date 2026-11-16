@@ -24,3 +24,9 @@ The distribution tag is not a uniform FFmpeg version across operating systems. T
 
 ## Example media
 See `public/demo/CREDITS.md` and the acknowledgements in About Corto. The example photographs use the Unsplash License. The original synthesized example music and synthetic test media are CC0. No third-party audio recording or musical sample is included.
+
+## Local phone codecs (v0.1.1)
+- HEIF decoding uses unmodified `libheif-js` 1.23.5 (LGPL-3.0), loaded in a disposable worker. Its complete upstream license is in `public/licenses/libheif-js-LICENSE.txt`. Source/build commits and archives are listed in `public/licenses/codec-sources.json` and included in the release media-source-information ZIP.
+- Browser HEVC/HDR conversion uses `@ffmpeg/ffmpeg` 0.12.15 (MIT wrapper) and a separately loaded, unmodified `@ffmpeg/core` 0.12.10 worker/core (GPL-2.0-or-later), based on FFmpeg 5.1.4. No CDN or media-conversion service is contacted. The core, its upstream build recipes and FFmpeg source are included/referenced in the same release source-information bundle. Core build recipes retain optional-library source locations and licenses.
+- The application source license does not replace the licenses of separately distributed codecs. All codec copyright/license notices remain with their owners. These workers and their locally served files can be replaced and rebuilt from the documented upstream sources.
+- Synthetic phone test fixtures are CC0; see `tests/fixtures/PHONE-CREDITS.md`.

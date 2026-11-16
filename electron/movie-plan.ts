@@ -26,6 +26,7 @@ export interface SceneRenderInput {
   width: number;
   height: number;
   hasAudio: boolean;
+  videoBitrate?: number;
 }
 
 /** Translate validated edits into safe FFmpeg arguments. Captions are PNGs, never filter-language text. */
@@ -119,8 +120,16 @@ export function sceneArguments(input: SceneRenderInput): string[] {
     "libx264",
     "-preset",
     "veryfast",
-    "-crf",
-    "20",
+    ...(input.videoBitrate
+      ? [
+          "-b:v",
+          String(input.videoBitrate),
+          "-maxrate",
+          String(Math.round(input.videoBitrate * 1.5)),
+          "-bufsize",
+          String(input.videoBitrate * 2),
+        ]
+      : ["-crf", "20"]),
     "-threads",
     ENCODER_THREADS,
     "-pix_fmt",

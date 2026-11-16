@@ -13,6 +13,7 @@ import {
   toneMagnitude,
   titlePixelFraction,
 } from "../helpers/movie-inspection";
+import { completeNativeExport } from "../helpers/native-export";
 
 async function duration(page: Page, value: string) {
   await page.getByLabel("Duration (seconds)").fill(value);
@@ -120,7 +121,10 @@ test("a real user can import, trim, title, save, reopen and export an MP4 in the
     await page
       .getByText("A smaller file, easy to share", { exact: true })
       .click();
-    await page.getByRole("button", { name: "Export MP4", exact: true }).click();
+    await completeNativeExport(
+      page,
+      page.getByRole("button", { name: "Export MP4", exact: true }),
+    );
     await expect(
       page.getByText("A little film. All yours.", { exact: true }),
     ).toBeVisible();

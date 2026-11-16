@@ -7,6 +7,7 @@ directories:
   buildResources: build
 files:
   - out/**
+  - "!out/renderer/codecs/**"
   - package.json
 asar: true
 extraResources:
@@ -35,6 +36,8 @@ mac:
   target: dmg
   identity: null
   category: public.app-category.video
+  extendInfo:
+    NSMicrophoneUsageDescription: Record narration for your films on this device.
 dmg:
   writeUpdateInfo: false
 linux:

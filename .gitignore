@@ -13,3 +13,4 @@ tmp/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+public/codecs/

@@ -31,6 +31,8 @@ interface LibraryProperties {
   onExample: () => void;
   onHelp: () => void;
   onMusic: (music: Project["music"]) => void;
+  onSound: () => void;
+  onSubtitles: () => void;
 }
 
 export function NavigationRail({
@@ -82,12 +84,15 @@ export const Library = memo(function Library({
   onTitle,
   onExample,
   onMusic,
+  onSound,
+  onSubtitles,
 }: LibraryProperties) {
   const [query, setQuery] = useState("");
   const assets = useMemo(
     () =>
       Object.values(project.assets).filter(
         (asset) =>
+          !asset.isOriginalOnly &&
           (mode === "music"
             ? asset.kind === "audio"
             : asset.kind !== "audio") &&
@@ -116,7 +121,7 @@ export const Library = memo(function Library({
           <span className="count-badge">
             {
               Object.values(project.assets).filter(
-                (asset) => asset.kind !== "audio",
+                (asset) => asset.kind !== "audio" && !asset.isOriginalOnly,
               ).length
             }
           </span>
@@ -141,6 +146,16 @@ export const Library = memo(function Library({
             <Plus size={17} />
           )}
           {mode === "music" ? "Import music" : "Import media"}
+        </button>
+      )}
+      {mode === "music" && (
+        <button className="button secondary" onClick={onSound}>
+          Sound &amp; narration
+        </button>
+      )}
+      {mode === "titles" && (
+        <button className="button secondary" onClick={onSubtitles}>
+          Timed subtitles
         </button>
       )}
       {mode === "titles" ? (

@@ -23,4 +23,10 @@ Autosave reports actual completion/failure. Export shows actual progress and a c
 
 ## Tool choice
 The Product Design router was inspected; it excludes ordinary implementation. This task uses its existing brand material and this decision log rather than introducing a separate design exploration/approval workflow.
+
+## v0.1.1
+- My films is reachable from the header/brand and project menu, with thumbnails and an explicit recovery-as-copy action.
+- Sound & narration and Timed subtitles use focused, keyboard-accessible panels. Persistent labels distinguish film time from original-source time; invalid edits explain their bounds.
+- Export choices name destinations, preserve the chosen aspect ratio and label size as an estimate. A sample uses the same export path.
+- Automatic slideshow creation and photo-presentation enhancements were explicitly declined. The scene editor, brand and photo-framing controls keep their existing scope.
 <!-- keel:end -->

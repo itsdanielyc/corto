@@ -3,11 +3,7 @@ import type {
   MovieRequest,
   MovieResult,
 } from "../../contracts/platform";
-import {
-  EXPORT_FPS,
-  FADE_SECONDS,
-  parseProject,
-} from "../../contracts/project";
+import { EXPORT_FPS, parseProject } from "../../contracts/project";
 import {
   buildTimeline,
   locateScene,
@@ -15,7 +11,7 @@ import {
   filmDuration,
   frameDimensions,
 } from "../domain/timeline";
-import { disposeMedia, waitForMedia, type VisualMedia } from "../media/import";
+import { type VisualMedia } from "../media/import";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
 import { loadCaptionFonts } from "../preview/captions";
 import { MediaPool } from "../preview/media-pool";
@@ -24,10 +20,13 @@ import { seekVideo } from "../preview/seek";
 import { browserRecordingFormat } from "./format";
 import { finalizeWebm } from "./finalize-webm";
 import { withCancellation } from "./cancellation";
+import { AudioTimelinePlayer } from "../preview/audio-timeline";
+import { drawSubtitle } from "../preview/subtitles";
+import { subtitleAt } from "../domain/subtitles";
+import { exportBitrate, sampleProject } from "./presets";
 
 const AUDIO_SAMPLE_RATE = 48000;
 const AUDIO_BITRATE = 192000;
-const VIDEO_BITRATES = { "720p": 4_000_000, "1080p": 8_000_000 } as const;
 
 function nextFrame(signal: AbortSignal): Promise<number> {
   signal.throwIfAborted();
@@ -53,7 +52,7 @@ export async function renderBrowserMovie(
   signal: AbortSignal,
   surface?: HTMLCanvasElement,
 ): Promise<MovieResult> {
-  const project = parseProject(request.project);
+  const project = sampleProject(parseProject(request.project), request.sample);
   const format = browserRecordingFormat();
   if (!format)
     throw new Error(
@@ -82,10 +81,13 @@ export async function renderBrowserMovie(
   const pool = new MediaPool();
   const audio = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
   const destination = audio.createMediaStreamDestination();
+  const limiter = audio.createDynamicsCompressor();
+  limiter.threshold.value = -1;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.connect(destination);
   const clipGain = audio.createGain();
-  const musicGain = audio.createGain();
-  clipGain.connect(destination);
-  musicGain.connect(destination);
+  clipGain.connect(limiter);
   const silence = audio.createConstantSource();
   silence.offset.value = 0;
   silence.connect(destination);
@@ -103,12 +105,19 @@ export async function renderBrowserMovie(
   ]);
   const recorder = new MediaRecorder(stream, {
     mimeType: format.mime,
-    videoBitsPerSecond: VIDEO_BITRATES[request.resolution],
+    videoBitsPerSecond: exportBitrate(request),
     audioBitsPerSecond: AUDIO_BITRATE,
   });
   const chunks: Blob[] = [];
-  let soundtrack: HTMLAudioElement | null = null;
-  let musicSource: MediaElementAudioSourceNode | null = null;
+  let playbackError: unknown = null;
+  const soundtrack = new AudioTimelinePlayer(
+    project,
+    assetUrl,
+    (error) => {
+      playbackError = error;
+    },
+    limiter,
+  );
 
   const recorded = new Promise<Blob>((resolve, reject) => {
     recorder.ondataavailable = (event) => {
@@ -127,18 +136,7 @@ export async function renderBrowserMovie(
     activeSignal.throwIfAborted();
     await audio.resume();
     await loadCaptionFonts();
-    if (project.music) {
-      soundtrack = new Audio(await assetUrl(project.music.assetId));
-      soundtrack.loop = project.music.loop;
-      soundtrack.preload = "auto";
-      await waitForMedia(soundtrack);
-      musicSource = audio.createMediaElementSource(soundtrack);
-      musicSource.connect(musicGain);
-      const preparedMusic = soundtrack;
-      await withCancellation(() => preparedMusic.play(), activeSignal);
-      preparedMusic.pause();
-      preparedMusic.currentTime = 0;
-    }
+    await withCancellation(() => soundtrack.prepare(), activeSignal);
     const timeline = buildTimeline(project.scenes);
     const total = filmDuration(project.scenes);
     interface PreparedScene {
@@ -147,7 +145,6 @@ export async function renderBrowserMovie(
     }
     const prepared = new Map<number, PreparedScene>();
     const preparing = new Map<number, Promise<void>>();
-    let playbackError: unknown = null;
     const prepareScene = (index: number): Promise<void> => {
       if (index >= project.scenes.length) return Promise.resolve();
       const existing = preparing.get(index);
@@ -178,10 +175,8 @@ export async function renderBrowserMovie(
     activeSignal.throwIfAborted();
     const initial = prepared.get(0)!;
     renderFrame(drawing, project.scenes[0], initial.media, 0);
-    if (soundtrack)
-      void soundtrack.play().catch((error) => {
-        playbackError = error;
-      });
+    drawSubtitle(drawing, subtitleAt(project.subtitles, 0));
+    soundtrack.sync(0, true);
     recorder.start(250);
     videoTrack.requestFrame();
     const started = performance.now();
@@ -229,16 +224,7 @@ export async function renderBrowserMovie(
       }
       const frame = Math.floor(elapsed * EXPORT_FPS);
       if (frame !== paintedFrame) {
-        musicGain.gain.value =
-          (project.music?.volume ?? 0) *
-          Math.max(
-            0,
-            Math.min(
-              1,
-              elapsed / FADE_SECONDS,
-              (total - elapsed) / FADE_SECONDS,
-            ),
-          );
+        soundtrack.sync(elapsed, true);
         clipGain.gain.value =
           location.scene.volume *
           fadeOpacity(location.scene, location.localTime);
@@ -248,6 +234,7 @@ export async function renderBrowserMovie(
           activeMedia!.media,
           location.localTime,
         );
+        drawSubtitle(drawing, subtitleAt(project.subtitles, elapsed));
         videoTrack.requestFrame();
         paintedFrame = frame;
       }
@@ -262,7 +249,7 @@ export async function renderBrowserMovie(
     }
     if (activeMedia?.media instanceof HTMLVideoElement)
       activeMedia.media.pause();
-    soundtrack?.pause();
+    soundtrack.pause();
     recorder.stop();
     let movie = await recorded;
     activeSignal.throwIfAborted();
@@ -274,7 +261,7 @@ export async function renderBrowserMovie(
       throw new Error(
         "The browser produced an empty movie. Try the desktop app.",
       );
-    const fileName = `${projectFileName(project.name)}.${format.extension}`;
+    const fileName = `${projectFileName(project.name)}${request.sample ? "-sample" : ""}.${format.extension}`;
     downloadBlob(movie, fileName);
     progress({ fraction: 1, message: "Your movie is ready" });
     return { fileName, format: format.label, location: "download" };
@@ -283,8 +270,7 @@ export async function renderBrowserMovie(
       recorder.stop();
       await recorded.catch(() => undefined);
     }
-    if (soundtrack) disposeMedia(soundtrack);
-    musicSource?.disconnect();
+    soundtrack.dispose();
     silence.stop();
     stream.getTracks().forEach((track) => track.stop());
     pool.dispose();

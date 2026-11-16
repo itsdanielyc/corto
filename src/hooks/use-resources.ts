@@ -21,6 +21,7 @@ export function useResources(
     let cancelled = false;
     void (async () => {
       for (const asset of Object.values(assets)) {
+        if (asset.isOriginalOnly) continue;
         if (cancelled) break;
         if (cache.current[asset.id]) continue;
         try {

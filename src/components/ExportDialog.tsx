@@ -9,12 +9,19 @@ import {
   Save,
 } from "lucide-react";
 import type { MovieResult, ExportProgress } from "../../contracts/platform";
-import type { ExportResolution, Project } from "../../contracts/project";
+import type { Project } from "../../contracts/project";
 import { filmDuration, formatTime, frameDimensions } from "../domain/timeline";
 import { browserRecordingFormat } from "../export/format";
 import type { CortoPlatform } from "../platform/types";
 import { createCaptionOverlays } from "../preview/captions";
 import { Modal } from "./primitives";
+import {
+  EXPORT_PRESETS,
+  estimatedMovieBytes,
+  presetResolution,
+  sampleProject,
+} from "../export/presets";
+import { createSubtitleOverlays } from "../preview/subtitles";
 
 export function ExportDialog({
   project,
@@ -25,7 +32,8 @@ export function ExportDialog({
   platform: CortoPlatform;
   onClose: () => void;
 }) {
-  const [resolution, setResolution] = useState<ExportResolution>("1080p");
+  const [preset, setPreset] = useState<keyof typeof EXPORT_PRESETS>("tv");
+  const resolution = presetResolution(preset);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [result, setResult] = useState<MovieResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +48,21 @@ export function ExportDialog({
     if (abort.current) abort.current.abort();
     else onClose();
   };
-  const start = async () => {
+  const start = async (sample = false) => {
     const controller = new AbortController();
     abort.current = controller;
     setError(null);
     setProgress({ fraction: 0, message: "Getting your film ready" });
     try {
+      const exporting = sampleProject(project, sample);
       const overlays = native
-        ? await createCaptionOverlays(project, resolution, controller.signal)
+        ? await createCaptionOverlays(exporting, resolution, controller.signal)
+        : [];
+      const subtitleOverlays = native
+        ? await createSubtitleOverlays(exporting, resolution, controller.signal)
         : [];
       const movie = await platform.renderMovie(
-        { project, resolution, overlays },
+        { project, resolution, overlays, subtitleOverlays, preset, sample },
         setProgress,
         controller.signal,
         surface.current ?? undefined,
@@ -143,25 +155,18 @@ export function ExportDialog({
             <span className="format-badge">{format ?? "Unavailable"}</span>
           </div>
           <fieldset className="export-options" disabled={!!progress}>
-            <legend>Choose your quality</legend>
+            <legend>Choose where to share</legend>
             {(
               [
-                {
-                  id: "1080p",
-                  title: "Full HD",
-                  subtitle: "Beautiful on a bigger screen",
-                },
-                {
-                  id: "720p",
-                  title: "HD",
-                  subtitle: "A smaller file, easy to share",
-                },
+                { id: "tv", ...EXPORT_PRESETS.tv },
+                { id: "phone", ...EXPORT_PRESETS.phone },
+                { id: "small", ...EXPORT_PRESETS.small },
               ] as const
             ).map((option) => (
               <label
                 key={option.id}
                 className={
-                  resolution === option.id
+                  preset === option.id
                     ? "resolution-option selected"
                     : "resolution-option"
                 }
@@ -170,13 +175,13 @@ export function ExportDialog({
                   type="radio"
                   name="resolution"
                   value={option.id}
-                  checked={resolution === option.id}
-                  onChange={() => setResolution(option.id)}
+                  checked={preset === option.id}
+                  onChange={() => setPreset(option.id)}
                 />
                 <div>
                   <strong>
                     {option.title}
-                    <small>{option.id}</small>
+                    <small>{option.resolution}</small>
                   </strong>
                   <span>{option.subtitle}</span>
                 </div>
@@ -190,9 +195,20 @@ export function ExportDialog({
               ? "H.264 video + AAC audio"
               : format === "MP4"
                 ? "MP4 browser recording"
-                : "WebM browser recording"}
+                : format === "WebM"
+                  ? "WebM browser recording"
+                  : "MP4 recording unavailable in this browser"}
           </p>
-          {!native && (
+          <p className="dialog-note">
+            Estimated size: about{" "}
+            {(
+              estimatedMovieBytes(filmDuration(project.scenes), preset) /
+              1_000_000
+            ).toFixed(1)}{" "}
+            MB. Actual size varies with the scenes. Aspect ratio stays{" "}
+            {project.ratio}; change it in the editor if needed.
+          </p>
+          {!native && format && (
             <div className="web-export-note">
               Browser export runs in real time. Keep this tab visible until it
               finishes.{format === "WebM" && " For MP4, use the desktop app."}
@@ -243,11 +259,22 @@ export function ExportDialog({
               className="button primary export-start"
               disabled={!format}
               onClick={() => {
-                void start();
+                void start(false);
               }}
             >
               <Download size={17} />
               Export {format ?? "movie"}
+            </button>
+          )}
+          {!progress && (
+            <button
+              className="button secondary export-sample"
+              disabled={!format}
+              onClick={() => {
+                void start(true);
+              }}
+            >
+              Export first 5 seconds as a sample
             </button>
           )}
         </>

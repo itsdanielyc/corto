@@ -3,6 +3,9 @@
 // is the one engine; CI runs it on all three OS runners.
 import { defineConfig, devices } from "@playwright/test";
 
+const UI_TEST_PORT = 21420;
+const UI_TEST_URL = `http://localhost:${UI_TEST_PORT}`;
+
 export default defineConfig({
   testDir: "tests/ui",
   fullyParallel: true,
@@ -22,7 +25,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: "http://localhost:1420",
+    baseURL: UI_TEST_URL,
     viewport: { width: 1024, height: 700 },
     deviceScaleFactor: 1,
     trace: "retain-on-failure",
@@ -38,10 +41,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      `npx cross-env VITE_CORTO_MOCK=1 VITE_CORTO_EXPERIMENTAL_WEBM=${process.env.CORTO_ADVISORY_WEBM ? "1" : "0"} npm run dev:web -- --strictPort --port 1420`,
-    url: "http://localhost:1420",
-    reuseExistingServer: !process.env.CI,
+    command: `npx cross-env VITE_CORTO_MOCK=1 VITE_CORTO_EXPERIMENTAL_WEBM=${process.env.CORTO_ADVISORY_WEBM ? "1" : "0"} npm run dev:web -- --strictPort --port ${UI_TEST_PORT}`,
+    url: UI_TEST_URL,
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });
