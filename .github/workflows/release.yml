@@ -76,3 +76,35 @@ jobs:
           prerelease=""
           if [[ "$GITHUB_REF_NAME" == v0.* ]]; then prerelease="--prerelease"; fi
           gh release create "$GITHUB_REF_NAME" publish/*.exe publish/*.dmg publish/*.deb publish/*.AppImage publish/*.zip publish/SHA256SUMS.txt --verify-tag --title "Corto $GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
+
+  published-smoke:
+    needs: publish
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Download the published installers on a fresh runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --dir release --pattern '*.exe' --pattern '*.dmg' --pattern '*.deb' --pattern '*.AppImage'
+      - name: Linux runtime
+        if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          NEEDRESTART_MODE: a
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0t64 libgtk-3-0t64 libgbm1 libasound2t64 libfuse2t64
+      - if: runner.os == 'Windows'
+        run: ./scripts/installer-test.ps1
+      - if: runner.os == 'macOS'
+        run: bash scripts/installer-test.sh
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a bash scripts/installer-test.sh
