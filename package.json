@@ -1,9 +1,9 @@
 {
   "name": "corto",
-  "productName": "corto",
+  "productName": "Corto",
   "private": true,
   "version": "0.1.0",
-  "description": "corto: an Electron app scaffolded by Keel",
+  "description": "A local, account-free home video and slideshow maker for Windows, macOS, Linux and the web.",
   "author": "itsdanielyc <itsdanielyc@users.noreply.github.com>",
   "license": "MIT",
   "type": "module",
@@ -21,9 +21,18 @@
     "test:ui:update": "cross-env UPDATE_SNAPSHOTS=1 playwright test --update-snapshots=all",
     "test:e2e": "playwright test -c playwright.e2e.config.ts",
     "contact-sheet": "node scripts/contact-sheet.mjs",
-    "triage": "node scripts/triage.mjs"
+    "triage": "node scripts/triage.mjs",
+    "build:web": "npm run typecheck && vite build && node scripts/build-service-worker.mjs",
+    "preview:web": "vite preview",
+    "test:web": "playwright test -c playwright.web.config.ts",
+    "format": "prettier --write src electron contracts tests scripts *.ts *.json *.yml index.html",
+    "postinstall": "node scripts/verify-ffmpeg.mjs",
+    "test:installers": "node scripts/test-installers.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource/dm-serif-display": "5.3.0",
     "@playwright/test": "^1.65.0",
     "@types/node": "^24.19.2",
     "@types/react": "19.3.0",
@@ -33,15 +42,24 @@
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "ffmpeg-static": "5.3.0",
-    "typescript": "~6.0.3",
-    "vite": "^8.0.16",
-    "vitest": "^5.1.0"
-  },
-  "dependencies": {
-    "@fontsource-variable/manrope": "5.3.0",
     "lucide-react": "1.73.0",
+    "prettier": "3.10.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^5.1.0",
+    "webm-duration-fix": "1.0.4"
+  },
+  "dependencies": {
     "zod": "4.6.7"
+  },
+  "homepage": "https://itsdanielyc.github.io/corto/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itsdanielyc/corto.git"
+  },
+  "overrides": {
+    "minimatch": "11.0.8"
   }
 }

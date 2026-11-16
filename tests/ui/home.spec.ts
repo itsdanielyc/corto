@@ -10,18 +10,22 @@ import { assertGeometry, captureGeometry } from "./geometry";
 const platform = process.platform; // win32 | darwin | linux
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/tests/fixtures/scaffold.html");
   await expect(page.getByTestId("backend-badge")).toHaveText("mock");
   await expect(page.getByTestId("platform")).toHaveText("mock / mock");
 });
 
-test("greets through the mock backend using the shared contract", async ({ page }) => {
+test("greets through the mock backend using the shared contract", async ({
+  page,
+}) => {
   await page.getByLabel("Name").fill("Keel");
   await page.getByRole("button", { name: "Greet" }).click();
   await expect(page.locator("#greet-msg")).toHaveText(greeting("Keel"));
 });
 
-test("clear empties the greeting message and keeps the name", async ({ page }) => {
+test("clear empties the greeting message and keeps the name", async ({
+  page,
+}) => {
   await page.getByLabel("Name").fill("Keel");
   await page.getByRole("button", { name: "Greet" }).click();
   await expect(page.locator("#greet-msg")).toHaveText(greeting("Keel"));
@@ -30,23 +34,45 @@ test("clear empties the greeting message and keeps the name", async ({ page }) =
   await expect(page.getByLabel("Name")).toHaveValue("Keel");
 });
 
-test("tier 1: accessibility structure is identical everywhere", async ({ page }) => {
+test("tier 1: accessibility structure is identical everywhere", async ({
+  page,
+}) => {
   // One YAML baseline for every OS: the semantic tree must not depend on the
   // platform.
-  await expect(page.locator("main")).toMatchAriaSnapshot({ name: "home.aria.yml" });
+  await expect(page.locator("main")).toMatchAriaSnapshot({
+    name: "home.aria.yml",
+  });
 });
 
-test("tier 2: layout geometry stays within tolerance everywhere", async ({ page }) => {
+test("tier 2: layout geometry stays within tolerance everywhere", async ({
+  page,
+}) => {
   // One JSON baseline for every OS, compared with an 8px tolerance.
   const actual = await captureGeometry(page);
-  assertGeometry(join(test.info().project.testDir, "__snapshots__", "home.spec.ts", "home.geometry.json"), actual);
+  assertGeometry(
+    join(
+      test.info().project.testDir,
+      "__snapshots__",
+      "home.spec.ts",
+      "home.geometry.json",
+    ),
+    actual,
+  );
 });
 
 test("tier 3: pixels match the per-OS baseline", async ({ page }, testInfo) => {
   // Baselines are captured in CI by the snapshots workflow, never on a laptop.
   // Locally, a missing baseline means "not captured yet", not a failure.
   const name = `home-${testInfo.project.name}-${platform}.png`;
-  const baseline = join(testInfo.project.testDir, "__snapshots__", "home.spec.ts", name);
-  test.skip(!process.env.CI && !existsSync(baseline), "no local pixel baseline; the snapshots workflow captures them on the runners");
+  const baseline = join(
+    testInfo.project.testDir,
+    "__snapshots__",
+    "home.spec.ts",
+    name,
+  );
+  test.skip(
+    !process.env.CI && !existsSync(baseline),
+    "no local pixel baseline; the snapshots workflow captures them on the runners",
+  );
   await expect(page).toHaveScreenshot(name, { fullPage: true });
 });

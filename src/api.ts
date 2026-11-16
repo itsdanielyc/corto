@@ -21,7 +21,8 @@ declare global {
   }
 }
 
-const bridge = typeof window !== "undefined" ? window.electronBridge : undefined;
+const bridge =
+  typeof window !== "undefined" ? window.electronBridge : undefined;
 
 export const isNative = bridge !== undefined;
 

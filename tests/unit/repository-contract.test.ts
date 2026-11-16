@@ -11,7 +11,9 @@ describe("labelled repository contract", () => {
     await repository.saveProject(project);
     project.name = "Caller mutation";
     expect((await repository.loadProject())?.name).toBe("Family film");
-    await expect(repository.saveProject({ ...project, schemaVersion: 99 } as never)).rejects.toThrow();
+    await expect(
+      repository.saveProject({ ...project, schemaVersion: 99 } as never),
+    ).rejects.toThrow();
     expect((await repository.loadProject())?.name).toBe("Family film");
   });
 });

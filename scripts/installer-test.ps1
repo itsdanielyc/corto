@@ -25,12 +25,23 @@ function Stop-Installed($dir) {
 }
 
 function Smoke-Launch($exe) {
-  $p = Start-Process -FilePath $exe -PassThru -WindowStyle Hidden
-  Start-Sleep -Seconds 6
-  $alive = -not $p.HasExited
-  Stop-Installed (Split-Path $exe)
+  $markerPath = Join-Path ([System.IO.Path]::GetTempPath()) ('corto-smoke-' + [Guid]::NewGuid().ToString('N') + '.json')
+  $previousMarker = $env:CORTO_SMOKE_OUTPUT
+  try {
+    $env:CORTO_SMOKE_OUTPUT = $markerPath
+    $p = Start-Process -FilePath $exe -ArgumentList '--corto-smoke-test' -PassThru -WindowStyle Hidden
+    for ($attempt = 0; $attempt -lt 60 -and -not (Test-Path -LiteralPath $markerPath); $attempt++) { Start-Sleep -Milliseconds 250 }
+    Assert (Test-Path -LiteralPath $markerPath) 'installed renderer requested project storage and wrote readiness evidence'
+    $report = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
+    Assert ($report.rendererReady -and $report.movieEncoded) 'installed renderer loaded and bundled FFmpeg encoded an MP4'
+    Start-Sleep -Seconds 6
+    Assert (-not $p.HasExited) 'installed main process remained alive for 6s'
+  } finally {
+    Stop-Installed (Split-Path $exe)
+    $env:CORTO_SMOKE_OUTPUT = $previousMarker
+    Remove-Item -LiteralPath $markerPath -Force -ErrorAction SilentlyContinue
+  }
   Start-Sleep -Seconds 2
-  Assert $alive "installed app launched and stayed alive for 6s ($exe)"
 }
 
 $setup = Get-ChildItem "$bundle\*-setup.exe" | Select-Object -First 1

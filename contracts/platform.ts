@@ -6,11 +6,30 @@ export interface ProjectRepository {
   saveProject(project: Project): Promise<void>;
 }
 
-export interface PlatformDetails { os: string; arch: string; electron: string; packaged: boolean }
-export interface CaptionOverlay { sceneId: string; png: Uint8Array }
-export interface MovieRequest { project: Project; resolution: ExportResolution; overlays: CaptionOverlay[] }
-export interface ExportProgress { fraction: number; message: string }
-export interface MovieResult { fileName: string; format: "MP4" | "WebM"; location: "file" | "download" }
+export interface PlatformDetails {
+  os: string;
+  arch: string;
+  electron: string;
+  packaged: boolean;
+}
+export interface CaptionOverlay {
+  sceneId: string;
+  png: Uint8Array;
+}
+export interface MovieRequest {
+  project: Project;
+  resolution: ExportResolution;
+  overlays: CaptionOverlay[];
+}
+export interface ExportProgress {
+  fraction: number;
+  message: string;
+}
+export interface MovieResult {
+  fileName: string;
+  format: "MP4" | "WebM";
+  location: "file" | "download";
+}
 
 /** Narrow, typed preload API. The renderer never receives raw IPC or filesystem primitives. */
 export interface NativeBridge extends ProjectRepository {

@@ -1,0 +1,11 @@
+brand/
+public/
+out/
+dist/
+release/
+tmp/
+artifacts/
+playwright-report/
+test-results/
+node_modules/
+package-lock.json

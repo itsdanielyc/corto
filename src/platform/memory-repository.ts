@@ -6,7 +6,11 @@ export class MemoryProjectRepository implements ProjectRepository {
   readonly kind = "mock" as const;
   private project: Project | null = null;
 
-  async loadProject(): Promise<Project | null> { return this.project ? parseProject(this.project) : null; }
+  async loadProject(): Promise<Project | null> {
+    return this.project ? parseProject(this.project) : null;
+  }
 
-  async saveProject(project: Project): Promise<void> { this.project = parseProject(project); }
+  async saveProject(project: Project): Promise<void> {
+    this.project = parseProject(project);
+  }
 }

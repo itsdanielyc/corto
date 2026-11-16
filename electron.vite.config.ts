@@ -15,13 +15,23 @@ export default defineConfig({
       lib: { entry: resolve(import.meta.dirname, "electron/preload.ts") },
       // A sandboxed preload must be CommonJS; the package is "type": "module",
       // so the file gets a .cjs extension.
-      rolldownOptions: { output: { format: "cjs", entryFileNames: "[name].cjs" } },
+      rolldownOptions: {
+        output: { format: "cjs", entryFileNames: "[name].cjs" },
+      },
     },
   },
   renderer: {
+    optimizeDeps: { include: ["webm-duration-fix/lib/ebml/index.js"] },
+    resolve: {
+      alias: [
+        { find: /^buffer$/, replacement: "buffer/" },
+        { find: /^events$/, replacement: "events/" },
+      ],
+    },
     root: ".",
     server: { port: 1420, strictPort: true },
     build: {
+      minify: true,
       rolldownOptions: { input: resolve(import.meta.dirname, "index.html") },
     },
   },

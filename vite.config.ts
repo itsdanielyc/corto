@@ -4,6 +4,14 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  base: "./",
+  optimizeDeps: { include: ["webm-duration-fix/lib/ebml/index.js"] },
+  resolve: {
+    alias: [
+      { find: /^buffer$/, replacement: "buffer/" },
+      { find: /^events$/, replacement: "events/" },
+    ],
+  },
   clearScreen: false,
   server: {
     port: 1420,

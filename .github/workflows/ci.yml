@@ -16,6 +16,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      stress_codecs:
+        description: Repeat the browser fallback codec journey 30 times
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -39,6 +44,32 @@ jobs:
       - name: Type-check renderer, main process and suites
         run: npm run typecheck
       - run: npm run test:unit
+
+  web:
+    name: production web / offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:web
+      - run: npm run test:web
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: production-web-failure
+          path: test-results
+          retention-days: 7
 
   integration:
     name: integration (${{ matrix.os }})
@@ -108,6 +139,17 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: ignore
+          retention-days: 7
+      - name: Repeated browser codec validation
+        if: inputs.stress_codecs && !cancelled()
+        env:
+          CI: "1"
+        run: npx playwright test tests/ui/export.spec.ts --grep 'automatic' --repeat-each=30
+      - uses: actions/upload-artifact@v7
+        if: inputs.stress_codecs && failure()
+        with:
+          name: codec-stress-${{ matrix.os }}
+          path: test-results
           retention-days: 7
 
   e2e:
