@@ -17,23 +17,26 @@ export function soundMixArguments(
 ): string[] | null {
   const clips = projectAudioClips(project).filter((clip) => clip.start < total);
   if (!clips.length) return null;
-  const arguments_: string[] = ["-i", input];
+  const arguments_: string[] = ["-t", String(total), "-i", input];
   const filters: string[] = [];
   const windows = project.duckMusic ? duckingWindows(project) : [];
   const duckExpression = windows.length
     ? `if(gt(${windows.map((window) => `between(t,${window.start},${window.end})`).join("+")},0),${MUSIC_DUCK_GAIN},1)`
     : "1";
   for (const [index, clip] of clips.entries()) {
+    const duration = Math.min(clip.duration, total - clip.start);
     if (clip.loop) arguments_.push("-stream_loop", "-1");
     arguments_.push(
       "-ss",
       String(trimmedLoops.has(clip.id) ? 0 : clip.offset),
+      // Bound the demuxer as well as the filter: looping inputs must have a finite EOF on every engine version.
+      "-t",
+      String(duration),
       "-protocol_whitelist",
       "file,pipe",
       "-i",
       trimmedLoops.get(clip.id) ?? repository.assetPath(clip.assetId),
     );
-    const duration = Math.min(clip.duration, total - clip.start);
     const chain = [
       `atrim=duration=${duration}`,
       "asetpts=PTS-STARTPTS",

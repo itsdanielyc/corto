@@ -195,7 +195,9 @@ export function ExportDialog({
               ? "H.264 video + AAC audio"
               : format === "MP4"
                 ? "MP4 browser recording"
-                : "WebM browser recording"}
+                : format === "WebM"
+                  ? "WebM browser recording"
+                  : "MP4 recording unavailable in this browser"}
           </p>
           <p className="dialog-note">
             Estimated size: about{" "}
@@ -206,7 +208,7 @@ export function ExportDialog({
             MB. Actual size varies with the scenes. Aspect ratio stays{" "}
             {project.ratio}; change it in the editor if needed.
           </p>
-          {!native && (
+          {!native && format && (
             <div className="web-export-note">
               Browser export runs in real time. Keep this tab visible until it
               finishes.{format === "WebM" && " For MP4, use the desktop app."}

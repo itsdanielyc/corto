@@ -20,7 +20,13 @@ test("phone codecs and original-preserving portable projects work in the product
   await expect(page.getByTestId("scene-card")).toHaveCount(1);
   await page
     .getByTestId("media-input")
-    .setInputFiles(join(process.cwd(), "tests/fixtures/phone-hdr.mp4"));
+    .setInputFiles({
+      name: "phone-hdr.mp4",
+      mimeType: "application/octet-stream",
+      buffer: await readFile(
+        join(process.cwd(), "tests/fixtures/phone-hdr.mp4"),
+      ),
+    });
   await expect(page.getByTestId("scene-card")).toHaveCount(2);
   await expect(page.getByTestId("preview-status")).toHaveText("Ready");
   await page

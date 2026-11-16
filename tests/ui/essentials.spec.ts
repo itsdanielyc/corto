@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { join } from "node:path";
 
 async function menu(page: import("@playwright/test").Page, name: string) {
@@ -10,6 +11,30 @@ async function menu(page: import("@playwright/test").Page, name: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+});
+
+test("an unsupported browser offers an accessible desktop-export fallback", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    MediaRecorder.isTypeSupported = () => false;
+  });
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Add title card", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Export movie", exact: true }).click();
+  const accessibility = await new AxeBuilder({ page })
+    .include(".export-dialog")
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(accessibility.violations.map((violation) => violation.id)).toEqual([]);
+  await expect(
+    page.getByText("WebM browser recording", { exact: false }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Save portable project", exact: true }),
+  ).toBeVisible();
 });
 
 test("multiple films resume and recovery keeps the latest edit", async ({
@@ -118,13 +143,11 @@ test("songs can be placed, trimmed and faded and subtitles round-trip as SRT", a
   await page.getByLabel("Lower music under clip sound and narration").check();
   await page.getByLabel("Close dialog").click();
   await menu(page, "Timed subtitles");
-  await page
-    .getByTestId("subtitle-input")
-    .setInputFiles({
-      name: "family.srt",
-      mimeType: "application/x-subrip",
-      buffer: Buffer.from("1\n00:00:00,200 --> 00:00:01,500\nHello 家族\n"),
-    });
+  await page.getByTestId("subtitle-input").setInputFiles({
+    name: "family.srt",
+    mimeType: "application/x-subrip",
+    buffer: Buffer.from("1\n00:00:00,200 --> 00:00:01,500\nHello 家族\n"),
+  });
   await expect(page.getByLabel("Subtitle 1 text")).toHaveValue("Hello 家族");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export SRT", exact: true }).click();

@@ -109,7 +109,11 @@ export async function importMedia(
       ? /\.heif$/i.test(file.name)
         ? "image/heif"
         : "image/heic"
-      : file.type || "video/quicktime",
+      : /\.mov$/i.test(file.name)
+        ? "video/quicktime"
+        : /\.m4v$/i.test(file.name)
+          ? "video/x-m4v"
+          : "video/mp4",
     size: file.size,
     isOriginalOnly: true,
   };
