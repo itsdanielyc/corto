@@ -10,10 +10,12 @@ window.addEventListener("DOMContentLoaded", () => {
     badge.dataset.kind = backend.kind;
   }
 
-  document.querySelector("#greet-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (input && msg) msg.textContent = await backend.greet(input.value);
-  });
+  document
+    .querySelector("#greet-form")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (input && msg) msg.textContent = await backend.greet(input.value);
+    });
 
   document.querySelector("#clear-btn")?.addEventListener("click", () => {
     if (msg) msg.textContent = "";

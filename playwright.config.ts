@@ -29,10 +29,17 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1024, height: 700 } } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1024, height: 700 },
+      },
+    },
   ],
   webServer: {
-    command: "npm run dev:web -- --strictPort --port 1420",
+    command:
+      "npx cross-env VITE_CORTO_MOCK=1 npm run dev:web -- --strictPort --port 1420",
     url: "http://localhost:1420",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

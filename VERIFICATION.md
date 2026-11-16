@@ -35,3 +35,19 @@ is never rounded up to "tested"; anything not listed here is unverified.
 ### Current gaps
 - Browser persistence implementation is built; real browser journeys follow with the editor.
 - Movie rendering, final UI, final installers and paid signing remain unverified.
+
+## 2026-11-16: complete local editor and actual movies
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 02:16 | L0-L6 foundation | Native workspace and streaming portable project implementation green before merge | windows-x64, macos-arm64, linux-x64, macos-x64 (L6) | [CI 43790072321](https://github.com/itsdanielyc/corto/actions/runs/43790072321), PR #5. |
+| 2026-11-16 03:19 | L0-L3 | Strict types, 21 unit/contract checks and 8 real-I/O/movie checks pass. MP4 checks decode frames, inspect dimensions/duration and correlate independent 440/880 Hz tones; cancellation preserves the destination and removes temporary files. | local windows-x64 | `npm run typecheck`, `npm run test:unit`, `npm run test:integration`, exits 0. Native frame allocation tested over 300 quarter-second scenes. |
+| 2026-11-16 03:19 | L4/L5 local | Import/edit/reorder/undo, title cards, persistence after reload, portable download/open, corruption recovery, browser movie recording and cancellation; reviewed desktop, mobile and export screenshots | local windows-x64 / Chromium | `npm run test:ui`: 13 passed, one not-yet-captured editor pixel baseline skipped. Structure/geometry are local; final per-OS PNGs still require the snapshots workflow. |
+| 2026-11-16 03:19 | L4 accessibility | No detected WCAG A/AA violations in the tested editor/export states; narrow layout has no horizontal overflow; modal focus restores; Space operates actual preview | local windows-x64 / Chromium | `playwright test tests/ui/accessibility.spec.ts`, exit 0, 2 checks. Reds found and fixed low-contrast labels and focus returning to the body. This is automated evidence, not a screen-reader certification. |
+| 2026-11-16 03:19 | L6 user journey | Import photo/video, trim source, add title/music, save portable, start new film, reopen and export an MP4 through actual controls and native dialogs' test presets | local windows-x64 | `npm run build` + `npm run test:e2e`, exit 0, 6 checks. Actual movie dimensions, duration, mixed tone frequencies and caption pixels inspected. Red caught a tainted native thumbnail canvas; anonymous CORS media requests fixed it. |
+| 2026-11-16 03:19 | L4 production web | Real web adapter loads from a built production bundle, then reloads and builds the example entirely offline | local windows-x64 / Chromium | `npm run build:web` + `npm run test:web`, exit 0. Red caught cache misses caused by Vary: Origin on static module assets; invariant precached assets now ignore that header. |
+| 2026-11-16 03:19 | build integrity | Downloaded native binary matches pinned upstream SHA-256 before execution; dependency audit has zero known findings | local windows-x64 | `npm install` postinstall, verified 04e1307997530f9c…; `npm audit` reports zero vulnerabilities after minimatch override. |
+
+### Remaining release evidence
+- Complete app CI, runner-captured editor pixel baselines and final packaged installers have not yet run for this commit.
+- Unsigned build policy remains explicit; paid signing/notarization, native mobile and unsupported architectures remain outside this preview.

@@ -16,6 +16,9 @@ describe("mock backend conformance", () => {
 
   it("reports a platform shape the UI can render", async () => {
     const info = await mock.platformInfo();
-    expect(info).toMatchObject({ os: expect.any(String), arch: expect.any(String) });
+    expect(info).toMatchObject({
+      os: expect.any(String),
+      arch: expect.any(String),
+    });
   });
 });

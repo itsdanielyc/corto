@@ -1,0 +1,88 @@
+- banner:
+  - link "Corto home":
+    - /url: "#"
+    - img "Corto"
+  - textbox "Project name": Mountain days
+  - text: Saved on this device
+  - button "Undo" [disabled]
+  - button "Redo" [disabled]
+  - button "Project actions"
+  - button "Export movie"
+- navigation "Creative tools":
+  - button "Media" [pressed]
+  - button "Titles"
+  - button "Music"
+  - button "Help and shortcuts"
+- complementary "Media library":
+  - heading "Your media" [level=2]
+  - text: "3"
+  - paragraph: All the moments that make your film.
+  - button "Import media"
+  - textbox "Search media":
+    - /placeholder: Find a moment
+  - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Photo/
+  - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Photo/
+  - button /Add \d+ · Quiet water\.jpg/: /\d+ · Quiet water Photo/
+  - text: Yours to make.
+  - strong: Yours to keep.
+  - text: mock
+- main "Film editor":
+  - text: A LITTLE FILM BY YOU
+  - heading "Mountain days" [level=1]
+  - text: Aspect ratio
+  - combobox "Aspect ratio":
+    - option /\d+:9 · Landscape/ [selected]
+    - option /9:\d+ · Portrait/
+    - option "1:1 · Square"
+  - button "Full screen preview"
+  - text: Ready
+  - strong: /\d+:\d+/
+  - text: /\/\d+:\d+/
+  - button "Previous scene"
+  - button "Play"
+  - button "Next scene"
+  - text: Preview
+  - slider "Playhead": "0.6"
+- complementary "Scene settings":
+  - text: /SCENE \d+/
+  - heading "The moment." [level=2]
+  - button "Move scene left" [disabled]
+  - button "Move scene right"
+  - button "Duplicate scene"
+  - button "Delete scene"
+  - heading "Timing" [level=3]
+  - text: Duration (seconds)
+  - spinbutton "Duration (seconds)": "5"
+  - text: sec
+  - button "Split scene"
+  - heading "Say something" [level=3]
+  - text: On-screen title
+  - textbox "On-screen title":
+    - /placeholder: A place. A feeling. A few words.
+    - text: The days we'll keep.
+  - group "Title style":
+    - button "Classic title style" [pressed]: Aa classic
+    - button "Modern title style": Aa modern
+    - button "Minimal title style": Aa minimal
+  - text: Position
+  - combobox "Title position":
+    - option "Centre" [selected]
+    - option "Lower third"
+  - heading "Picture & pace" [level=3]
+  - group "Picture framing":
+    - button "Fill frame" [pressed]
+    - button "Fit whole image"
+  - text: Transition
+  - combobox "Scene transition":
+    - option "Straight cut"
+    - option "Fade through black" [selected]
+  - text: Your originals stay just as they are.
+- region "Storyboard":
+  - heading /Your storyboard 4 scenes·\d+:\d+/ [level=2]
+  - button "Add title card"
+  - 'button /Scene 1: \d+ · Lago di Braies\.jpg/ [pressed]': /\d+ \d+[hmsp]+ \d+ · Lago di Braies/
+  - 'button /Scene 2: \d+ · A slower afternoon\.jpg/': /\d+ \d+[hmsp]+ \d+ · A slower afternoon/
+  - 'button /Scene 3: \d+ · Quiet water\.jpg/': /\d+ \d+[hmsp]+ \d+ · Quiet water/
+  - 'button "Scene 4: Until next time."': /\d+ Until next time\. \d+[hmsp]+ Title card/
+  - button "Add another title card"
+  - button /Quiet morning · original music \d+:\d+/

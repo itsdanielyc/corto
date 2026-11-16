@@ -28,8 +28,8 @@ smoke_launch() {
     fail "installed app did not finish loading its renderer ($1)"
   fi
   local app_pid
-  app_pid=$(node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync(process.argv[1])); if(!r.rendererReady || !Number.isInteger(r.pid)) process.exit(1); console.log(r.pid)' "$marker")
   cat "$marker"; echo
+  app_pid=$(node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync(process.argv[1])); if(!r.rendererReady || !r.movieEncoded || !Number.isInteger(r.pid)) process.exit(1); console.log(r.pid)' "$marker")
   sleep 6
   if kill -0 "$app_pid" 2>/dev/null; then
     ok "installed renderer loaded and its main process stayed alive for 6s ($1)"
@@ -50,12 +50,12 @@ case "$(uname -s)" in
     hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
     ok "dmg mounted"
     app=$(ls -d "$mnt"/*.app | head -1); [ -d "$app" ] || fail "no .app inside dmg"
-    dest="$HOME/Applications"; mkdir -p "$dest"; rm -rf "$dest/corto.app"
-    cp -R "$app" "$dest/corto.app"
+    dest="$HOME/Applications"; mkdir -p "$dest"; rm -rf "$dest/Corto.app"
+    cp -R "$app" "$dest/Corto.app"
     hdiutil detach "$mnt" >/dev/null; ok "dmg copied to $dest and detached"
-    xattr -cr "$dest/corto.app" || true
-    smoke_launch "open -n '$dest/corto.app' --args --corto-smoke-test"
-    rm -rf "$dest/corto.app"; ok "app removed"
+    xattr -cr "$dest/Corto.app" || true
+    smoke_launch "open -n '$dest/Corto.app' --args --corto-smoke-test"
+    rm -rf "$dest/Corto.app"; ok "app removed"
     ;;
   Linux)
     [ -n "${DISPLAY:-}" ] || fail "no DISPLAY; run under xvfb-run"

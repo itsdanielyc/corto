@@ -1,4 +1,10 @@
-import { app, dialog, ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
+import {
+  app,
+  dialog,
+  ipcMain,
+  type BrowserWindow,
+  type IpcMainInvokeEvent,
+} from "electron";
 import { join } from "node:path";
 import { nativeChannels } from "../contracts/platform";
 import { mediaAssetSchema, parseProject } from "../contracts/project";
@@ -6,37 +12,83 @@ import type { FileProjectRepository } from "./storage";
 
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
-function safeName(name: string): string { return name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() || "Corto film"; }
+function safeName(name: string): string {
+  return name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() || "Corto film";
+}
 
 /** Native dialog presets are enabled only for explicit, unpackaged automated test runs. */
 export function testPreset(name: string): string | undefined {
-  return !app.isPackaged && process.env.CORTO_E2E === "1" ? process.env[name] : undefined;
+  return !app.isPackaged && process.env.CORTO_E2E === "1"
+    ? process.env[name]
+    : undefined;
 }
 
 /** Restrict every native command to the application's own top-level renderer. */
-export function assertMainSender(event: IpcMainInvokeEvent, window: BrowserWindow | null): void {
-  if (!window || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error("This native operation is not available to that frame");
+export function assertMainSender(
+  event: IpcMainInvokeEvent,
+  window: BrowserWindow | null,
+): void {
+  if (
+    !window ||
+    event.sender !== window.webContents ||
+    event.senderFrame !== event.sender.mainFrame
+  )
+    throw new Error("This native operation is not available to that frame");
 }
 
 /** Wire project operations; no renderer-controlled output path crosses this boundary. */
-export function registerProjectCommands(repository: FileProjectRepository, getWindow: () => BrowserWindow | null): void {
-  const handle = (channel: string, operation: (...arguments_: unknown[]) => unknown) => {
-    ipcMain.handle(channel, (event, ...arguments_: unknown[]) => { assertMainSender(event, getWindow()); return operation(...arguments_); });
+export function registerProjectCommands(
+  repository: FileProjectRepository,
+  getWindow: () => BrowserWindow | null,
+  onRendererReady: () => void = () => undefined,
+): void {
+  const handle = (
+    channel: string,
+    operation: (...arguments_: unknown[]) => unknown,
+  ) => {
+    ipcMain.handle(channel, (event, ...arguments_: unknown[]) => {
+      assertMainSender(event, getWindow());
+      return operation(...arguments_);
+    });
   };
-  handle(nativeChannels.loadProject, () => repository.loadProject());
-  handle(nativeChannels.saveProject, input => repository.saveProject(parseProject(input)));
+  handle(nativeChannels.loadProject, () => {
+    onRendererReady();
+    return repository.loadProject();
+  });
+  handle(nativeChannels.saveProject, (input) =>
+    repository.saveProject(parseProject(input)),
+  );
   handle(nativeChannels.putAsset, async (input, source) => {
     const asset = mediaAssetSchema.parse(input);
-    if (typeof source === "string" && source.length > 0 && source.length < 32768) return repository.putAsset(asset, source);
-    if (source instanceof Uint8Array && source.byteLength <= MAX_FALLBACK_BYTES) return repository.putAsset(asset, source);
-    throw new Error("Choose this original media file from your device to import it");
+    if (
+      typeof source === "string" &&
+      source.length > 0 &&
+      source.length < 32768
+    )
+      return repository.putAsset(asset, source);
+    if (source instanceof Uint8Array && source.byteLength <= MAX_FALLBACK_BYTES)
+      return repository.putAsset(asset, source);
+    throw new Error(
+      "Choose this original media file from your device to import it",
+    );
   });
-  handle(nativeChannels.savePortable, async input => {
+  handle(nativeChannels.savePortable, async (input) => {
     const project = parseProject(input);
     const window = getWindow();
     if (!window) return false;
     const preset = testPreset("CORTO_PROJECT_PATH");
-    const destination = preset ?? (await dialog.showSaveDialog(window, { title: "Save a portable Corto project", defaultPath: join(app.getPath("documents"), `${safeName(project.name)}.corto`), filters: [{ name: "Corto project", extensions: ["corto"] }] })).filePath;
+    const destination =
+      preset ??
+      (
+        await dialog.showSaveDialog(window, {
+          title: "Save a portable Corto project",
+          defaultPath: join(
+            app.getPath("documents"),
+            `${safeName(project.name)}.corto`,
+          ),
+          filters: [{ name: "Corto project", extensions: ["corto"] }],
+        })
+      ).filePath;
     if (!destination) return false;
     await repository.exportPortable(project, destination);
     return true;
@@ -45,7 +97,15 @@ export function registerProjectCommands(repository: FileProjectRepository, getWi
     const window = getWindow();
     if (!window) return null;
     const preset = testPreset("CORTO_PROJECT_PATH");
-    const source = preset ?? (await dialog.showOpenDialog(window, { title: "Open a Corto project", properties: ["openFile"], filters: [{ name: "Corto project", extensions: ["corto"] }] })).filePaths[0];
+    const source =
+      preset ??
+      (
+        await dialog.showOpenDialog(window, {
+          title: "Open a Corto project",
+          properties: ["openFile"],
+          filters: [{ name: "Corto project", extensions: ["corto"] }],
+        })
+      ).filePaths[0];
     return source ? repository.importPortable(source) : null;
   });
 }

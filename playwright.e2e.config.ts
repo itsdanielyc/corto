@@ -11,7 +11,12 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   timeout: 60_000,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: "playwright-report/e2e" }]] : "list",
+  reporter: process.env.CI
+    ? [
+        ["list"],
+        ["html", { open: "never", outputFolder: "playwright-report/e2e" }],
+      ]
+    : "list",
   use: {
     trace: "retain-on-failure",
   },

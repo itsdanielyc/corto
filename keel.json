@@ -3,14 +3,8 @@
   "name": "corto",
   "profile": "electron-web",
   "platforms": {
-    "tier1": [
-      "windows-x64",
-      "macos-arm64",
-      "linux-x64"
-    ],
-    "tier2": [
-      "macos-x64"
-    ],
+    "tier1": ["windows-x64", "macos-arm64", "linux-x64"],
+    "tier2": ["macos-x64"],
     "tier3": []
   },
   "commands": {
@@ -22,7 +16,7 @@
     "e2e": "npm run test:e2e",
     "build": "npm run build",
     "package": "npm run package",
-    "installers": null
+    "installers": "npm run test:installers"
   },
   "paths": {
     "ui": "src/",

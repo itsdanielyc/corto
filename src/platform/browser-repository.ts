@@ -1,6 +1,11 @@
 import { encodeBundleHeader, readBundleIndex } from "../../contracts/bundle";
 import type { ProjectRepository } from "../../contracts/platform";
-import { mediaAssetSchema, parseProject, type MediaAsset, type Project } from "../../contracts/project";
+import {
+  mediaAssetSchema,
+  parseProject,
+  type MediaAsset,
+  type Project,
+} from "../../contracts/project";
 import { rekeyProjectAssets } from "../domain/rekey";
 
 const DATABASE_NAME = "corto-local-v1";
@@ -11,12 +16,18 @@ const CURRENT_PROJECT = "current";
 function complete(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onabort = transaction.onerror = () => reject(transaction.error ?? new Error("Local browser storage is unavailable"));
+    transaction.onabort = transaction.onerror = () =>
+      reject(
+        transaction.error ?? new Error("Local browser storage is unavailable"),
+      );
   });
 }
 
 function requestValue<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 /** Download locally, keeping the object URL alive until the browser has consumed it. */
@@ -32,7 +43,14 @@ export function downloadBlob(blob: Blob, fileName: string): void {
 }
 
 /** Remove filename separators while retaining meaningful international project names. */
-export function projectFileName(name: string): string { return name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim().slice(0, 80) || "Corto film"; }
+export function projectFileName(name: string): string {
+  return (
+    name
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
+      .trim()
+      .slice(0, 80) || "Corto film"
+  );
+}
 
 /** Real account-free browser storage. Blobs stay separate from small project manifests. */
 export class BrowserProjectRepository implements ProjectRepository {
@@ -52,33 +70,44 @@ export class BrowserProjectRepository implements ProjectRepository {
         resolve(opening.result);
       };
       opening.onerror = () => reject(opening.error);
-      opening.onblocked = () => reject(new Error("Close another Corto tab to finish opening local storage"));
+      opening.onblocked = () =>
+        reject(
+          new Error("Close another Corto tab to finish opening local storage"),
+        );
     });
   }
 
   async loadProject(): Promise<Project | null> {
     await this.pendingSave.catch(() => undefined);
     const database = await this.database;
-    const result: unknown = await requestValue(database.transaction(PROJECT_STORE, "readonly").objectStore(PROJECT_STORE).get(CURRENT_PROJECT));
+    const result: unknown = await requestValue(
+      database
+        .transaction(PROJECT_STORE, "readonly")
+        .objectStore(PROJECT_STORE)
+        .get(CURRENT_PROJECT),
+    );
     return result === undefined ? null : parseProject(result);
   }
 
   async saveProject(input: Project): Promise<void> {
     const project = parseProject(input);
-    const save = this.pendingSave.catch(() => undefined).then(async () => {
-      const database = await this.database;
-      const transaction = database.transaction(PROJECT_STORE, "readwrite");
-      const finished = complete(transaction);
-      transaction.objectStore(PROJECT_STORE).put(project, CURRENT_PROJECT);
-      await finished;
-    });
+    const save = this.pendingSave
+      .catch(() => undefined)
+      .then(async () => {
+        const database = await this.database;
+        const transaction = database.transaction(PROJECT_STORE, "readwrite");
+        const finished = complete(transaction);
+        transaction.objectStore(PROJECT_STORE).put(project, CURRENT_PROJECT);
+        await finished;
+      });
     this.pendingSave = save;
     return save;
   }
 
   async putAsset(input: MediaAsset, file: Blob): Promise<void> {
     const asset = mediaAssetSchema.parse(input);
-    if (file.size !== asset.size) throw new Error(`The original media changed: ${asset.name}`);
+    if (file.size !== asset.size)
+      throw new Error(`The original media changed: ${asset.name}`);
     const database = await this.database;
     const transaction = database.transaction(MEDIA_STORE, "readwrite");
     const finished = complete(transaction);
@@ -88,8 +117,16 @@ export class BrowserProjectRepository implements ProjectRepository {
 
   async assetBlob(id: string): Promise<Blob> {
     const database = await this.database;
-    const value: unknown = await requestValue(database.transaction(MEDIA_STORE, "readonly").objectStore(MEDIA_STORE).get(id));
-    if (!(value instanceof Blob)) throw new Error("Original media is missing. Open a portable .corto copy to restore it.");
+    const value: unknown = await requestValue(
+      database
+        .transaction(MEDIA_STORE, "readonly")
+        .objectStore(MEDIA_STORE)
+        .get(id),
+    );
+    if (!(value instanceof Blob))
+      throw new Error(
+        "Original media is missing. Open a portable .corto copy to restore it.",
+      );
     return value;
   }
 
@@ -109,24 +146,44 @@ export class BrowserProjectRepository implements ProjectRepository {
     const originals: Blob[] = [];
     for (const id of Object.keys(project.assets).sort()) {
       const blob = await this.assetBlob(id);
-      if (blob.size !== project.assets[id].size) throw new Error("An original media file is incomplete");
+      if (blob.size !== project.assets[id].size)
+        throw new Error("An original media file is incomplete");
       originals.push(blob);
     }
-    downloadBlob(new Blob([encodeBundleHeader(project), ...originals], { type: "application/x-corto" }), `${projectFileName(project.name)}.corto`);
+    downloadBlob(
+      new Blob([encodeBundleHeader(project), ...originals], {
+        type: "application/x-corto",
+      }),
+      `${projectFileName(project.name)}.corto`,
+    );
     return true;
   }
 
   /** Import manifests and Blob slices in one transaction; quota errors roll back the entire change. */
-  async openPortable(file: File): Promise<Project> {
+  async openPortable(file?: File): Promise<Project | null> {
+    if (!file) return null;
     await this.pendingSave.catch(() => undefined);
-    const index = await readBundleIndex({ size: file.size, read: async (start, end) => new Uint8Array(await file.slice(start, end).arrayBuffer()) });
+    const index = await readBundleIndex({
+      size: file.size,
+      read: async (start, end) =>
+        new Uint8Array(await file.slice(start, end).arrayBuffer()),
+    });
     const remapped = rekeyProjectAssets(index.project);
     const database = await this.database;
-    const transaction = database.transaction([PROJECT_STORE, MEDIA_STORE], "readwrite");
+    const transaction = database.transaction(
+      [PROJECT_STORE, MEDIA_STORE],
+      "readwrite",
+    );
     const finished = complete(transaction);
     const originals = transaction.objectStore(MEDIA_STORE);
-    for (const { asset, offset } of index.assets) originals.add(file.slice(offset, offset + asset.size, asset.mime), remapped.identifiers.get(asset.id)!);
-    transaction.objectStore(PROJECT_STORE).put(remapped.project, CURRENT_PROJECT);
+    for (const { asset, offset } of index.assets)
+      originals.add(
+        file.slice(offset, offset + asset.size, asset.mime),
+        remapped.identifiers.get(asset.id)!,
+      );
+    transaction
+      .objectStore(PROJECT_STORE)
+      .put(remapped.project, CURRENT_PROJECT);
     await finished;
     return remapped.project;
   }
