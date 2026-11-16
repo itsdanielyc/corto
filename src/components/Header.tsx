@@ -32,6 +32,9 @@ interface HeaderProperties {
   onExport: () => void;
   onHelp: () => void;
   onAbout: () => void;
+  onProjects: () => void;
+  onSound: () => void;
+  onSubtitles: () => void;
 }
 const statusLabels: Record<SaveStatus, string> = {
   loading: "Opening local project",
@@ -103,7 +106,7 @@ export function Header(properties: HeaderProperties) {
         aria-label="Corto home"
         onClick={(event) => {
           event.preventDefault();
-          properties.onAbout();
+          properties.onProjects();
         }}
       >
         <img
@@ -135,6 +138,14 @@ export function Header(properties: HeaderProperties) {
         </span>
       </div>
       <div className="header-spacer" />
+      <button
+        className="button secondary my-films-button"
+        disabled={properties.busy}
+        onClick={properties.onProjects}
+      >
+        <FolderOpen size={16} />
+        My films
+      </button>
       <div className="history-actions">
         <IconButton
           icon={Undo2}
@@ -168,6 +179,10 @@ export function Header(properties: HeaderProperties) {
             role="menu"
             aria-label="Project actions"
           >
+            <button role="menuitem" onClick={action(properties.onProjects)}>
+              <FolderOpen />
+              My films
+            </button>
             <button role="menuitem" onClick={action(properties.onNew)}>
               <FilePlus2 />
               New film
@@ -179,6 +194,12 @@ export function Header(properties: HeaderProperties) {
             <button role="menuitem" onClick={action(properties.onSave)}>
               <Save />
               Save portable copy<span>⌘ / Ctrl S</span>
+            </button>
+            <button role="menuitem" onClick={action(properties.onSound)}>
+              Sound &amp; narration
+            </button>
+            <button role="menuitem" onClick={action(properties.onSubtitles)}>
+              Timed subtitles
             </button>
             <hr />
             <button role="menuitem" onClick={action(properties.onHelp)}>

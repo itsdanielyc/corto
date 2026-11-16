@@ -5,7 +5,13 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "./",
-  optimizeDeps: { include: ["webm-duration-fix/lib/ebml/index.js"] },
+  optimizeDeps: {
+    include: [
+      "webm-duration-fix/lib/ebml/index.js",
+      "@ffmpeg/ffmpeg",
+      "libheif-js/libheif-wasm/libheif-bundle.mjs",
+    ],
+  },
   resolve: {
     alias: [
       { find: /^buffer$/, replacement: "buffer/" },

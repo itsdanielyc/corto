@@ -1,0 +1,99 @@
+{
+  "description": "Unmodified local browser codecs. Upstream build recipes identify their component versions and build instructions; optional library source locations are retained in those recipes.",
+  "codecs": [
+    {
+      "name": "libheif-js",
+      "version": "1.23.5",
+      "license": "LGPL-3.0",
+      "sources": [
+        {
+          "name": "libheif-js",
+          "url": "https://codeload.github.com/catdad-experiments/libheif-js/tar.gz/d8ec4bc3bc5bf8055975577bccbbc7e1d7313c2d"
+        },
+        {
+          "name": "libheif-emscripten",
+          "url": "https://codeload.github.com/catdad-experiments/libheif-emscripten/tar.gz/5c8968a44e9c68ae677e24790d77d001ed7fe7cc"
+        },
+        {
+          "name": "libheif",
+          "url": "https://codeload.github.com/strukturag/libheif/tar.gz/413e2a87e6a70b3eccc3a3adc5801179dd2d9e00"
+        },
+        {
+          "name": "libde265",
+          "url": "https://codeload.github.com/strukturag/libde265/tar.gz/frame-parallel"
+        }
+      ]
+    },
+    {
+      "name": "@ffmpeg/core",
+      "version": "0.12.10",
+      "license": "GPL-2.0-or-later",
+      "sources": [
+        {
+          "name": "ffmpeg-wasm-build",
+          "url": "https://codeload.github.com/ffmpegwasm/ffmpeg.wasm/tar.gz/71aa99d37c02a7b4c435275ca9ef50e612f6efa1"
+        },
+        {
+          "name": "wasm-x264",
+          "url": "https://codeload.github.com/ffmpegwasm/x264/tar.gz/4-cores"
+        },
+        {
+          "name": "wasm-x265",
+          "url": "https://codeload.github.com/ffmpegwasm/x265/tar.gz/3.4"
+        },
+        {
+          "name": "wasm-libvpx",
+          "url": "https://codeload.github.com/ffmpegwasm/libvpx/tar.gz/v1.13.1"
+        },
+        {
+          "name": "wasm-lame",
+          "url": "https://codeload.github.com/ffmpegwasm/lame/tar.gz/master"
+        },
+        {
+          "name": "wasm-Ogg",
+          "url": "https://codeload.github.com/ffmpegwasm/Ogg/tar.gz/v1.3.4"
+        },
+        {
+          "name": "wasm-theora",
+          "url": "https://codeload.github.com/ffmpegwasm/theora/tar.gz/v1.1.1"
+        },
+        {
+          "name": "wasm-opus",
+          "url": "https://codeload.github.com/ffmpegwasm/opus/tar.gz/v1.3.1"
+        },
+        {
+          "name": "wasm-vorbis",
+          "url": "https://codeload.github.com/ffmpegwasm/vorbis/tar.gz/v1.3.3"
+        },
+        {
+          "name": "wasm-zlib",
+          "url": "https://codeload.github.com/ffmpegwasm/zlib/tar.gz/v1.2.11"
+        },
+        {
+          "name": "wasm-libwebp",
+          "url": "https://codeload.github.com/ffmpegwasm/libwebp/tar.gz/v1.3.2"
+        },
+        {
+          "name": "wasm-freetype2",
+          "url": "https://codeload.github.com/ffmpegwasm/freetype2/tar.gz/VER-2-10-4"
+        },
+        {
+          "name": "wasm-fribidi",
+          "url": "https://codeload.github.com/fribidi/fribidi/tar.gz/v1.0.9"
+        },
+        {
+          "name": "wasm-harfbuzz",
+          "url": "https://codeload.github.com/harfbuzz/harfbuzz/tar.gz/5.2.0"
+        },
+        {
+          "name": "wasm-libass",
+          "url": "https://codeload.github.com/libass/libass/tar.gz/0.15.0"
+        },
+        {
+          "name": "wasm-zimg",
+          "url": "https://codeload.github.com/sekrit-twc/zimg/tar.gz/release-3.0.5"
+        }
+      ]
+    }
+  ]
+}

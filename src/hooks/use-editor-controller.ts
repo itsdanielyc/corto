@@ -22,9 +22,10 @@ import { buildTimeline, filmDuration, locateScene } from "../domain/timeline";
 import { useProject } from "./use-project";
 import { useResources } from "./use-resources";
 import { createExampleProject } from "../media/example";
-import { inspectFile } from "../media/import";
+import { importMedia } from "../media/phone";
 import { createPlatform } from "../platform";
 import { type LibraryMode } from "../components/Library";
+import { placeNextSong } from "../domain/audio";
 
 function readableError(error: unknown): string {
   if (error instanceof DOMException && error.name === "QuotaExceededError")
@@ -236,7 +237,14 @@ export function useEditorController() {
   const addMedia = useCallback(
     (asset: MediaAsset) => {
       if (asset.kind === "audio") {
-        changeMusic({ assetId: asset.id, volume: 0.5, loop: true });
+        edit((project) =>
+          project.music || project.audioClips.length
+            ? placeNextSong(project, asset)
+            : {
+                ...project,
+                music: { assetId: asset.id, volume: 0.5, loop: true },
+              },
+        );
         return;
       }
       const scene = createScene(asset);
@@ -274,19 +282,25 @@ export function useEditorController() {
         const failures: string[] = [];
         for (const file of files) {
           try {
-            const { asset } = await inspectFile(file);
-            let candidate = addAsset(next, asset);
+            setBusy(`Preparing ${file.name}`);
+            const { asset, original } = await importMedia(file, platform);
+            let candidate = addAsset(
+              original ? addAsset(next, original) : next,
+              asset,
+            );
             if (asset.kind === "audio")
-              candidate = {
-                ...candidate,
-                music: { assetId: asset.id, volume: 0.5, loop: true },
-              };
+              candidate =
+                candidate.music || candidate.audioClips.length
+                  ? placeNextSong(candidate, asset)
+                  : {
+                      ...candidate,
+                      music: { assetId: asset.id, volume: 0.5, loop: true },
+                    };
             else {
               const scene = createScene(asset);
               candidate = appendScene(candidate, scene);
               first ??= scene.id;
             }
-            await platform.putAsset(asset, file);
             next = candidate;
           } catch (failure) {
             failures.push(readableError(failure));
@@ -316,6 +330,7 @@ export function useEditorController() {
 
   const showExample = useCallback(() => {
     void task("Opening the example", async () => {
+      await platform.saveProject(current.current.present);
       const example = await createExampleProject(platform);
       clearResources();
       replace(example);
@@ -323,7 +338,7 @@ export function useEditorController() {
       setTime(0.6);
       setMode("media");
     });
-  }, [task, platform, clearResources, replace]);
+  }, [task, platform, current, clearResources, replace]);
 
   const chooseMedia = useCallback(
     (music = false) => (music ? musicInput : mediaInput).current?.click(),
@@ -358,11 +373,12 @@ export function useEditorController() {
   const openSelectedFile = useCallback(
     (file?: File) => {
       void task("Opening your project", async () => {
+        await platform.saveProject(current.current.present);
         const opened = await platform.openPortable(file);
         if (opened) acceptProject(opened);
       });
     },
-    [task, platform, acceptProject],
+    [task, platform, current, acceptProject],
   );
 
   const chooseProject = useCallback(() => {
@@ -380,13 +396,43 @@ export function useEditorController() {
     setDialog(null);
     if (action === "open") chooseProject();
     else {
-      clearResources();
-      replace(createProject());
-      setSelectedId(null);
-      setTime(0);
-      setError(null);
+      void task("Saving your film", async () => {
+        await platform.saveProject(current.current.present);
+        clearResources();
+        replace(createProject());
+        setSelectedId(null);
+        setTime(0);
+        setError(null);
+      });
     }
-  }, [chooseProject, clearResources, replace]);
+  }, [chooseProject, clearResources, replace, task, platform, current]);
+
+  const showProjects = useCallback(() => {
+    void task("Saving your film", async () => {
+      if (editor.saveStatus !== "error")
+        await platform.saveProject(current.current.present);
+      setDialog("projects");
+    });
+  }, [task, platform, current, editor.saveStatus]);
+
+  const openSavedProject = useCallback(
+    (id: string, recover = false) => {
+      void task(
+        recover ? "Recovering your film" : "Opening your film",
+        async () => {
+          const opened = await platform.openProject(id, recover);
+          await platform.saveProject(opened);
+          acceptProject(opened);
+          setDialog(null);
+          if (recover)
+            setMessage(
+              "Recovered as a separate film. Your latest edit is still in My films.",
+            );
+        },
+      );
+    },
+    [task, platform, acceptProject],
+  );
 
   const undoEdit = useCallback(() => {
     setPlaying(false);
@@ -480,5 +526,7 @@ export function useEditorController() {
     togglePlayback,
     playbackStep,
     modalClose,
+    showProjects,
+    openSavedProject,
   };
 }

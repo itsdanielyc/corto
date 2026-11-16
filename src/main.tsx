@@ -3,6 +3,7 @@ import "@fontsource-variable/manrope";
 import "@fontsource/dm-serif-display/latin-400.css";
 import { App } from "./App";
 import "./editor.css";
+import "./styles/essentials.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Corto could not find its application root");

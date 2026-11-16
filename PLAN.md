@@ -27,6 +27,20 @@
 - First/last/short scenes, repeated assets, exact trim boundaries and undo after split/reorder.
 - Video/music mixing, silent movies, portrait/square exports, cancellation and export failure cleanup.
 
+## v0.1.1 authorised scope
+The user selected phone compatibility, project home/recovery, sound/narration, timed subtitles and sharing presets, and explicitly excluded automatic slideshows and photo-presentation changes. Role: solo. Framework and platform tiers stay unchanged.
+
+| # | Slice | Done when | Levels | Status |
+|---|---|---|---|---|
+| 7 | Versioned media/editing contracts | v1 opens losslessly as v2; future schemas, invalid original links, audio bounds and overlapping subtitles fail visibly | L1/L2 | done; contract CI 43840996126, PR 10 |
+| 8 | Project home and recovery | Named projects survive switching/restart; recovery makes a separate copy; portable imports never replace another film | L2/L3/L4/L6 | backend CI proven; editor tested locally windows-x64; hosted feature proof pending |
+| 9 | Phone media | Real HEIC and HEVC fixtures import locally; compatible copies preview/export; immutable originals survive portable round trips | L1/L3/L4/L6 | native backend CI proven; browser/offline and UI tested locally windows-x64; hosted feature proof pending |
+| 10 | Sound and narration | Trim/place/fade sequential songs and voiceovers; recording permissions/cancellation handled; ducking and encoded output proven | L1/L3/L4/L6 | tested locally windows-x64; hosted feature proof pending |
+| 11 | Timed subtitles | Manual/SRT cues edit and round-trip; same cue timing appears in preview and actual MP4 | L1/L3/L4/L6 | tested locally windows-x64; hosted feature proof pending |
+| 12 | Sharing and v0.1.1 | TV/phone/small-file presets, approximate size and five-second sample work; fresh OS CI and installer gates precede tag | L1/L3-L7 | version 0.1.1 prepared; release gates pending |
+
+Rulings: use explicit schema v2 migration for known v1 only; never mutate originals. Compatible phone copies are ordinary local assets linked to their archived originals, so existing portable streaming remains sufficient. Ducking lowers music under audible source clips and narration, with that exact UI wording; it is not a speech recogniser. Timed subtitles/SRT ship now; optional offline automatic transcription remains a later measured enhancement from the brainstorm. No 4K, signing credentials or automatic-update service is introduced by this patch release. Existing unsigned-preview disclosure and browser recording capability limits remain explicit.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

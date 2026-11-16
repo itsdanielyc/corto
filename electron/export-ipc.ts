@@ -53,7 +53,10 @@ export function registerExportCommands(
       (
         await dialog.showSaveDialog(window, {
           title: "Export your movie",
-          defaultPath: join(app.getPath("videos"), `${name}.mp4`),
+          defaultPath: join(
+            app.getPath("videos"),
+            `${name}${"sample" in input && input.sample === true ? "-sample" : ""}.mp4`,
+          ),
           filters: [{ name: "MP4 movie", extensions: ["mp4"] }],
         })
       ).filePath;
@@ -64,6 +67,10 @@ export function registerExportCommands(
         project,
         resolution: input.resolution,
         overlays: input.overlays,
+        subtitleOverlays:
+          "subtitleOverlays" in input ? input.subtitleOverlays : undefined,
+        preset: "preset" in input ? input.preset : undefined,
+        sample: "sample" in input ? input.sample : undefined,
       } as MovieRequest,
       destination,
       controller.signal,

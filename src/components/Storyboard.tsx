@@ -186,12 +186,20 @@ export const Storyboard = memo(function Storyboard({
         <Music2 size={15} />
         <button
           className={
-            music ? "soundtrack-button has-music" : "soundtrack-button"
+            music || project.audioClips.length
+              ? "soundtrack-button has-music"
+              : "soundtrack-button"
           }
           onClick={onMusic}
           disabled={busy}
         >
-          {music ? (
+          {project.audioClips.length ? (
+            <>
+              <span className="music-pattern" aria-hidden="true" />
+              <span>{project.audioClips.length} placed sounds</span>
+              <small>Music &amp; narration</small>
+            </>
+          ) : music ? (
             <>
               <span className="music-pattern" aria-hidden="true" />
               <span>{music.name.replace(/\.[^.]+$/, "")}</span>

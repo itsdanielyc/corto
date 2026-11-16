@@ -13,23 +13,23 @@ Corto is a home video and slideshow maker for **Windows, macOS, Linux and the we
 
 1. Import photos, clips or music. Visual media goes straight into the storyboard.
 2. Reorder scenes, trim clips, split or duplicate moments, and undo freely.
-3. Add titles, choose a frame and fade through black. Adjust original sound and the soundtrack.
-4. Export in landscape, portrait or square at 720p or 1080p.
+3. Add titles and timed subtitles. Place songs, record narration and choose fades or reduced music under clip sound.
+4. Export in landscape, portrait or square with TV, phone or small-file presets; try a five-second sample first.
 
 Desktop builds export local H.264/AAC MP4 files using a bundled, checksum-verified FFmpeg executable. The browser offers MP4 recording where its encoder is supported; other browsers can transfer a portable project to the desktop app. Keep the tab visible during web export.
 
 ## Your projects stay with you
 
-The editor autosaves a working copy on this device. **Save portable copy** writes a self-contained `.corto` project with its original media, so it can move between computers and operating systems without relinking files. Keep portable copies of projects you want to preserve, especially when using browser storage.
+The editor autosaves named films on this device. **My films** shows recent projects and can recover the previous edit as a separate copy. **Save portable copy** writes a self-contained `.corto` project with its original media, so it can move between computers and operating systems without relinking files. Keep portable copies of projects you want to preserve, especially when using browser storage.
 
 The application contains no accounts, analytics, remote fonts or media upload service. The example and its credited photos/music are bundled locally. The production web shell can cache itself for offline use after the first successful load.
 
 ## Preview scope
 
 - Native Windows x64, Apple Silicon and Intel Mac, Linux x64; responsive browser editor.
-- JPG, PNG, WebP and BMP photos; MP4/MOV/WebM video when the local decoder supports its codec; MP3, WAV, M4A, AAC, FLAC and Ogg audio.
+- JPG, PNG, WebP, BMP and HEIC/HEIF photos; MP4/MOV/WebM video, with local HEVC/HDR compatibility copies; MP3, WAV, M4A, AAC, FLAC and Ogg audio.
 - Up to 30 minutes, 300 scenes, 500 originals and 8 GB of media per project; 2 GB per original.
-- A single storyboard and soundtrack. Professional multitrack editing, HDR workflows, HEIC/RAW, native mobile installers and automatic updates are outside this preview.
+- A single storyboard, placed songs/narration and timed subtitles. HEIF decoding is bounded to 64 megapixels; browser phone-video conversion to 256 MB; narration to five-minute sections. Originals remain unchanged. General RAW/professional HDR editing, automatic transcription, native mobile installers and automatic updates are outside this preview.
 - Desktop installers are **unsigned**. Read the [OS installation notes](docs/installing.md).
 
 ## Build and contribute

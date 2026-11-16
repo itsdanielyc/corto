@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Film, Maximize2 } from "lucide-react";
-import { FADE_SECONDS, type Project } from "../../contracts/project";
+import { type Project } from "../../contracts/project";
 import {
   buildTimeline,
   fadeOpacity,
@@ -8,7 +8,10 @@ import {
   locateScene,
 } from "../domain/timeline";
 import type { MediaResources } from "../hooks/use-resources";
-import { disposeMedia } from "../media/import";
+import { AudioTimelinePlayer } from "../preview/audio-timeline";
+import type { CortoPlatform } from "../platform/types";
+import { drawSubtitle } from "../preview/subtitles";
+import { subtitleAt } from "../domain/subtitles";
 import { loadCaptionFonts } from "../preview/captions";
 import { MediaPool } from "../preview/media-pool";
 import { renderFrame } from "../preview/render-frame";
@@ -17,6 +20,7 @@ import { IconButton } from "./primitives";
 
 interface PreviewProperties {
   project: Project;
+  platform: CortoPlatform;
   resources: MediaResources;
   time: number;
   playing: boolean;
@@ -31,6 +35,7 @@ const VIDEO_DRIFT_SECONDS = 0.25;
 /** A bounded decoder pool paints one composition; UI time updates are throttled independently. */
 export function Preview({
   project,
+  platform,
   resources,
   time,
   playing,
@@ -42,7 +47,7 @@ export function Preview({
   const stage = useRef<HTMLDivElement>(null);
   const pool = useRef(new MediaPool());
   const clock = useRef(time);
-  const music = useRef<HTMLAudioElement | null>(null);
+  const sound = useRef<AudioTimelinePlayer | null>(null);
   const [status, setStatus] = useState("Ready");
   const timeline = useMemo(
     () => buildTimeline(project.scenes),
@@ -57,23 +62,34 @@ export function Preview({
   }, [time, playing]);
 
   useEffect(() => {
-    if (!project.music) return;
-    const resource = resources[project.music.assetId];
-    if (!resource?.url) return;
-    const audio = new Audio(resource.url);
-    audio.preload = "auto";
-    audio.loop = project.music.loop;
-    music.current = audio;
+    const player = new AudioTimelinePlayer(
+      project,
+      (id) => platform.assetUrl(id),
+      report,
+    );
+    sound.current = player;
+    let cancelled = false;
+    void player.prepare().catch((error) => {
+      if (!cancelled) report(error);
+    });
     return () => {
-      if (music.current === audio) music.current = null;
-      disposeMedia(audio);
+      cancelled = true;
+      player.dispose();
+      if (sound.current === player) sound.current = null;
     };
-  }, [project.music?.assetId, project.music?.loop, resources]);
+  }, [
+    project.music,
+    project.audioClips,
+    project.duckMusic,
+    project.scenes,
+    platform,
+    report,
+  ]);
 
   useEffect(() => {
     if (playing) return;
     pool.current.pauseExcept(null);
-    music.current?.pause();
+    sound.current?.pause();
     const located = locateScene(timeline, time);
     if (!located) return;
     let cancelled = false;
@@ -99,8 +115,10 @@ export function Preview({
         );
       if (cancelled) return;
       const context = canvas.current?.getContext("2d");
-      if (context)
+      if (context) {
         renderFrame(context, located.scene, media, located.localTime, time > 0);
+        drawSubtitle(context, subtitleAt(project.subtitles, time));
+      }
       setStatus("Ready");
       const next = timeline[located.index + 1]?.scene.assetId;
       const kept = new Set(
@@ -127,6 +145,7 @@ export function Preview({
     time,
     resources,
     project.assets,
+    project.subtitles,
     dimensions.width,
     dimensions.height,
     report,
@@ -140,7 +159,6 @@ export function Preview({
     let notified = last;
     let preparedScene: string | null = null;
     let preparingScene: string | null = null;
-    let startingMusic = false;
     const controller = new AbortController();
     const stopWithError = (error: unknown) => {
       if (!cancelled) {
@@ -161,7 +179,7 @@ export function Preview({
       const asset = scene.assetId ? project.assets[scene.assetId] : null;
       const resource = asset ? resources[asset.id] : null;
       const media = asset ? pool.current.ready(asset.id) : null;
-      let ready = !asset || !!media;
+      let ready = (!asset || !!media) && (sound.current?.ready ?? false);
       pool.current.pauseExcept(scene.assetId);
       if (asset && !media && resource?.url)
         void pool.current.get(asset, resource.url).catch(stopWithError);
@@ -190,49 +208,13 @@ export function Preview({
         )
           media.currentTime = scene.start + localTime;
       }
-      const soundtrack = music.current;
-      if (soundtrack && project.music) {
-        const withinMusic =
-          project.music.loop ||
-          clock.current < (soundtrack.duration || Infinity);
-        soundtrack.volume =
-          project.music.volume *
-          Math.max(
-            0,
-            Math.min(
-              1,
-              clock.current / FADE_SECONDS,
-              (total - clock.current) / FADE_SECONDS,
-            ),
-          );
-        if (!ready || !withinMusic) soundtrack.pause();
-        else if (
-          soundtrack.paused &&
-          !startingMusic &&
-          soundtrack.readyState >= 1
-        ) {
-          startingMusic = true;
-          soundtrack.currentTime = project.music.loop
-            ? clock.current % soundtrack.duration
-            : clock.current;
-          void soundtrack
-            .play()
-            .catch(stopWithError)
-            .finally(() => {
-              startingMusic = false;
-            });
-        } else if (
-          withinMusic &&
-          soundtrack.duration &&
-          Math.abs(
-            soundtrack.currentTime - (clock.current % soundtrack.duration),
-          ) > VIDEO_DRIFT_SECONDS
-        )
-          soundtrack.currentTime = clock.current % soundtrack.duration;
-      }
+      sound.current?.sync(clock.current, ready);
       if (ready) {
         const context = canvas.current?.getContext("2d");
-        if (context) renderFrame(context, scene, media, localTime);
+        if (context) {
+          renderFrame(context, scene, media, localTime);
+          drawSubtitle(context, subtitleAt(project.subtitles, clock.current));
+        }
         clock.current = Math.min(total, clock.current + delta);
         setStatus((previous) => (previous === "Ready" ? previous : "Ready"));
         if (now - notified >= UI_UPDATE_INTERVAL_MS) {
@@ -272,7 +254,7 @@ export function Preview({
       cancelAnimationFrame(animation);
       controller.abort();
       pool.current.pauseExcept(null);
-      music.current?.pause();
+      sound.current?.pause();
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [
@@ -280,6 +262,8 @@ export function Preview({
     timeline,
     project.assets,
     project.music,
+    project.audioClips,
+    project.subtitles,
     resources,
     total,
     onPlaying,

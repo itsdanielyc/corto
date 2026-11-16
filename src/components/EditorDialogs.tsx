@@ -5,7 +5,16 @@ import { Modal } from "./primitives";
 import type { Project } from "../../contracts/project";
 import type { CortoPlatform } from "../platform/types";
 
-export type EditorDialog = "new" | "open" | "help" | "about" | "export" | null;
+export type EditorDialog =
+  | "new"
+  | "open"
+  | "help"
+  | "about"
+  | "export"
+  | "projects"
+  | "sound"
+  | "subtitles"
+  | null;
 interface EditorDialogsProperties {
   dialog: EditorDialog;
   project: Project;
@@ -34,8 +43,8 @@ export function EditorDialogs({
           onClose={onClose}
         >
           <p className="modal-introduction">
-            Save a portable copy if you want to return to this film. Your source
-            files stay safe.
+            Your current film will stay in My films on this device. Save a
+            portable copy for a backup or another computer.
           </p>
           <div className="modal-actions">
             <button className="button secondary" onClick={onClose}>

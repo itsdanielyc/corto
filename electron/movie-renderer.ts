@@ -2,12 +2,20 @@ import { copyFile, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { ExportProgress, MovieRequest } from "../contracts/platform";
-import { EXPORT_FPS, FADE_SECONDS, parseProject } from "../contracts/project";
+import { EXPORT_FPS, parseProject } from "../contracts/project";
 import { frameDimensions, sceneFrameCounts } from "../src/domain/timeline";
 import type { FileProjectRepository } from "./storage";
 import { writeAtomic } from "./atomic-file";
 import { runFfmpeg } from "./ffmpeg-process";
 import { sceneArguments } from "./movie-plan";
+import {
+  exportBitrate,
+  EXPORT_PRESETS,
+  sampleProject,
+} from "../src/export/presets";
+import { soundMixArguments } from "./movie-sound";
+import { burnSubtitles } from "./movie-subtitles";
+import { projectAudioClips } from "../src/domain/audio";
 
 const MAX_OVERLAY_BYTES = 4 * 1024 ** 2;
 const MAX_TOTAL_OVERLAY_BYTES = 32 * 1024 ** 2;
@@ -43,7 +51,17 @@ export class MovieRenderer {
     progress: (value: ExportProgress) => void,
   ): Promise<void> {
     signal.throwIfAborted();
-    const project = parseProject(request.project);
+    if (
+      request.preset !== undefined &&
+      !Object.hasOwn(EXPORT_PRESETS, request.preset)
+    )
+      throw new Error("Choose a supported sharing preset");
+    if (request.sample !== undefined && typeof request.sample !== "boolean")
+      throw new Error("Invalid sample request");
+    const project = sampleProject(
+      parseProject(request.project),
+      request.sample,
+    );
     if (!project.scenes.length)
       throw new Error("Add at least one scene before exporting");
     if (!["720p", "1080p"].includes(request.resolution))
@@ -54,6 +72,39 @@ export class MovieRenderer {
     )
       throw new Error("Invalid title layers");
     const dimensions = frameDimensions(project.ratio, request.resolution);
+    const bitrate = exportBitrate(request);
+    const subtitleOverlays = request.subtitleOverlays ?? [];
+    if (
+      !Array.isArray(subtitleOverlays) ||
+      subtitleOverlays.length > project.subtitles.length + 1
+    )
+      throw new Error("Invalid subtitle layers");
+    let subtitleBytes = 0;
+    const subtitleIds = new Set<string>();
+    for (const overlay of subtitleOverlays) {
+      if (
+        !overlay ||
+        typeof overlay.cueId !== "string" ||
+        (overlay.cueId !== "" &&
+          !project.subtitles.some((cue) => cue.id === overlay.cueId)) ||
+        subtitleIds.has(overlay.cueId)
+      )
+        throw new Error("A subtitle layer does not match the film");
+      validateOverlay(overlay.png, dimensions.width, dimensions.height);
+      subtitleIds.add(overlay.cueId);
+      subtitleBytes += overlay.png.byteLength;
+      if (subtitleBytes > MAX_TOTAL_OVERLAY_BYTES)
+        throw new Error("The subtitle layers exceed the movie memory budget");
+    }
+    if (
+      project.subtitles.some(
+        (cue) =>
+          cue.start <
+            project.scenes.reduce((sum, scene) => sum + scene.duration, 0) &&
+          (!subtitleIds.has(cue.id) || !subtitleIds.has("")),
+      )
+    )
+      throw new Error("A timed subtitle layer is missing");
     const overlayMap = new Map<string, Uint8Array>();
     let overlayBytes = 0;
     for (const overlay of request.overlays) {
@@ -131,6 +182,7 @@ export class MovieRenderer {
           output,
           ...dimensions,
           hasAudio,
+          videoBitrate: bitrate,
         };
         await runFfmpeg(this.binary, sceneArguments(input), {
           signal,
@@ -178,52 +230,67 @@ export class MovieRenderer {
         { signal },
       );
       for (const path of paths) await rm(path);
-      let finished = joined;
-      if (project.music) {
-        const soundtrack = this.repository.assetPath(project.music.assetId);
-        const asset = project.assets[project.music.assetId];
-        if ((await stat(soundtrack)).size !== asset.size)
-          throw new Error("The soundtrack is missing or incomplete");
-        const output = join(directory, "finished.mp4");
-        const musicArguments = project.music.loop ? ["-stream_loop", "-1"] : [];
-        const fade = Math.min(FADE_SECONDS, total / 2);
-        const mix = `[1:a]volume=${project.music.volume},apad,atrim=duration=${total},afade=t=in:d=${fade},afade=t=out:st=${total - fade}:d=${fade}[music];[0:a][music]amix=inputs=2:duration=first:normalize=0:dropout_transition=0,alimiter=limit=0.95:level=false[sound]`;
-        progress({ fraction: 0.91, message: "Adding the soundtrack" });
-        await runFfmpeg(
-          this.binary,
-          [
-            "-i",
-            joined,
-            ...musicArguments,
-            "-protocol_whitelist",
-            "file,pipe",
-            "-i",
-            soundtrack,
-            "-filter_complex",
-            mix,
-            "-map",
-            "0:v:0",
-            "-map",
-            "[sound]",
-            "-c:v",
-            "copy",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            "-ar",
-            "48000",
-            "-ac",
-            "2",
-            "-t",
-            String(total),
-            "-movflags",
-            "+faststart",
-            output,
-          ],
-          { signal },
-        );
-        finished = output;
+      let finished = await burnSubtitles(
+        this.binary,
+        project,
+        subtitleOverlays,
+        joined,
+        directory,
+        total,
+        bitrate,
+        signal,
+      );
+      const trimmedLoops = new Map<string, string>();
+      for (const [index, clip] of projectAudioClips(project).entries()) {
+        if (clip.start >= total) continue;
+        const asset = project.assets[clip.assetId];
+        const source = this.repository.assetPath(asset.id);
+        if ((await stat(source)).size !== asset.size)
+          throw new Error(`Audio is missing or incomplete: ${asset.name}`);
+        if (
+          clip.loop &&
+          clip.offset > 0 &&
+          clip.duration > asset.duration - clip.offset
+        ) {
+          const trimmed = join(directory, `loop-source-${index}.wav`);
+          await runFfmpeg(
+            this.binary,
+            [
+              "-ss",
+              String(clip.offset),
+              "-protocol_whitelist",
+              "file,pipe",
+              "-i",
+              source,
+              "-vn",
+              "-t",
+              String(asset.duration - clip.offset),
+              "-ac",
+              "2",
+              "-ar",
+              "48000",
+              "-c:a",
+              "pcm_s16le",
+              trimmed,
+            ],
+            { signal },
+          );
+          trimmedLoops.set(clip.id, trimmed);
+        }
+      }
+      const soundOutput = join(directory, "finished.mp4");
+      const mixArguments = soundMixArguments(
+        project,
+        this.repository,
+        finished,
+        soundOutput,
+        total,
+        trimmedLoops,
+      );
+      if (mixArguments) {
+        progress({ fraction: 0.93, message: "Mixing music and narration" });
+        await runFfmpeg(this.binary, mixArguments, { signal });
+        finished = soundOutput;
       }
       signal.throwIfAborted();
       progress({ fraction: 0.98, message: "Saving your movie" });

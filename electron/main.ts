@@ -135,7 +135,20 @@ app.whenReady().then(() => {
     void exporter.cancelAndWait().finally(() => app.quit());
   });
   session.defaultSession.setPermissionRequestHandler(
-    (_contents, _permission, callback) => callback(false),
+    (contents, permission, callback, details) =>
+      callback(
+        contents === mainWindow?.webContents &&
+          permission === "media" &&
+          "mediaTypes" in details &&
+          !!details.mediaTypes?.length &&
+          details.mediaTypes.every((type) => type === "audio"),
+      ),
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (contents, permission, _origin, details) =>
+      contents === mainWindow?.webContents &&
+      permission === "media" &&
+      details.mediaType === "audio",
   );
   ipcMain.handle(channels.platformInfo, () => platformInfo());
   createWindow();
