@@ -86,3 +86,16 @@ Experimental WebM capture remains unverified and is disabled in production (ADR 
 | 2026-11-16 05:11 | L5 reviewed | Editor PNG baselines captured on each OS and visually reviewed; ARIA/geometry shared | windows-x64, macos-arm64, linux-x64 | [Snapshots 43808009004](https://github.com/itsdanielyc/corto/actions/runs/43808009004), committed by the workflow and included in PR #6. |
 
 Remaining: exact release-commit CI/installers, tag publication, public web deployment and published-asset smoke checks. Unsigned status, native mobile, HEIC/RAW/HDR, other architectures/distributions and experimental WebM remain explicitly outside verified preview scope.
+
+## 2026-11-16: v0.1.0 published and verified
+
+Release source is `9ed80a7df08a30e88b2da923fbeeef4aee0efc1f`, tagged `v0.1.0` only after its exact-SHA gate passed. Subsequent documentation-only commits do not change the released source.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 05:26 | L0-L6 release source | Final main commit passes shipping product checks and reviewed visual comparisons | windows-x64, macos-arm64, linux-x64; macos-x64 L6 | [CI 43809764318](https://github.com/itsdanielyc/corto/actions/runs/43809764318). |
+| 2026-11-16 05:26 | L7 pre-tag gate | Exact release source installs, loads the editor, encodes native MP4 and uninstalls | windows-x64, macos-arm64, macos-x64, linux-x64 DEB/AppImage | [Installers 43809764353](https://github.com/itsdanielyc/corto/actions/runs/43809764353). Gate script observed green before creating the annotated tag; the tag message records both runs. |
+| 2026-11-16 05:33 | release / L7 published assets | Tagged bundles rebuilt, installed and published; fresh non-build runners download the release assets and repeat install/encoder/uninstall checks | windows-x64, macos-arm64, macos-x64, linux-x64 DEB/AppImage | [Release 43810281678](https://github.com/itsdanielyc/corto/actions/runs/43810281678), all jobs green; [v0.1.0 assets](https://github.com/itsdanielyc/corto/releases/tag/v0.1.0). Unsigned preview; SHA256SUMS and media-engine source information attached. |
+| 2026-11-16 05:29 | public web | Production app deploys and runs from its public URL; example and portable project work with the real browser adapter | GitHub Pages; local verification on windows-x64 / Chromium | [Pages 43810223347](https://github.com/itsdanielyc/corto/actions/runs/43810223347); public Playwright check: adapter `web`, CORTO001 project signature, 2,327,177-byte portable copy, zero page errors and zero non-GET/HEAD network requests. Screenshot visually reviewed. |
+
+Final known exclusions: experimental browser WebM capture (disabled, advisory issue #8), signing/notarization, native mobile packages, HEIC/RAW/HDR workflows, unsupported CPU architectures/distributions and manual screen-reader certification. Native MP4 on the declared desktop platforms is verified; browser MP4 is capability-dependent and other browsers transfer portable projects to desktop.

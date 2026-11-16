@@ -8,7 +8,7 @@
 | 2 | Local workspace and portable projects | Real I/O round trips; native save/reopen through built app | L2/L3/L6 | done for backend; CI 43790072321; user journey tested locally windows-x64 |
 | 3 | Editor and actual preview | Import, edit, titles, sound, playback, aspect ratio and keyboard journeys; screenshots reviewed | L4/L5/L6 | done; CI 43808645430; pixels 43808009004 reviewed |
 | 4 | Movie export | Native MP4 playable; timing, sound, cancellation and destination proven; browser export capability handled honestly | L1/L3/L4/L6 | done for native MP4 and supported browser MP4; experimental WebM deferred in ADR 004 / issue 8 |
-| 5 | Distribution | All critical journeys and installers green for release commit; signed status explicit; packages and web build published | L0-L7 | workflows validated; final exact-commit gate and publication pending |
+| 5 | Distribution | All critical journeys and installers green for release commit; signed status explicit; packages and web build published | L0-L7 | done; v0.1.0, release 43810281678 and Pages 43810223347; unsigned preview |
 | 6 | Product-only verification and maintainability | Controller/dialog/shortcut separation preserves behaviour; sample greeting coverage replaced by real project journeys | L0-L6 | done; CI 43808718412 |
 
 ## Rulings
