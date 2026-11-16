@@ -161,9 +161,15 @@ export function App() {
   const editScene = useCallback(
     (changes: Partial<Scene>) => {
       const scene = selectedRef.current;
-      if (scene) edit((project) => changeScene(project, scene.id, changes));
+      if (!scene) return;
+      edit((project) => changeScene(project, scene.id, changes));
+      const atPlayhead = locateScene(
+        buildTimeline(current.current.present.scenes),
+        timeRef.current,
+      );
+      if (atPlayhead?.scene.id !== scene.id) selectScene(scene.id);
     },
-    [edit],
+    [edit, current, selectScene],
   );
   const deleteSelected = useCallback(() => {
     const scene = selectedRef.current;
@@ -174,8 +180,8 @@ export function App() {
     if (!scene) return;
     const id = crypto.randomUUID();
     edit((project) => duplicateScene(project, scene.id, id));
-    setSelectedId(id);
-  }, [edit]);
+    selectScene(id);
+  }, [edit, selectScene]);
   const splitSelected = useCallback(() => {
     const scene = selectedRef.current;
     if (!scene) return;
@@ -203,13 +209,16 @@ export function App() {
               direction,
           ),
         );
+      if (scene) selectScene(scene.id);
     },
-    [edit],
+    [edit, selectScene],
   );
   const reorder = useCallback(
-    (id: string, index: number) =>
-      edit((project) => moveScene(project, id, index)),
-    [edit],
+    (id: string, index: number) => {
+      edit((project) => moveScene(project, id, index));
+      selectScene(id);
+    },
+    [edit, selectScene],
   );
   const changeMusic = useCallback(
     (music: Project["music"]) => edit((project) => ({ ...project, music })),
@@ -336,7 +345,9 @@ export function App() {
       clearResources();
       replace(opened);
       setSelectedId(opened.scenes[0]?.id ?? null);
-      setTime(opened.scenes.length ? 0.6 : 0);
+      setTime(
+        opened.scenes.length ? Math.min(0.6, opened.scenes[0].duration / 2) : 0,
+      );
       setMode("media");
     },
     [clearResources, replace],

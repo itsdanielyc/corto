@@ -37,6 +37,9 @@ test("example film can be edited, duplicated, reordered and undone", async ({
     .getByRole("button", { name: "Duplicate scene", exact: true })
     .click();
   await expect(page.getByTestId("scene-card")).toHaveCount(5);
+  expect(
+    Number(await page.getByRole("slider", { name: "Playhead" }).inputValue()),
+  ).toBeGreaterThan(5);
   await page
     .getByRole("button", { name: "Move scene right", exact: true })
     .click();

@@ -51,9 +51,10 @@ for (const recordingMode of ["automatic", "webm fallback"] as const) {
       "Saved on this device",
     );
     await page.getByRole("button", { name: "Export movie" }).click();
-    await page
-      .getByText("A smaller file, easy to share", { exact: true })
-      .click();
+    if (recordingMode === "webm fallback")
+      await page
+        .getByText("A smaller file, easy to share", { exact: true })
+        .click();
     const download = page.waitForEvent("download");
     await page.getByRole("button", { name: /^Export (MP4|WebM)$/ }).click();
     const file = await download;
@@ -63,7 +64,11 @@ for (const recordingMode of ["automatic", "webm fallback"] as const) {
       page.getByText("A little film. All yours.", { exact: true }),
     ).toBeVisible();
     const movie = inspectMovie(path);
-    expect(movie).toMatchObject({ width: 1280, height: 720, audio: true });
+    expect(movie).toMatchObject(
+      recordingMode === "automatic"
+        ? { width: 1920, height: 1080, audio: true }
+        : { width: 1280, height: 720, audio: true },
+    );
     expect(movie.duration).toBeGreaterThan(1.5);
     expect(movie.duration).toBeLessThan(2.25);
     expect(titlePixelFraction(path, 1.5)).toBeGreaterThan(0.002);

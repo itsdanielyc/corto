@@ -6,13 +6,11 @@ export interface RecordingFormat {
 
 const recordingFormats: readonly RecordingFormat[] = [
   {
-    mime: "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    mime: "video/mp4;codecs=avc1.42E028,mp4a.40.2",
     extension: "mp4",
     label: "MP4",
   },
-  { mime: "video/webm;codecs=vp9,opus", extension: "webm", label: "WebM" },
   { mime: "video/webm;codecs=vp8,opus", extension: "webm", label: "WebM" },
-  { mime: "video/webm", extension: "webm", label: "WebM" },
 ];
 
 /** Detect the actual encoder instead of advertising an output the browser cannot produce. */

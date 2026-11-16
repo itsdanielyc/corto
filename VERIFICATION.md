@@ -51,3 +51,14 @@ is never rounded up to "tested"; anything not listed here is unverified.
 ### Remaining release evidence
 - Complete app CI, runner-captured editor pixel baselines and final packaged installers have not yet run for this commit.
 - Unsigned build policy remains explicit; paid signing/notarization, native mobile and unsupported architectures remain outside this preview.
+
+## 2026-11-16: cross-platform findings and corrected WebM seek metadata
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 03:43 | L7 | Complete packaged editor launches and its bundled native encoder produces MP4; uninstall round trips pass | windows-x64, macos-arm64, macos-x64, linux-x64 (DEB/AppImage) | [Installers 43799441008](https://github.com/itsdanielyc/corto/actions/runs/43799441008). Historical build evidence; the release commit still needs its own gate. |
+| 2026-11-16 04:00 | L0-L4/L6 | Strict types, real file/movie integration, production web offline and complete native user journey pass | windows-x64, macos-arm64, linux-x64; macos-x64 (L6) | [CI 43801199633](https://github.com/itsdanielyc/corto/actions/runs/43801199633). Required UI jobs were red only for missing editor pixel baselines; the macOS snapshot run separately exposed a WebM seek-index defect. |
+| 2026-11-16 04:22 | L4 media regression | Captured raw/incorrectly indexed recordings expose unsafe seek cues; only clusters beginning with a keyframe enter the final index | local windows-x64 / Chromium | `playwright test tests/ui/webm.spec.ts`: green after correction; deliberately using unfiltered cues reproduced FFmpeg fast-seek decoding errors. Source restored. |
+| 2026-11-16 04:22 | L4 repeated codec | Shipping WebM fallback exports real frames, captions and both audio tones in 30 consecutive runs; default Full HD export also passes | local windows-x64 / Chromium | `playwright test tests/ui/export.spec.ts --grep 'webm fallback' --repeat-each=30 --workers=2`, exit 0, 30/30; normal output cases pass at 1080p and 720p. No retries used. |
+
+The WebM defect was a metadata-index problem, not a justification to relax frame decoding checks. The streaming adapter retains original media bytes, filters interframe clusters out of seek cues, and runs off the UI thread. Remote repeated codec checks and final pixels remain pending.

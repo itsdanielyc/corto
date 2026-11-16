@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   base: "./",
+  optimizeDeps: { include: ["webm-duration-fix/lib/ebml/index.js"] },
   resolve: {
     alias: [
       { find: /^buffer$/, replacement: "buffer/" },

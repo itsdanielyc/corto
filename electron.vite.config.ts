@@ -21,6 +21,7 @@ export default defineConfig({
     },
   },
   renderer: {
+    optimizeDeps: { include: ["webm-duration-fix/lib/ebml/index.js"] },
     resolve: {
       alias: [
         { find: /^buffer$/, replacement: "buffer/" },
