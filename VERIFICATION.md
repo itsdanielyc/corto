@@ -62,3 +62,7 @@ is never rounded up to "tested"; anything not listed here is unverified.
 | 2026-11-16 04:22 | L4 repeated codec | Shipping WebM fallback exports real frames, captions and both audio tones in 30 consecutive runs; default Full HD export also passes | local windows-x64 / Chromium | `playwright test tests/ui/export.spec.ts --grep 'webm fallback' --repeat-each=30 --workers=2`, exit 0, 30/30; normal output cases pass at 1080p and 720p. No retries used. |
 
 The WebM defect was a metadata-index problem, not a justification to relax frame decoding checks. The streaming adapter retains original media bytes, filters interframe clusters out of seek cues, and runs off the UI thread. Remote repeated codec checks and final pixels remain pending.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 04:33 | L4 browser timing | Delayed decoder startup does not extend the storyboard's recorded duration; prepared media, capture and scene timing share one epoch | local windows-x64 / Chromium | `playwright test tests/ui/export.spec.ts tests/ui/webm.spec.ts`, exit 0, five checks. Delaying play promises by 200 ms first produced 2.6 s and failed the unchanged <2.25 s assertion; priming while paused fixes it. Fast-seek caption and dual-tone checks remain required. |

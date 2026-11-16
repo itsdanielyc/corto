@@ -12,7 +12,11 @@ async function duration(page: Page, value: string) {
   await page.getByLabel("Duration (seconds)").press("Tab");
 }
 
-for (const recordingMode of ["automatic", "webm fallback"] as const) {
+for (const recordingMode of [
+  "automatic",
+  "webm fallback",
+  "slow decoder startup",
+] as const) {
   test(`browser movie download contains real scene frames, clip sound and background music (${recordingMode})`, async ({
     page,
   }, info) => {
@@ -20,11 +24,19 @@ for (const recordingMode of ["automatic", "webm fallback"] as const) {
       if (message.type() === "error")
         console.log("Browser export diagnostic:", message.text());
     });
-    if (recordingMode === "webm fallback")
+    if (recordingMode !== "automatic")
       await page.addInitScript(() => {
         const supported = MediaRecorder.isTypeSupported.bind(MediaRecorder);
         MediaRecorder.isTypeSupported = (mime) =>
           !mime.startsWith("video/mp4") && supported(mime);
+      });
+    if (recordingMode === "slow decoder startup")
+      await page.addInitScript(() => {
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = async function () {
+          await play.call(this);
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        };
       });
     await page.goto("/");
     await page
@@ -51,7 +63,7 @@ for (const recordingMode of ["automatic", "webm fallback"] as const) {
       "Saved on this device",
     );
     await page.getByRole("button", { name: "Export movie" }).click();
-    if (recordingMode === "webm fallback")
+    if (recordingMode !== "automatic")
       await page
         .getByText("A smaller file, easy to share", { exact: true })
         .click();

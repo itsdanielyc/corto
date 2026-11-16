@@ -17,6 +17,7 @@ import { renderFrame } from "../preview/render-frame";
 import { seekVideo } from "../preview/seek";
 import { browserRecordingFormat } from "./format";
 import { finalizeWebm } from "./finalize-webm";
+import { withCancellation } from "./cancellation";
 
 const AUDIO_SAMPLE_RATE = 48000;
 const AUDIO_BITRATE = 192000;
@@ -116,6 +117,10 @@ export async function renderBrowserMovie(
       await waitForMedia(soundtrack);
       musicSource = audio.createMediaElementSource(soundtrack);
       musicSource.connect(musicGain);
+      const preparedMusic = soundtrack;
+      await withCancellation(() => preparedMusic.play(), activeSignal);
+      preparedMusic.pause();
+      preparedMusic.currentTime = 0;
     }
     const total = filmDuration(project.scenes);
     let completed = 0;
@@ -133,11 +138,17 @@ export async function renderBrowserMovie(
         sources.set(media, source);
         source.connect(clipGain);
         media.volume = 1;
+        const preparedVideo = media;
+        await withCancellation(() => preparedVideo.play(), activeSignal);
+        preparedVideo.pause();
+        await seekVideo(preparedVideo, scene.start, activeSignal);
       }
       renderFrame(drawing, scene, media, 0);
-      if (recorder.state === "inactive") recorder.start(250);
-      else recorder.resume();
-      if (media instanceof HTMLVideoElement) await media.play();
+      let playbackError: unknown = null;
+      if (media instanceof HTMLVideoElement)
+        void media.play().catch((error) => {
+          playbackError = error;
+        });
       if (
         soundtrack &&
         project.music &&
@@ -146,14 +157,20 @@ export async function renderBrowserMovie(
         soundtrack.currentTime = project.music.loop
           ? completed % soundtrack.duration
           : completed;
-        await soundtrack.play();
+        void soundtrack.play().catch((error) => {
+          playbackError = error;
+        });
       }
+      // Decoder startup happens while paused; scene time and recording now share one epoch.
+      if (recorder.state === "inactive") recorder.start(250);
+      else recorder.resume();
       const started = performance.now();
       let elapsed = 0;
       let paintedFrame = -1;
       let notifiedAt = -Infinity;
       while (elapsed < scene.duration) {
         activeSignal.throwIfAborted();
+        if (playbackError) throw playbackError;
         const globalTime = completed + elapsed;
         const frame = Math.floor(elapsed * EXPORT_FPS);
         if (frame !== paintedFrame) {

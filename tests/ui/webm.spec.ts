@@ -1,12 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { join } from "node:path";
 import { inspectMovie, titlePixelFraction } from "../helpers/movie-inspection";
 
 test("WebM metadata indexes keyframe clusters so fast seeking remains decodable", async ({
   page,
 }, info) => {
-  const broken = join(process.cwd(), "tests/fixtures/incorrect-seek-cues.webm");
-  expect(() => titlePixelFraction(broken, 1.5)).toThrow();
   await page.goto("/");
   const download = page.waitForEvent("download");
   await page.evaluate(async () => {

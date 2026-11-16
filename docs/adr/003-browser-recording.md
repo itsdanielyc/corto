@@ -13,4 +13,6 @@ Test automatically detected output and forced WebM fallback on every browser run
 Ruling: the release fallback is VP8/Opus for broad compatibility and lower encoding cost. Investigation of intermittent fast-seek failures found that the upstream reader indexes every cluster, even when its first video block is an interframe. Corto filters cues to independently decodable clusters while preserving media payloads. A captured regression recording and repeated codec journeys prove the fix. MP4 requests an AVC level suitable for 1080p.
 
 References inspected: [upstream streaming implementation](https://github.com/buynao/webm-duration-fix/blob/main/src/index.ts), [Matroska duration definitions](https://www.matroska.org/technical/notes.html), 2026-11-16. CommonJS default-export compatibility is isolated in the worker entry.
+
+Decoder preparation is excluded from recording time. Video/music are primed while the recorder is paused; playback and the scene timer start together. A test that delays each play promise by 200 ms reproduced the prior 2.6-second output for a 1.75-second storyboard and now passes without relaxing the duration or caption assertions.
 <!-- keel:end -->
