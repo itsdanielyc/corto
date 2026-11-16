@@ -58,7 +58,7 @@ Explored and deferred: professional tracks/keyframes, generative effects, cloud 
 - Automatic updates and paid signing services: require operator credentials and a distribution policy.
 
 ## v0.1.1 selection (user decision)
-Implement phone-media compatibility, a project home/recovery, sound/narration, timed subtitles/SRT and sharing presets/sample export. Automatic slideshow creation and photo-presentation enhancements were explicitly declined. Optional local automatic transcription and 4K remain later candidates. The next-release recommendation above is superseded by this selection.
+Shipped in v0.1.1: phone-media compatibility, a project home/recovery, sound/narration, timed subtitles/SRT and sharing presets/sample export. Automatic slideshow creation and photo-presentation enhancements were explicitly declined. Optional local automatic transcription and 4K remain later candidates. The next-release recommendation above is superseded by this selection.
 
 ## Risks and rulings
 - Browser codec support differs: detect capabilities; tell people the available output; test browser and native exports separately.
