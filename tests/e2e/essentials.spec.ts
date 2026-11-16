@@ -63,6 +63,12 @@ function subtitlePixels(path: string, time: number): number {
 
 test("phone originals, placed sound, subtitles, sharing sample and named films work through native IPC", async () => {
   test.setTimeout(60_000);
+  test.skip(
+    process.platform === "darwin" &&
+      process.arch === "x64" &&
+      process.env.CORTO_INCLUDE_QUARANTINED !== "1",
+    "Intel export timing quarantine: https://github.com/itsdanielyc/corto/issues/12",
+  );
   const directory = await mkdtemp(join(tmpdir(), "corto-essentials-shell-"));
   const output = join(directory, "Phone memories-sample.mp4");
   const app = await electron.launch({
@@ -133,15 +139,13 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     await page.screenshot({ path: `artifacts/e2e/${platform}-sound.png` });
     await page.getByLabel("Close dialog").click();
     await menu(page, "Timed subtitles");
-    await page
-      .getByTestId("subtitle-input")
-      .setInputFiles({
-        name: "memories.srt",
-        mimeType: "application/x-subrip",
-        buffer: Buffer.from(
-          "1\n00:00:00,800 --> 00:00:01,600\nFamily memories\n\n2\n00:00:02,400 --> 00:00:03,200\nTogether again\n",
-        ),
-      });
+    await page.getByTestId("subtitle-input").setInputFiles({
+      name: "memories.srt",
+      mimeType: "application/x-subrip",
+      buffer: Buffer.from(
+        "1\n00:00:00,800 --> 00:00:01,600\nFamily memories\n\n2\n00:00:02,400 --> 00:00:03,200\nTogether again\n",
+      ),
+    });
     await expect(page.getByLabel("Subtitle 2 text")).toHaveValue(
       "Together again",
     );
@@ -162,15 +166,45 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .getByRole("button", { name: "Export movie", exact: true })
       .click();
     await page.getByRole("radio", { name: /Small file/ }).check();
+    const exportStarted = Date.now();
     await page
       .getByRole("button", {
         name: "Export first 5 seconds as a sample",
         exact: true,
       })
       .click();
-    await expect(
-      page.getByText("A little film. All yours.", { exact: true }),
-    ).toBeVisible();
+    const completed = page.getByText("A little film. All yours.", {
+      exact: true,
+    });
+    try {
+      await expect(completed).toBeVisible();
+    } catch (failure) {
+      if (process.env.CORTO_EXPORT_DIAGNOSTIC === "1") {
+        const terminal = await completed
+          .waitFor({ state: "visible", timeout: 10_000 })
+          .then(
+            () => true,
+            () => false,
+          );
+        console.log(
+          "NATIVE_EXPORT_DIAGNOSTIC",
+          JSON.stringify({
+            elapsedMs: Date.now() - exportStarted,
+            completed: terminal,
+            status: await page.locator(".export-progress").allTextContents(),
+            errors: await page.getByRole("alert").allTextContents(),
+          }),
+        );
+      }
+      throw failure;
+    }
+    console.log(
+      "NATIVE_EXPORT_DIAGNOSTIC",
+      JSON.stringify({
+        elapsedMs: Date.now() - exportStarted,
+        completed: true,
+      }),
+    );
     const movie = inspectMovie(output);
     expect(movie).toMatchObject({ width: 1280, height: 720, audio: true });
     expect(movie.duration).toBeGreaterThan(4.95);

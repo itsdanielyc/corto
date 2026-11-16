@@ -21,9 +21,14 @@ on:
         description: Repeat the browser fallback codec journey 30 times
         type: boolean
         default: false
+      native_export_repetitions:
+        description: Intel native export diagnostic repetitions (0 runs normal CI)
+        type: choice
+        options: ["0", "30", "20"]
+        default: "0"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ inputs.native_export_repetitions || '0' }}
   cancel-in-progress: true
 
 permissions:
@@ -31,6 +36,7 @@ permissions:
 
 jobs:
   unit:
+    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
     name: unit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,6 +52,7 @@ jobs:
       - run: npm run test:unit
 
   web:
+    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
     name: production web / offline
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -72,6 +79,7 @@ jobs:
           retention-days: 7
 
   integration:
+    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
     name: integration (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -89,6 +97,7 @@ jobs:
       - run: npm run test:integration
 
   ui:
+    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
     name: ui (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -153,6 +162,7 @@ jobs:
           retention-days: 7
 
   e2e:
+    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
     name: e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -221,7 +231,7 @@ jobs:
   sheet:
     name: contact sheet
     needs: [e2e]
-    if: always()
+    if: ${{ always() && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -239,3 +249,32 @@ jobs:
           name: contact-sheet
           path: contact-sheet.html
           retention-days: 14
+
+  native-export-diagnostic:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_export_repetitions != '0' }}
+    runs-on: macos-15-intel
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm run build
+      - name: Reproduce the Intel export journey
+        env:
+          CORTO_INCLUDE_QUARANTINED: "1"
+          CORTO_EXPORT_DIAGNOSTIC: "1"
+          CI: "1"
+          CORTO_EXPORT_REPETITIONS: ${{ inputs.native_export_repetitions }}
+        run: npx playwright test -c playwright.e2e.config.ts tests/e2e/essentials.spec.ts --repeat-each="$CORTO_EXPORT_REPETITIONS" --retries=0
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: native-export-diagnostic
+          path: |
+            test-results/e2e
+            playwright-report/e2e
+          retention-days: 7
