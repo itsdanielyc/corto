@@ -11,7 +11,9 @@ export type PlatformInfo = {
   packaged: boolean;
 };
 
-export interface ElectronBridge {
+import type { NativeBridge } from "../contracts/platform";
+
+export interface ElectronBridge extends NativeBridge {
   greet(name: string): Promise<string>;
   platformInfo(): Promise<PlatformInfo>;
 }

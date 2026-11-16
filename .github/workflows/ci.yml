@@ -40,6 +40,23 @@ jobs:
         run: npm run typecheck
       - run: npm run test:unit
 
+  integration:
+    name: integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
+
   ui:
     name: ui (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

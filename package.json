@@ -16,6 +16,7 @@
     "start": "electron-vite preview",
     "package": "npm run build && electron-builder --publish never",
     "test:unit": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:ui": "playwright test",
     "test:ui:update": "cross-env UPDATE_SNAPSHOTS=1 playwright test --update-snapshots=all",
     "test:e2e": "playwright test -c playwright.e2e.config.ts",
