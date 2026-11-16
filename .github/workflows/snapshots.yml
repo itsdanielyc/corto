@@ -54,10 +54,12 @@ jobs:
         env:
           CI: "1"
         run: npm run test:ui:update
+      - name: Stage only this runner's captures
+        run: node scripts/stage-snapshots.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: snapshots-${{ matrix.os }}
-          path: tests/ui/__snapshots__
+          path: artifacts/snapshots-staged
           retention-days: 3
 
   propose:

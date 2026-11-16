@@ -124,3 +124,10 @@ Negative unit proofs: disabled gain produced expected 0.25 / received 0; shifted
 | 2026-11-16 10:04 | L4 regression | Unsupported-browser export state has readable contrast and truthful format text; unknown OS MIME still imports a real phone video offline | local windows-x64 / Chromium | Forced unsupported-recorder test first failed `color-contrast`, then passed after the colour/status fix. Production phone test first rejected `application/octet-stream`, then passed with extension-based archive MIME. `npm run test:web`, 2 passed. |
 
 Intel diagnosis: music and narration inputs now have explicit finite demuxer durations as well as trim filters; looping sources cannot keep a mixer input open indefinitely. Real-I/O integration now includes macos-15-intel to exercise its distinct FFmpeg 8 engine. Local integration remains green (12 tests, 10:05 UTC); hosted Intel confirmation is pending, without relaxing any assertions or increasing retries/timeouts.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 10:11 | L0-L6 | Selected v0.1.1 features pass every declared platform, including the distinct Intel Mac media engine | windows-x64, macos-arm64, linux-x64; macos-x64 L3/L6 | [CI 43845836514](https://github.com/itsdanielyc/corto/actions/runs/43845836514), all 14 jobs green. Finite audio input bounds resolved the Intel mixing stall with unchanged assertions. |
+| 2026-11-16 10:12 | L5 visual review | Current Windows, Linux and macOS editor pixels, shared ARIA and native sound/subtitle panels reviewed | three OS families; native x64/arm64 captures | [Snapshots 43845823778](https://github.com/itsdanielyc/corto/actions/runs/43845823778) green. Each OS's own PNG was inspected and copied unchanged. The old artifact merger could overwrite Linux/Mac captures with other runners' stale files; selective staging now uploads only the runner's PNGs, with Linux owning shared files. Local staging contains only the Windows PNG. |
+
+All selected editing slices now have hosted feature proof. Installer proof for the final merged release commit remains pending; no v0.1.1 tag exists yet.
