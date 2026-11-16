@@ -147,3 +147,12 @@ The completion watcher also rejects real export error alerts and disposes its su
 | 2026-11-16 10:18 | L5 harness | Per-runner snapshot staging works on all three hosted OS families | windows-x64, macos-arm64, linux-x64 | [Snapshots 43847067976](https://github.com/itsdanielyc/corto/actions/runs/43847067976), all capture and merge jobs green; no stale cross-OS image overwrite. |
 
 There are no quarantined v0.1.1 feature journeys. Ruling: the application code already has green cross-platform feature proof, and the only final edit removes the Intel skip after its 20 clean real-shell repetitions. Merge the release candidate normally, then require full CI and installer proof on the exact merged main commit before tagging. Installer/release status is still pending; no release claim is made by this row.
+
+## v0.1.1 pre-tag evidence
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 10:54 | L0-L6 release source | Exact merged source passes the complete required suite, with the Intel journey restored | windows-x64, macos-arm64, linux-x64; macos-x64 L3/L6 | [CI 43852206059](https://github.com/itsdanielyc/corto/actions/runs/43852206059), successful on release source `3d603dae049f80449981ef120267709b07ebddab`. No feature quarantine remains. |
+| 2026-11-16 10:54 | L7 pre-tag gate | Exact source installs, loads, encodes an MP4 and uninstalls in every release variant | windows-x64 NSIS; macos-arm64/x64 DMG; linux-x64 DEB/AppImage | [Installers 43852206002](https://github.com/itsdanielyc/corto/actions/runs/43852206002), all four jobs green. Local release-gate script also confirms the successful main-branch installer run for this exact source. |
+
+Ruling: tag the proven release source `3d603dae049f80449981ef120267709b07ebddab`; this evidence-only documentation commit is later on main and changes no application/build/test code. The tag annotation records both exact-source gate runs. Publication and the fresh published-asset smoke checks remain pending. Signing status remains unsigned/unnotarized.
