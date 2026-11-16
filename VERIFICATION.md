@@ -23,3 +23,15 @@ is never rounded up to "tested"; anything not listed here is unverified.
 - AppImage's later intermittent liveness failure must be diagnosed before release.
 - Model checks have not yet run on the remote slice commit.
 - Editor, storage, real movie export and final installers are not yet implemented or verified.
+
+## 2026-11-16: foundation progress
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-16 01:54 | L0-L6 | Model slice and platform contract pass hosted checks before merge | windows-x64, macos-arm64, linux-x64, macos-x64 (L6) | Model [43788513056](https://github.com/itsdanielyc/corto/actions/runs/43788513056), platform contract [43789070197](https://github.com/itsdanielyc/corto/actions/runs/43789070197); PRs #2 and #4. |
+| 2026-11-16 01:58 | L7 | Installed renderer readiness and exact main-process PID pass; AppImage launches 30/30 | windows-x64, macos-arm64, linux-x64 | [43788627363](https://github.com/itsdanielyc/corto/actions/runs/43788627363); PR #3. Replaces the temporary-directory regex with an app-written readiness signal. |
+| 2026-11-16 02:04 | L3/L6 foundation | File-backed contract, streamed portable save/import, preserved working copy on failure, serialized saves, native sandboxed IPC | local windows-x64 | `npm run test:integration` exit 0, 5 checks; build plus `npm run test:e2e` exit 0, 5 checks. The native storage test is boundary evidence; a user editing journey is still required. |
+
+### Current gaps
+- Browser persistence implementation is built; real browser journeys follow with the editor.
+- Movie rendering, final UI, final installers and paid signing remain unverified.

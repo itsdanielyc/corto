@@ -2,10 +2,16 @@
 // template. It answers the bridge's IPC calls. The greeting is implemented
 // here on its own, not imported from contracts/, so the real-shell suite
 // (tests/e2e) is what holds it to the contract.
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { channels, type PlatformInfo } from "./bridge";
+import { FileProjectRepository } from "./storage";
+import { registerProjectCommands, testPreset } from "./project-ipc";
+import { handleMediaRequests, registerMediaScheme } from "./media-protocol";
+
+registerMediaScheme();
+let mainWindow: BrowserWindow | null = null;
 
 function greet(name: string): string {
   return `Hello, ${name}! You've been greeted from the main process!`;
@@ -33,6 +39,9 @@ function createWindow(): void {
       sandbox: true,
     },
   });
+  mainWindow = win;
+  win.on("closed", () => { if (mainWindow === win) mainWindow = null; });
+  win.webContents.on("will-navigate", event => event.preventDefault());
   win.once("ready-to-show", () => win.show());
   win.webContents.once("did-finish-load", () => {
     // Installer tests identify the actual loaded app, independent of AppImage's temporary mount name.
@@ -53,6 +62,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  const repository = new FileProjectRepository(testPreset("CORTO_WORKSPACE_ROOT") ?? join(app.getPath("userData"), "workspace-v1"));
+  handleMediaRequests(repository);
+  registerProjectCommands(repository, () => mainWindow);
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   ipcMain.handle(channels.greet, (_e, name: unknown) => greet(String(name)));
   ipcMain.handle(channels.platformInfo, () => platformInfo());
   createWindow();
