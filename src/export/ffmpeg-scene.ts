@@ -201,6 +201,12 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
     const targetHeight = `${height * layer.height}*${scale}`;
     const baseWidth = Math.max(2, Math.round(width * layer.width));
     const baseHeight = Math.max(2, Math.round(height * layer.height));
+    // Per-frame scaling changes the frame size, which later filters fix at their
+    // first frame. A transparent canvas sized for the largest scale keeps every
+    // frame the same size, so nothing is clipped or left behind.
+    const largest = Math.max(1, layer.endScale);
+    const canvasWidth = 2 * Math.ceil((baseWidth * largest) / 2);
+    const canvasHeight = 2 * Math.ceil((baseHeight * largest) / 2);
     const chain = [
       `setpts=PTS-STARTPTS+${Math.max(0, layer.start - localStart)}/TB`,
       `tpad=stop_mode=clone:stop_duration=${duration}`,
@@ -214,7 +220,12 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
       ...(layer.keyColour
         ? [`colorkey=0x${layer.keyColour.slice(1)}:${layer.keyTolerance}:0.05`]
         : []),
-      `rotate=${(layer.rotation * Math.PI) / 180}:c=none:ow=rotw(iw):oh=roth(ih)`,
+      `pad=${canvasWidth}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0:eval=frame`,
+      ...(layer.rotation
+        ? [
+            `rotate=${(layer.rotation * Math.PI) / 180}:c=black@0:ow=rotw(iw):oh=roth(ih)`,
+          ]
+        : []),
       ...(layer.endOpacity !== null && layer.endOpacity !== layer.opacity
         ? [
             `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*(${layer.opacity}+${layer.endOpacity - layer.opacity}*${progress.replace("(t+", "(T+")})'`,
@@ -278,8 +289,14 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
       `color=c=black:s=${width}x${height}:r=${fps}:d=${duration + 1 / fps}`,
     );
     const blended = label();
+    const rgbBase = label();
+    const rgbBlack = label();
+    // Scale RGB planes, not YUV: multiplying chroma towards 0 instead of its
+    // neutral midpoint turns every fade green.
     filters.push(
-      `[${base}][${black}:v]blend=all_expr='A*max(0,min(1,min((T+${localStart})/${fade},(${scene.duration - localStart}-T)/${fade})))'[${blended}]`,
+      `[${base}]format=gbrp[${rgbBase}]`,
+      `[${black}:v]format=gbrp[${rgbBlack}]`,
+      `[${rgbBase}][${rgbBlack}]blend=all_expr='A*max(0,min(1,min((T+${localStart})/${fade},(${scene.duration - localStart}-T)/${fade})))'[${blended}]`,
     );
     base = blended;
   }
