@@ -70,6 +70,7 @@ export interface NativeBridge extends ProjectRepository, CreatorServices {
   savePortable(project: Project): Promise<boolean>;
   exportMovie(request: MovieRequest): Promise<MovieResult | null>;
   cancelExport(): Promise<void>;
+  cancelMedia?(): Promise<void>;
   onExportProgress(listener: (progress: ExportProgress) => void): () => void;
   revealExport(): Promise<void>;
   beginRenderAssets?(project: Project, resolution: ExportResolution): Promise<string>;
@@ -102,4 +103,6 @@ export const nativeChannels = {
   loadPreferences: "corto:load-preferences",
   savePreferences: "corto:save-preferences",
   checkForUpdate: "corto:check-for-update",
+  projectOpened: "corto:project-opened",
+  audioSamples: "corto:audio-samples",
 } as const;
