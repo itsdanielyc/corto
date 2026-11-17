@@ -102,4 +102,5 @@ export const nativeChannels = {
   loadPreferences: "corto:load-preferences",
   savePreferences: "corto:save-preferences",
   checkForUpdate: "corto:check-for-update",
+  projectOpened: "corto:project-opened",
 } as const;

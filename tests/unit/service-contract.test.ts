@@ -8,5 +8,6 @@ it("restricts local media jobs to finite, project-owned operations", () => {
     { assetId: "clip", operation: "exec" },
     { assetId: "clip", operation: "frame", start: Infinity },
     { assetId: "clip", operation: "reverse", source: "C:/private" },
+    { assetId: "clip", operation: "audio", speed: 0 },
   ]) expect(() => mediaOperationSchema.parse(input)).toThrow();
 });

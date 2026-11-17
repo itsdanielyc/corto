@@ -10,6 +10,8 @@ export const mediaOperationSchema = z.strictObject({
   start: z.number().finite().min(0).max(24 * 3600).default(0),
   duration: z.number().finite().positive().max(LIMITS.filmSeconds).optional(),
   threshold: z.number().finite().min(0.05).max(0.9).default(0.3),
+  speed: z.number().finite().min(0.25).max(4).default(1),
+  preservePitch: z.boolean().default(true),
 });
 export type MediaOperation = z.infer<typeof mediaOperationSchema>;
 export interface MediaOperationResult { media?: ImportedMedia; boundaries?: number[] }
@@ -24,6 +26,7 @@ export interface UpdateInformation { version: string; url: string; signed: boole
 
 /** Optional platform services are capability checked at the UI boundary. */
 export interface CreatorServices {
+  onProjectOpened?(listener: (project: Project) => void): () => void;
   importMedia?(file: File): Promise<ImportedMedia>;
   processMedia?(project: Project, request: MediaOperation, signal?: AbortSignal): Promise<MediaOperationResult>;
   projectAction?(request: ProjectAction): Promise<Project | null>;
