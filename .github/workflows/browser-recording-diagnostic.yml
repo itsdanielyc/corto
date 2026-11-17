@@ -10,10 +10,16 @@ on:
         type: choice
         options: ["30", "20"]
         default: "30"
+      suite:
+        type: choice
+        options: ["recording", "recovery"]
+        default: "recording"
 permissions:
   contents: read
 jobs:
   diagnose:
+    env:
+      ONNXRUNTIME_NODE_INSTALL: skip
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -26,7 +32,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
-      - run: npx playwright test tests/ui/export.spec.ts --grep "automatic" --repeat-each=${{ inputs.repetitions }} --workers=2
+      - run: npx playwright test tests/ui/${{ inputs.suite == 'recovery' && 'essentials' || 'export' }}.spec.ts --grep "${{ inputs.suite == 'recovery' && 'multiple films resume' || 'automatic' }}" --repeat-each=${{ inputs.repetitions }} --workers=2
         env:
           CI: "1"
           CORTO_RECORDING_DIAGNOSTIC: "1"
