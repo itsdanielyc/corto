@@ -4,6 +4,7 @@ import { inspectFile } from "./import";
 import { captureMetadata } from "./metadata";
 import { mediaAssetSchema } from "../../contracts/project";
 import { parseColourLut } from "../domain/lut";
+import { convertSvgPicture, convertTiffPicture } from "./pictures";
 import {
   BROWSER_CONVERSION_BYTES,
   needsPhoneConversion,
@@ -116,10 +117,14 @@ async function importMediaBytes(
     return platform.importPhoneVideo(file);
   const compatible = heif
     ? await decodeHeif(file)
-    : phoneVideo ||
-        /\.(wmv|avi|mkv|mts|m2ts|3gp|vob|mpg|mpeg|gif)$/i.test(file.name)
-      ? await convertBrowserVideo(file)
-      : file;
+    : /\.svg$/i.test(file.name)
+      ? await convertSvgPicture(file)
+      : /\.tiff?$/i.test(file.name)
+        ? await convertTiffPicture(file)
+        : phoneVideo ||
+            /\.(wmv|avi|mkv|mts|m2ts|3gp|vob|mpg|mpeg|gif)$/i.test(file.name)
+          ? await convertBrowserVideo(file)
+          : file;
   const { asset } = await inspectFile(compatible);
   if (compatible === file) {
     await platform.putAsset(asset, file);
@@ -133,25 +138,29 @@ async function importMediaBytes(
       ? /\.heif$/i.test(file.name)
         ? "image/heif"
         : "image/heic"
-      : /\.gif$/i.test(file.name)
-        ? "image/gif"
-        : /\.wmv$/i.test(file.name)
-          ? "video/x-ms-wmv"
-          : /\.avi$/i.test(file.name)
-            ? "video/x-msvideo"
-            : /\.mkv$/i.test(file.name)
-              ? "video/x-matroska"
-              : /\.(mts|m2ts)$/i.test(file.name)
-                ? "video/mp2t"
-                : /\.3gp$/i.test(file.name)
-                  ? "video/3gpp"
-                  : /\.(vob|mpg|mpeg)$/i.test(file.name)
-                    ? "video/mpeg"
-                    : /\.mov$/i.test(file.name)
-                      ? "video/quicktime"
-                      : /\.m4v$/i.test(file.name)
-                        ? "video/x-m4v"
-                        : "video/mp4",
+      : /\.svg$/i.test(file.name)
+        ? "image/svg+xml"
+        : /\.tiff?$/i.test(file.name)
+          ? "image/tiff"
+          : /\.gif$/i.test(file.name)
+            ? "image/gif"
+            : /\.wmv$/i.test(file.name)
+              ? "video/x-ms-wmv"
+              : /\.avi$/i.test(file.name)
+                ? "video/x-msvideo"
+                : /\.mkv$/i.test(file.name)
+                  ? "video/x-matroska"
+                  : /\.(mts|m2ts)$/i.test(file.name)
+                    ? "video/mp2t"
+                    : /\.3gp$/i.test(file.name)
+                      ? "video/3gpp"
+                      : /\.(vob|mpg|mpeg)$/i.test(file.name)
+                        ? "video/mpeg"
+                        : /\.mov$/i.test(file.name)
+                          ? "video/quicktime"
+                          : /\.m4v$/i.test(file.name)
+                            ? "video/x-m4v"
+                            : "video/mp4",
     size: file.size,
     isOriginalOnly: true,
   };

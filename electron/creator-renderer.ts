@@ -1,3 +1,5 @@
+import { gifPaletteArguments, gifMovieArguments } from "../src/export/gif";
+import { transitionArguments } from "../src/export/ffmpeg-transition";
 import { copyFile, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -17,25 +19,16 @@ import {
   type StagedRaster,
   validateRaster,
 } from "./render-assets";
-import { chooseEncoder, encoderArguments } from "./encoder";
+import { chooseEncoder, rejectHardwareEncoder } from "./encoder";
+import { withEncoderFallback } from "./encoder-recovery";
 import { creatorSceneArguments } from "./creator-scene";
 import { runFfmpeg } from "./ffmpeg-process";
 import { writeAtomic } from "./atomic-file";
 import { burnSubtitles } from "./movie-subtitles";
 import { soundMixArguments } from "./movie-sound";
+import { rasterKeys, scopedRasterProject } from "../src/export/raster-scope";
 
 const PREFIX = "corto-compose-";
-const TRANSITIONS: Readonly<Record<string, string>> = {
-  dissolve: "fade",
-  "fade-white": "fadewhite",
-  "wipe-left": "wipeleft",
-  "wipe-right": "wiperight",
-  "slide-left": "slideleft",
-  "slide-right": "slideright",
-  "push-up": "slideup",
-  zoom: "zoomin",
-  blur: "hblur",
-};
 
 /** Keep the proven legacy path available for old bridge clients while new exports use composition segments. */
 export function usesCreatorRenderer(request: MovieRequest): boolean {
@@ -85,6 +78,8 @@ export async function renderCreatorMovie(
   cache?: RenderAssets,
 ): Promise<void> {
   const project = parseProject(request.project);
+  const audioOnly = ["m4a", "wav"].includes(project.output.format);
+  const partExtension = audioOnly ? "wav" : "mp4";
   const range = resolveRenderRange(project, request.range, request.sample);
   const fps = outputFrameRate(project);
   const dimensions = frameDimensions(project.ratio, request.resolution);
@@ -93,19 +88,22 @@ export async function renderCreatorMovie(
   const total =
     segments.reduce((sum, segment) => sum + segment.frames, 0) / fps;
   if (!segments.length) throw new Error("Add a scene to export");
-  const rasters = new Map<string, StagedRaster>(
-    request.renderAssetsToken
-      ? (cache?.resolve(
-          request.renderAssetsToken,
-          project,
-          request.resolution,
-        ) ??
-          (() => {
-            throw new Error("The render assets are unavailable");
-          })())
-      : [],
-  );
+  const scoped = scopedRasterProject({ ...request, project });
+  const required = audioOnly ? new Set<string>() : rasterKeys(scoped);
   try {
+    const rasters = new Map<string, StagedRaster>(
+      request.renderAssetsToken
+        ? (cache?.resolve(
+            request.renderAssetsToken,
+            project,
+            request.resolution,
+            required,
+          ) ??
+            (() => {
+              throw new Error("The render assets are unavailable");
+            })())
+        : [],
+    );
     for (const overlay of request.overlays) {
       if (
         !project.scenes.some(
@@ -118,9 +116,14 @@ export async function renderCreatorMovie(
       await writeFile(path, overlay.png);
       rasters.set(`caption:${overlay.sceneId}`, { path, ...dimensions });
     }
+    for (const key of required)
+      if (!key.startsWith("subtitle:") && !rasters.has(key))
+        throw new Error(
+          "An export title or overlay is missing. Reopen the export window and try again.",
+        );
     const audio = new Set<string>();
     const used = new Set(
-      project.scenes
+      scoped.scenes
         .flatMap((scene) => [
           scene.assetId,
           scene.backdrop.assetId,
@@ -131,10 +134,12 @@ export async function renderCreatorMovie(
     for (const id of used) {
       signal.throwIfAborted();
       const asset = project.assets[id];
+      if (audioOnly && (asset.kind !== "video" || asset.hasAudio === false))
+        continue;
       const path = repository.assetPath(id);
       if ((await stat(path)).size !== asset.size)
         throw new Error(`Original media is incomplete: ${asset.name}`);
-      if (asset.kind === "video") {
+      if (asset.kind === "video" && project.output.format !== "gif") {
         const diagnostic = await runFfmpeg(
           binary,
           ["-loglevel", "info", "-i", path],
@@ -143,7 +148,9 @@ export async function renderCreatorMovie(
         if (/Stream #.*Audio:/.test(diagnostic)) audio.add(id);
       }
     }
-    const encoder = await chooseEncoder(binary, project.output, signal);
+    const encoder = audioOnly
+      ? { name: "libx264", threads: 1, quality: project.output.quality }
+      : await chooseEncoder(binary, project.output, signal);
     progress({
       fraction: 0,
       message: `Rendering with ${encoder.name === "libx264" ? "software" : "hardware"} encoding`,
@@ -155,7 +162,7 @@ export async function renderCreatorMovie(
     );
     const files: string[] = [];
     const lutFiles = new Map<string, string>();
-    for (const scene of project.scenes)
+    for (const scene of audioOnly ? [] : scoped.scenes)
       if (
         scene.adjustments.lutAssetId &&
         !lutFiles.has(scene.adjustments.lutAssetId)
@@ -168,11 +175,25 @@ export async function renderCreatorMovie(
         lutFiles.set(scene.adjustments.lutAssetId, lutName);
       }
     let completed = 0;
+    const encode = <T>(operation: () => Promise<T>) =>
+      withEncoderFallback(
+        encoder,
+        signal,
+        () => {
+          rejectHardwareEncoder(binary);
+          progress({
+            fraction: Math.min(0.85, (completed / total) * 0.85),
+            message:
+              "Using software encoding after the hardware became unavailable",
+          });
+        },
+        operation,
+      );
     for (const [index, segment] of segments.entries()) {
       signal.throwIfAborted();
       const output = join(
         directory,
-        `part-${String(index).padStart(5, "0")}.mp4`,
+        `part-${String(index).padStart(5, "0")}.${partExtension}`,
       );
       const renderScene = async (
         scene: Project["scenes"][number],
@@ -181,27 +202,29 @@ export async function renderCreatorMovie(
         frames: number,
         path: string,
       ) => {
-        await runFfmpeg(
-          binary,
-          creatorSceneArguments({
-            project,
-            scene,
-            localStart,
-            duration,
-            frames,
-            ...dimensions,
-            fps,
-            output: path,
-            bitrate,
-            encoder,
-            rasters,
-            path: (id) => repository.assetPath(id),
-            audio,
-            lut: scene.adjustments.lutAssetId
-              ? lutFiles.get(scene.adjustments.lutAssetId)
-              : undefined,
-          }),
-          { signal, cwd: directory },
+        await encode(() =>
+          runFfmpeg(
+            binary,
+            creatorSceneArguments({
+              project,
+              scene,
+              localStart,
+              duration,
+              frames,
+              ...dimensions,
+              fps,
+              output: path,
+              bitrate,
+              encoder,
+              rasters,
+              path: (id) => repository.assetPath(id),
+              audio,
+              lut: scene.adjustments.lutAssetId
+                ? lutFiles.get(scene.adjustments.lutAssetId)
+                : undefined,
+            }),
+            { signal, cwd: directory },
+          ),
         );
       };
       if (segment.kind === "body")
@@ -213,8 +236,8 @@ export async function renderCreatorMovie(
           output,
         );
       else {
-        const first = join(directory, "overlap-from.mp4");
-        const second = join(directory, "overlap-to.mp4");
+        const first = join(directory, `overlap-from.${partExtension}`);
+        const second = join(directory, `overlap-to.${partExtension}`);
         const frames = Math.ceil(segment.fullDuration * fps);
         await renderScene(
           segment.from.scene,
@@ -224,35 +247,21 @@ export async function renderCreatorMovie(
           first,
         );
         await renderScene(segment.to!.scene, 0, frames / fps, frames, second);
-        await runFfmpeg(
-          binary,
-          [
-            "-i",
-            first,
-            "-i",
-            second,
-            "-filter_complex_threads",
-            "1",
-            "-filter_complex",
-            `[0:v]setpts=PTS-STARTPTS,fps=${fps}[a];[1:v]setpts=PTS-STARTPTS,fps=${fps}[b];[a][b]xfade=transition=${TRANSITIONS[segment.from.scene.transition] ?? "fade"}:duration=${segment.fullDuration}:offset=0,trim=start=${segment.trimStart}:duration=${segment.frames / fps},setpts=PTS-STARTPTS[v];[0:a][1:a]acrossfade=d=${segment.fullDuration}:c1=tri:c2=tri,atrim=start=${segment.trimStart}:duration=${segment.frames / fps},asetpts=PTS-STARTPTS[audio]`,
-            "-map",
-            "[v]",
-            "-map",
-            "[audio]",
-            ...encoderArguments(encoder, bitrate),
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            "-r",
-            String(fps),
-            "-frames:v",
-            String(segment.frames),
-            "-t",
-            String(segment.frames / fps),
-            output,
-          ],
-          { signal },
+        await encode(() =>
+          runFfmpeg(
+            binary,
+            transitionArguments({
+              from: first,
+              to: second,
+              output,
+              segment,
+              fps,
+              encoder,
+              bitrate,
+              audioOnly,
+            }),
+            { signal },
+          ),
         );
         await rm(first);
         await rm(second);
@@ -269,7 +278,7 @@ export async function renderCreatorMovie(
       manifest,
       files.map((path) => `file '${basename(path)}'`).join("\n"),
     );
-    let finished = join(directory, "joined.mp4");
+    let finished = join(directory, `joined.${partExtension}`);
     await runFfmpeg(
       binary,
       [
@@ -283,26 +292,31 @@ export async function renderCreatorMovie(
         "copy",
         "-t",
         String(total),
-        "-movflags",
-        "+faststart",
+        ...(audioOnly ? [] : ["-movflags", "+faststart"]),
         finished,
       ],
       { signal },
     );
     for (const file of files) await rm(file);
-    finished = await burnSubtitles(
-      binary,
-      project,
-      request.subtitleOverlays ?? [],
-      finished,
-      directory,
-      total,
-      bitrate,
-      signal,
-      { rasters, rangeStart: range.start, fps, encoder },
-    );
+    if (!audioOnly)
+      finished = await encode(() =>
+        burnSubtitles(
+          binary,
+          project,
+          request.subtitleOverlays ?? [],
+          finished,
+          directory,
+          total,
+          bitrate,
+          signal,
+          { rasters, rangeStart: range.start, fps, encoder },
+        ),
+      );
     const loops = new Map<string, string>();
-    for (const [index, clip] of projectAudioClips(project).entries()) {
+    for (const [index, clip] of (project.output.format === "gif"
+      ? []
+      : projectAudioClips(project)
+    ).entries()) {
       const asset = project.assets[clip.assetId];
       const source = repository.assetPath(asset.id);
       if ((await stat(source)).size !== asset.size)
@@ -330,47 +344,52 @@ export async function renderCreatorMovie(
         loops.set(clip.id, path);
       }
     }
-    const mixed = join(directory, "mixed.mp4");
-    const mix = soundMixArguments(
-      project,
-      repository,
-      finished,
-      mixed,
-      total,
-      loops,
-      range.start,
-    );
+    const mixed = join(directory, `mixed.${partExtension}`);
+    const mix =
+      project.output.format === "gif"
+        ? null
+        : soundMixArguments(
+            project,
+            repository,
+            finished,
+            mixed,
+            total,
+            loops,
+            range.start,
+            audioOnly,
+          );
     if (mix) {
       progress({ fraction: 0.9, message: "Mixing the soundtrack" });
       await runFfmpeg(binary, mix, { signal });
       finished = mixed;
     }
-    if (project.output.format !== "mp4") {
-      const extension = project.output.format;
-      const converted = join(directory, `converted.${extension}`);
-      const options =
-        extension === "gif"
-          ? [
-              "-an",
-              "-filter_complex_threads",
-              "1",
-              "-filter_complex",
-              "fps=15,scale=min(960\\,iw):-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse=dither=sierra2_4a",
-            ]
-          : [
-              "-vn",
-              "-c:a",
-              extension === "wav" ? "pcm_s16le" : "aac",
-              ...(extension === "m4a" ? ["-b:a", "192k"] : []),
-            ];
-      await runFfmpeg(binary, ["-i", finished, ...options, converted], {
+    if (project.output.format === "gif") {
+      const palette = join(directory, "palette.png");
+      const converted = join(directory, "finished.gif");
+      await runFfmpeg(
+        binary,
+        gifPaletteArguments(finished, palette, project.output.quality),
+        { signal },
+      );
+      await runFfmpeg(binary, gifMovieArguments(finished, palette, converted), {
         signal,
       });
+      finished = converted;
+    } else if (project.output.format === "m4a") {
+      const converted = join(directory, "finished.m4a");
+      await runFfmpeg(
+        binary,
+        ["-i", finished, "-vn", "-c:a", "aac", "-b:a", "192k", converted],
+        { signal },
+      );
       finished = converted;
     }
     signal.throwIfAborted();
     progress({ fraction: 0.98, message: "Saving the finished file" });
-    await writeAtomic(destination, (path) => copyFile(finished, path));
+    await writeAtomic(destination, async (path) => {
+      await copyFile(finished, path);
+      signal.throwIfAborted();
+    });
     progress({ fraction: 1, message: "Your movie is ready" });
   } finally {
     const absolute = resolve(directory);

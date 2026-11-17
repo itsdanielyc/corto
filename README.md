@@ -16,20 +16,23 @@ Corto is a home video and slideshow maker for **Windows, macOS, Linux and the we
 3. Add titles and timed subtitles. Place songs, record narration and choose fades or reduced music under clip sound.
 4. Export in landscape, portrait or square with TV, phone or small-file presets; try a five-second sample first.
 
-Desktop builds export local H.264/AAC MP4 files using a bundled, checksum-verified FFmpeg executable. The browser offers MP4 recording where its encoder is supported; other browsers can transfer a portable project to the desktop app. Keep the tab visible during web export.
+Create an editable slideshow from a folder or selection, fit it to music, or start with a birthday, holiday, wedding or memorial template. Photo motion, focal crop, colour, transitions, timed text, credits, overlays and a proportional timeline remain individually editable.
+
+Desktop builds export local MP4, GIF, M4A and WAV using bundled, checksum-verified FFmpeg. Browser export uses the bundled local WebAssembly encoder with deterministic frame timing. Browser jobs have a 256 MB per-source and 512 MB working-file budget; large movies can transfer to desktop as portable projects. Export jobs keep their own project snapshots while you continue editing.
 
 ## Your projects stay with you
 
-The editor autosaves named films on this device. **My films** shows recent projects and can recover the previous edit as a separate copy. **Save portable copy** writes a self-contained `.corto` project with its original media, so it can move between computers and operating systems without relinking files. Keep portable copies of projects you want to preserve, especially when using browser storage.
+The editor autosaves named films on this device. **My films** supports rename, duplicate and delete, and can restore one of the last 30 metadata versions as a separate film. **Save portable copy** writes a self-contained `.corto` project with its original media, so it can move between computers and operating systems without relinking files. Keep portable copies of projects you want to preserve, especially when using browser storage.
 
 The application contains no accounts, analytics, remote fonts or media upload service. The example and its credited photos/music are bundled locally. The production web shell can cache itself for offline use after the first successful load.
 
 ## Preview scope
 
 - Native Windows x64, Apple Silicon and Intel Mac, Linux x64; responsive browser editor.
-- JPG, PNG, WebP, BMP and HEIC/HEIF photos; MP4/MOV/WebM video, with local HEVC/HDR compatibility copies; MP3, WAV, M4A, AAC, FLAC and Ogg audio.
-- Up to 30 minutes, 300 scenes, 500 originals and 8 GB of media per project; 2 GB per original.
-- A single storyboard, placed songs/narration and timed subtitles. HEIF decoding is bounded to 64 megapixels; browser phone-video conversion to 256 MB; narration to five-minute sections. Originals remain unchanged. General RAW/professional HDR editing, automatic transcription, native mobile installers and automatic updates are outside this preview.
+- JPG, PNG, WebP, BMP, HEIC/HEIF, GIF, TIFF and self-contained SVG; local conversion for legacy WMV/AVI/MKV/AVCHD/3GP/VOB and phone footage; MP3, WAV, M4A, AAC, FLAC and Ogg audio. Original bytes stay intact.
+- Up to three hours, 1,000 scenes, 2,500 assets and 64 GB per project; 8 GB per asset. Desktop output includes 4K and 24/25/30/60 fps or source matching.
+- Local Whisper captions and photo background removal download pinned model data only after an explicit request. Cached models work offline; media is never uploaded. The background-removal copy is bounded to 4K.
+- A single storyboard with timed text/overlays and placed sound lanes, a bundled original CC0 music/SFX pack, English/Spanish UI, project defaults and opt-in release checking. Automatic installation of updates, general RAW/professional HDR editing and native mobile packages remain outside this preview.
 - Desktop installers are **unsigned**. Read the [OS installation notes](docs/installing.md).
 
 ## Build and contribute
@@ -37,7 +40,7 @@ The application contains no accounts, analytics, remote fonts or media upload se
 Use Node.js 24 and npm. Dependency installation verifies the native media engine against the committed upstream SHA-256 before executing it.
 
 ```sh
-npm ci
+npm run setup               # npm ci without unnecessary Node/CUDA inference binaries
 npx playwright install chromium
 node node_modules/electron/install.js
 npm run dev                 # desktop editor

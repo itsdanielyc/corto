@@ -51,7 +51,7 @@ export function useProject(
               output: preferences.output,
             });
         }
-        setLoaded(true);
+        if (!cancelled) setLoaded(true);
       })
       .catch((error) => {
         if (cancelled) return;

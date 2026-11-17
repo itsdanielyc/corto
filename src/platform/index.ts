@@ -8,6 +8,7 @@ import type { MediaAsset, Project } from "../../contracts/project";
 import { BrowserProjectRepository } from "./browser-repository";
 import type { CortoPlatform } from "./types";
 import { projectRasters } from "../preview/rasters";
+import { scopedRasterProject } from "../export/raster-scope";
 import type { MediaOperation, ProjectAction } from "../../contracts/services";
 import { preferencesSchema } from "../../contracts/creative";
 import type { Preferences } from "../../contracts/project";
@@ -112,6 +113,18 @@ class NativePlatform implements CortoPlatform {
   releaseMediaUrls(): void {
     /* The native protocol owns no browser object URLs. */
   }
+  async prepareExport(request: MovieRequest): Promise<MovieRequest | null> {
+    if (!this.bridge.chooseExportDestination) return request;
+    const destinationToken = await this.bridge.chooseExportDestination(
+      request.project,
+      request.sample,
+    );
+    return destinationToken ? { ...request, destinationToken } : null;
+  }
+  async disposeExport(request: MovieRequest): Promise<void> {
+    if (request.destinationToken)
+      await this.bridge.releaseExportDestination?.(request.destinationToken);
+  }
   async renderMovie(
     request: MovieRequest,
     progress: (value: ExportProgress) => void,
@@ -125,13 +138,17 @@ class NativePlatform implements CortoPlatform {
     };
     signal.addEventListener("abort", cancel, { once: true });
     try {
-      if (this.bridge.beginRenderAssets && this.bridge.stageRenderAsset) {
+      if (
+        !["m4a", "wav"].includes(request.project.output.format) &&
+        this.bridge.beginRenderAssets &&
+        this.bridge.stageRenderAsset
+      ) {
         token = await this.bridge.beginRenderAssets(
           request.project,
           request.resolution,
         );
         for await (const raster of projectRasters(
-          request.project,
+          scopedRasterProject(request),
           request.resolution,
           signal,
         )) {
@@ -161,8 +178,27 @@ class WebPlatform extends BrowserProjectRepository implements CortoPlatform {
   checkForUpdate() {
     return checkPublishedUpdate(packageInfo.version);
   }
-  async processMedia(project: Project, request: MediaOperation, signal?: AbortSignal) { const { processBrowserMedia } = await import("../media/browser-jobs"); return processBrowserMedia(this, project, request, signal); }
-  async audioSamples(project: Project, request: { assetId: string; start: number; duration: number; speed: number; preservePitch: boolean }) { const { browserAudioSamples } = await import("../media/browser-jobs"); return browserAudioSamples(this, project, request); }
+  async processMedia(
+    project: Project,
+    request: MediaOperation,
+    signal?: AbortSignal,
+  ) {
+    const { processBrowserMedia } = await import("../media/browser-jobs");
+    return processBrowserMedia(this, project, request, signal);
+  }
+  async audioSamples(
+    project: Project,
+    request: {
+      assetId: string;
+      start: number;
+      duration: number;
+      speed: number;
+      preservePitch: boolean;
+    },
+  ) {
+    const { browserAudioSamples } = await import("../media/browser-jobs");
+    return browserAudioSamples(this, project, request);
+  }
   override async openPortable(file?: File): Promise<Project | null> {
     return file ? super.openPortable(file) : null;
   }
@@ -176,13 +212,25 @@ class WebPlatform extends BrowserProjectRepository implements CortoPlatform {
     surface?: HTMLCanvasElement,
   ): Promise<MovieResult> {
     const { renderBrowserMovie } = await import("../export/browser");
-    return renderBrowserMovie(
-      request,
-      (id) => this.assetUrl(id),
-      progress,
-      signal,
-      surface,
-    );
+    const urls = new Map<string, string>();
+    const resolve = async (id: string) => {
+      const cached = urls.get(id);
+      if (cached) return cached;
+      const url = URL.createObjectURL(await this.assetBlob(id));
+      urls.set(id, url);
+      return url;
+    };
+    try {
+      return await renderBrowserMovie(
+        request,
+        resolve,
+        progress,
+        signal,
+        surface,
+      );
+    } finally {
+      for (const url of urls.values()) URL.revokeObjectURL(url);
+    }
   }
 }
 

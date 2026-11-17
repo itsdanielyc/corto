@@ -37,7 +37,7 @@ function nextFrame(signal: AbortSignal): Promise<number> {
 
 // Time O(output frames × pixels), space O(current/next decoded scenes + recorded output chunks).
 /** Record the real canvas and mixed source audio locally; no network encoder or media upload exists. */
-export async function renderBrowserMovie(
+async function renderRecorderMovie(
   request: MovieRequest,
   assetUrl: (id: string) => Promise<string>,
   progress: (value: ExportProgress) => void,
@@ -191,4 +191,23 @@ export async function renderBrowserMovie(
     await audio.close();
     document.removeEventListener("visibilitychange", hidden);
   }
+}
+
+/** Normal exports use frame budgets, so OS media clocks cannot truncate or stretch the encoded movie. */
+export async function renderBrowserMovie(
+  request: MovieRequest,
+  assetUrl: (id: string) => Promise<string>,
+  progress: (value: ExportProgress) => void,
+  signal: AbortSignal,
+  surface?: HTMLCanvasElement,
+): Promise<MovieResult> {
+  const format = browserRecordingFormat();
+  if (!format)
+    throw new Error(
+      "This browser cannot run the local encoder. Open a portable project in Corto for desktop.",
+    );
+  if (format.extension === "webm")
+    return renderRecorderMovie(request, assetUrl, progress, signal, surface);
+  const { renderWasmMovie } = await import("./wasm-renderer");
+  return renderWasmMovie(request, assetUrl, progress, signal);
 }

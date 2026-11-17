@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { useState } from "react";
 import type { Project, Scene } from "../../contracts/project";
 import {
@@ -9,7 +10,6 @@ import { buildTimeline } from "../domain/timeline";
 import { Modal } from "./primitives";
 import { Choice, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { MOTION_CHOICES, TRANSITION_CHOICES } from "./tools/PictureTools";
-
 export function FilmTools({
   project,
   selectedIds,
@@ -33,6 +33,7 @@ export function FilmTools({
   onSeek: (time: number) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [all, setAll] = useState(false);
   const [seconds, setSeconds] = useState(project.defaults.photoSeconds);
   const [motion, setMotion] = useState<Scene["transform"]["motion"]>("zoom-in");
@@ -50,24 +51,28 @@ export function FilmTools({
     });
   return (
     <Modal
-      title="Film tools & bulk edits"
+      title={t("Film tools & bulk edits")}
       onClose={onClose}
       className="slideshow-dialog"
     >
       <p className="modal-introduction">
-        {selectedIds.size} scene{selectedIds.size === 1 ? "" : "s"} selected.
-        Ctrl/⌘ click or Shift click in the storyboard to select more.
+        {selectedIds.size}
+        {t(" scene")}
+        {selectedIds.size === 1 ? "" : t("s")}
+        {t(
+          " selected. Ctrl/\u2318 click or Shift click in the storyboard to select more.",
+        )}
       </p>
       <div className="slideshow-layout">
         <div>
-          <ToolSection title="Apply together">
+          <ToolSection title={t("Apply together")}>
             <Toggle
-              label="Apply to every scene"
+              label={t("Apply to every scene")}
               checked={all}
               onChange={setAll}
             />
             <Numeric
-              label="Bulk photo duration"
+              label={t("Bulk photo duration")}
               value={seconds}
               min={0.25}
               max={120}
@@ -84,10 +89,10 @@ export function FilmTools({
                 )
               }
             >
-              Set photo durations
+              {t("Set photo durations")}
             </button>
             <Choice
-              label="Bulk photo motion"
+              label={t("Bulk photo motion")}
               value={motion}
               options={MOTION_CHOICES}
               onChange={setMotion}
@@ -101,7 +106,7 @@ export function FilmTools({
                 }))
               }
             >
-              Apply motion
+              {t("Apply motion")}
             </button>
             <button
               className="button secondary"
@@ -124,16 +129,16 @@ export function FilmTools({
                 }))
               }
             >
-              Vary photo motion
+              {t("Vary photo motion")}
             </button>
             <Choice
-              label="Bulk transition"
+              label={t("Bulk transition")}
               value={transition}
               options={TRANSITION_CHOICES}
               onChange={setTransition}
             />
             <Numeric
-              label="Bulk transition duration"
+              label={t("Bulk transition duration")}
               value={transitionSeconds}
               min={0}
               max={5}
@@ -145,7 +150,7 @@ export function FilmTools({
                 apply((scene) => ({ ...scene, transition, transitionSeconds }))
               }
             >
-              Apply transitions
+              {t("Apply transitions")}
             </button>
             <button
               className="button secondary"
@@ -157,7 +162,7 @@ export function FilmTools({
                   apply((scene) => ({ ...scene, ...sceneEffects(first) }));
               }}
             >
-              Apply first selected scene's effects
+              {t("Apply first selected scene's effects")}
             </button>
             <button
               className="button secondary"
@@ -182,19 +187,19 @@ export function FilmTools({
                 })
               }
             >
-              Caption from capture date / camera
+              {t("Caption from capture date / camera")}
             </button>
           </ToolSection>
         </div>
         <div>
-          <ToolSection title="Timeline & library">
+          <ToolSection title={t("Timeline & library")}>
             <Toggle
-              label="Proportional timeline"
+              label={t("Proportional timeline")}
               checked={timelineMode}
               onChange={onTimeline}
             />
             <Numeric
-              label="Timeline pixels per second"
+              label={t("Timeline pixels per second")}
               value={zoom}
               min={4}
               max={200}
@@ -205,18 +210,19 @@ export function FilmTools({
               className="button secondary"
               onClick={() => onChange(removeUnusedAssets)}
             >
-              Remove unused library items
+              {t("Remove unused library items")}
             </button>
             <p className="dialog-note">
-              Library cleanup removes references in this film. It keeps source
-              files and other films' history.
+              {t(
+                "Library cleanup removes references in this film. It keeps source files and other films' history.",
+              )}
             </p>
           </ToolSection>
-          <ToolSection title="Markers & chapters">
+          <ToolSection title={t("Markers & chapters")}>
             <label className="field-label">
-              Marker name
+              {t("Marker name")}
               <input
-                aria-label="Marker name"
+                aria-label={t("Marker name")}
                 maxLength={80}
                 value={marker}
                 onChange={(event) => setMarker(event.target.value)}
@@ -241,7 +247,7 @@ export function FilmTools({
                 setMarker("");
               }}
             >
-              Add marker at playhead
+              {t("Add marker at playhead")}
             </button>
             {project.markers.map((item) => (
               <div className="tool-button-row" key={item.id}>
@@ -249,11 +255,14 @@ export function FilmTools({
                   className="text-button"
                   onClick={() => onSeek(item.time)}
                 >
-                  {item.name} · {item.time.toFixed(1)}s
+                  {item.name}
+                  {t(" \u00B7 ")}
+                  {item.time.toFixed(1)}
+                  {t("s")}
                 </button>
                 <button
                   className="text-button"
-                  aria-label={`Delete marker ${item.name}`}
+                  aria-label={t(`Delete marker ${item.name}`)}
                   onClick={() =>
                     onChange((current) => ({
                       ...current,
@@ -263,7 +272,7 @@ export function FilmTools({
                     }))
                   }
                 >
-                  Remove
+                  {t("Remove")}
                 </button>
               </div>
             ))}
@@ -286,12 +295,12 @@ export function FilmTools({
                 );
               }}
             >
-              Save chapters text
+              {t("Save chapters text")}
             </button>
             <label className="field-label">
-              Scene group
+              {t("Scene group")}
               <input
-                aria-label="Scene group"
+                aria-label={t("Scene group")}
                 maxLength={80}
                 value={group}
                 onChange={(event) => setGroup(event.target.value)}
@@ -301,22 +310,24 @@ export function FilmTools({
               className="button secondary"
               onClick={() => apply((scene) => ({ ...scene, group }))}
             >
-              Group selected scenes
+              {t("Group selected scenes")}
             </button>
             <p className="dialog-note">
-              Groups label related scenes; each scene remains independently
-              editable.
+              {t(
+                "Groups label related scenes; each scene remains independently editable.",
+              )}
             </p>
           </ToolSection>
           <p className="dialog-note">
-            Film length:{" "}
-            {buildTimeline(project.scenes).at(-1)?.end.toFixed(1) ?? 0} seconds.
+            {t("Film length:")}{" "}
+            {buildTimeline(project.scenes).at(-1)?.end.toFixed(1) ?? 0}
+            {t(" seconds.")}
           </p>
         </div>
       </div>
       <div className="modal-actions">
         <button className="button primary" onClick={onClose}>
-          Done
+          {t("Done")}
         </button>
       </div>
     </Modal>

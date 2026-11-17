@@ -104,6 +104,7 @@ export function duckingWindows(project: Project): SoundWindow[] {
     if (
       scene.assetId &&
       project.assets[scene.assetId].kind === "video" &&
+      project.assets[scene.assetId].hasAudio !== false &&
       scene.volume > 0
     )
       windows.push({ start, end: start + scene.duration });
@@ -123,9 +124,24 @@ export function duckingWindows(project: Project): SoundWindow[] {
 }
 
 /** Editing a placed duration opts out of film-following; disabling a loop returns to the available source. */
-export function editSound(project: Project, clip: AudioClip, changes: Partial<AudioClip>): AudioClip {
-  const updated = { ...clip, ...changes, ...(changes.duration !== undefined ? { followFilm: false } : {}) };
-  if (changes.loop === false) { updated.duration = Math.min(updated.duration, project.assets[updated.assetId].duration - updated.offset); updated.fadeIn = Math.min(updated.fadeIn, updated.duration / 2); updated.fadeOut = Math.min(updated.fadeOut, updated.duration / 2); }
+export function editSound(
+  project: Project,
+  clip: AudioClip,
+  changes: Partial<AudioClip>,
+): AudioClip {
+  const updated = {
+    ...clip,
+    ...changes,
+    ...(changes.duration !== undefined ? { followFilm: false } : {}),
+  };
+  if (changes.loop === false) {
+    updated.duration = Math.min(
+      updated.duration,
+      project.assets[updated.assetId].duration - updated.offset,
+    );
+    updated.fadeIn = Math.min(updated.fadeIn, updated.duration / 2);
+    updated.fadeOut = Math.min(updated.fadeOut, updated.duration / 2);
+  }
   return updated;
 }
 

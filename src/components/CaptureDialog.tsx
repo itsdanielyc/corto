@@ -1,11 +1,10 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./primitives";
 import { waitForMedia } from "../media/import";
 import { finalizeWebm } from "../export/finalize-webm";
-
 const MAX_CAPTURE_BYTES = 60 * 1024 ** 2;
 const MAX_CAPTURE_SECONDS = 10 * 60;
-
 /** Camera/screen capture owns and releases every track, including when a dialog closes mid-recording. */
 export function CaptureDialog({
   onImport,
@@ -14,6 +13,7 @@ export function CaptureDialog({
   onImport: (files: File[]) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -134,17 +134,18 @@ export function CaptureDialog({
     }
   };
   return (
-    <Modal title="Record camera or screen" onClose={onClose}>
+    <Modal title={t("Record camera or screen")} onClose={onClose}>
       <video
         className="capture-preview"
         ref={video}
         muted
         playsInline
-        aria-label="Recording preview"
+        aria-label={t("Recording preview")}
       />
       <p className="dialog-note">
-        Record up to ten minutes or 60 MB per take. You choose the device or
-        screen; recording stays local.
+        {t(
+          "Record up to ten minutes or 60 MB per take. You choose the device or screen; recording stays local.",
+        )}
       </p>
       {error && (
         <p role="alert" className="inline-error">
@@ -154,12 +155,16 @@ export function CaptureDialog({
       <div className="modal-actions">
         {active ? (
           <>
-            <span role="status">Recording · {seconds}s</span>
+            <span role="status">
+              {t("Recording \u00B7 ")}
+              {seconds}
+              {t("s")}
+            </span>
             <button
               className="button primary"
               onClick={() => recorder.current?.stop()}
             >
-              Stop and add recording
+              {t("Stop and add recording")}
             </button>
           </>
         ) : (
@@ -170,7 +175,7 @@ export function CaptureDialog({
                 void start(false);
               }}
             >
-              Record camera
+              {t("Record camera")}
             </button>
             <button
               className="button primary"
@@ -178,7 +183,7 @@ export function CaptureDialog({
                 void start(true);
               }}
             >
-              Record screen
+              {t("Record screen")}
             </button>
           </>
         )}

@@ -15,7 +15,8 @@ export function renderFrame(
   media: VisualMedia | null,
   localTime: number,
   animateFade = true,
-  resolveMedia: (id: string) => VisualMedia | null = () => null,
+  resolveMedia: (id: string, reference?: string) => VisualMedia | null = () =>
+    null,
 ): void {
   const { width, height } = context.canvas;
   context.globalAlpha = 1;
@@ -38,7 +39,7 @@ export function renderFrame(
   }
   context.fillRect(0, 0, width, height);
   const backdrop = scene.backdrop.assetId
-    ? resolveMedia(scene.backdrop.assetId)
+    ? resolveMedia(scene.backdrop.assetId, "backdrop")
     : null;
   if (scene.backdrop.kind === "photo" && backdrop) {
     const sourceWidth =
@@ -120,7 +121,7 @@ export function renderFrame(
       layer,
       scene.duration,
       localTime,
-      layer.assetId ? resolveMedia(layer.assetId) : null,
+      layer.assetId ? resolveMedia(layer.assetId, layer.id) : null,
     );
   for (const item of scene.textItems)
     drawText(context, item, scene.duration, localTime);

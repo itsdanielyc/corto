@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { channels, type PlatformInfo } from "./bridge";
 import { FileProjectRepository } from "./storage";
 import { registerProjectCommands, testPreset } from "./project-ipc";
@@ -9,9 +10,16 @@ import { registerExportCommands } from "./export-ipc";
 import { writeAtomic } from "./atomic-file";
 import { configureCapture, projectOpenIntegration } from "./shell-integration";
 
+const testingWorkspace = testPreset("CORTO_WORKSPACE_ROOT");
+if (testingWorkspace) {
+  const profile = join(testingWorkspace, "runtime-profile");
+  mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+}
 registerMediaScheme();
 let mainWindow: BrowserWindow | null = null;
 let nativeExporter: ReturnType<typeof registerExportCommands> | null = null;
+let nativeMediaJobs: ReturnType<typeof registerProjectCommands> | null = null;
 let readinessReported = false;
 let repositoryForOpen: FileProjectRepository | null = null;
 const projectFiles = projectOpenIntegration(
@@ -90,16 +98,16 @@ function createWindow(): void {
   });
   let confirmingClose = false;
   win.on("close", (event) => {
-    if (!nativeExporter?.active()) return;
+    if (!nativeExporter?.active() && !nativeMediaJobs?.active()) return;
     event.preventDefault();
     if (confirmingClose) return;
     confirmingClose = true;
     void dialog
       .showMessageBox(win, {
         type: "question",
-        message: "Your movie is still exporting.",
-        detail: "Cancel the export and close Corto?",
-        buttons: ["Keep exporting", "Cancel export and close"],
+        message: "Corto is still processing your film.",
+        detail: "Cancel the current operation and close Corto?",
+        buttons: ["Keep processing", "Cancel and close"],
         defaultId: 0,
         cancelId: 0,
       })
@@ -107,6 +115,7 @@ function createWindow(): void {
         confirmingClose = false;
         if (result.response === 1) {
           await nativeExporter?.cancelAndWait();
+          await nativeMediaJobs?.cancelAndWait();
           win.destroy();
         }
       });
@@ -131,7 +140,7 @@ app.whenReady().then(() => {
   );
   repositoryForOpen = repository;
   handleMediaRequests(repository);
-  registerProjectCommands(
+  const mediaJobs = registerProjectCommands(
     repository,
     () => mainWindow,
     () => {
@@ -139,12 +148,16 @@ app.whenReady().then(() => {
       projectFiles.rendererReady();
     },
   );
+  nativeMediaJobs = mediaJobs;
   const exporter = registerExportCommands(repository, () => mainWindow);
   nativeExporter = exporter;
   app.on("before-quit", (event) => {
-    if (!exporter.active()) return;
+    if (!exporter.active() && !mediaJobs.active()) return;
     event.preventDefault();
-    void exporter.cancelAndWait().finally(() => app.quit());
+    void Promise.all([
+      exporter.cancelAndWait(),
+      mediaJobs.cancelAndWait(),
+    ]).finally(() => app.quit());
   });
   session.defaultSession.setPermissionRequestHandler(
     (contents, permission, callback, details) =>

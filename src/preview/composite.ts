@@ -10,8 +10,11 @@ const timelines = new WeakMap<
   Project["scenes"],
   ReturnType<typeof buildTimeline>
 >();
-export const sceneMediaKey = (scene: Scene, assetId: string): string =>
-  `${scene.id}:${assetId}`;
+export const sceneMediaKey = (
+  scene: Scene,
+  assetId: string,
+  reference = "",
+): string => `${scene.id}:${assetId}${reference ? `:${reference}` : ""}`;
 
 /** Blend at most two adjacent scenes; buffers are reused rather than allocated each frame. */
 export function renderProjectFrame(
@@ -42,7 +45,7 @@ export function renderProjectFrame(
         : null,
       localTime,
       animate,
-      (id) => media.get(sceneMediaKey(scene, id)) ?? null,
+      (id, reference) => media.get(sceneMediaKey(scene, id, reference)) ?? null,
     );
   if (!located.to) draw(context, located.from.scene, located.from.localTime);
   else {

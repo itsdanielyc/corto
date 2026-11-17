@@ -53,7 +53,7 @@ export function registerProjectCommands(
   repository: FileProjectRepository,
   getWindow: () => BrowserWindow | null,
   onRendererReady: () => void = () => undefined,
-): void {
+): { active: () => boolean; cancelAndWait: () => Promise<void> } {
   const handle = (
     channel: string,
     operation: (...arguments_: unknown[]) => unknown,
@@ -113,8 +113,11 @@ export function registerProjectCommands(
         process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
       )
     : (createRequire(import.meta.url)("ffmpeg-static") as string);
-  handle(nativeChannels.audioSamples, (project, request) => nativeAudioSamples(binary, repository, parseProject(project), request));
+  handle(nativeChannels.audioSamples, (project, request) =>
+    nativeAudioSamples(binary, repository, parseProject(project), request),
+  );
   let mediaJob: AbortController | null = null;
+  let mediaFinished: Promise<unknown> | null = null;
   handle(nativeChannels.cancelMedia, () => mediaJob?.abort());
   handle(nativeChannels.importMedia, async (source, name) => {
     if (
@@ -130,15 +133,17 @@ export function registerProjectCommands(
     const controller = new AbortController();
     mediaJob = controller;
     try {
-      return await importNativeSelection(
+      mediaFinished = importNativeSelection(
         binary,
         repository,
         source as string | Uint8Array,
         name,
         controller.signal,
       );
+      return await mediaFinished;
     } finally {
       mediaJob = null;
+      mediaFinished = null;
     }
   });
   handle(nativeChannels.processMedia, async (project, request) => {
@@ -146,15 +151,17 @@ export function registerProjectCommands(
     const controller = new AbortController();
     mediaJob = controller;
     try {
-      return await processNativeMedia(
+      mediaFinished = processNativeMedia(
         binary,
         repository,
         parseProject(project),
         mediaOperationSchema.parse(request),
         controller.signal,
       );
+      return await mediaFinished;
     } finally {
       mediaJob = null;
+      mediaFinished = null;
     }
   });
   let importingPhone = false;
@@ -232,4 +239,11 @@ export function registerProjectCommands(
       ).filePaths[0];
     return source ? repository.importPortable(source) : null;
   });
+  return {
+    active: () => mediaJob !== null,
+    cancelAndWait: async () => {
+      mediaJob?.abort();
+      await mediaFinished?.catch(() => undefined);
+    },
+  };
 }

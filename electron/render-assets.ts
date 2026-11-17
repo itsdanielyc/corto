@@ -1,3 +1,4 @@
+import { rasterKeys } from "../src/export/raster-scope";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
@@ -58,28 +59,16 @@ export function validateRaster(raster: RenderRaster): void {
 /** Disk-backed, project-bound rasters remove the aggregate title IPC/memory ceiling. */
 export class RenderAssets {
   private readonly sessions = new Map<string, Session>();
+  get active(): boolean {
+    return this.sessions.size > 0;
+  }
   async begin(input: Project, resolution: ExportResolution): Promise<string> {
     const project = parseProject(input);
     if (!["720p", "1080p", "2160p"].includes(resolution))
       throw new Error("Invalid raster resolution");
     if (this.sessions.size >= 2)
       throw new Error("Finish preparing the current export first");
-    const allowed = new Set<string>();
-    for (const scene of project.scenes) {
-      if (scene.caption.trim()) allowed.add(`caption:${scene.id}`);
-      if (scene.backdrop.kind === "gradient")
-        allowed.add(`backdrop:${scene.id}`);
-      for (const text of scene.textItems) {
-        allowed.add(`text:${text.id}`);
-        if (text.animation === "typewriter") allowed.add(`textmask:${text.id}`);
-      }
-      for (const layer of scene.layers)
-        if (layer.kind !== "media") allowed.add(`layer:${layer.id}`);
-    }
-    if (project.subtitles.length) {
-      allowed.add("subtitle:");
-      for (const cue of project.subtitles) allowed.add(`subtitle:${cue.id}`);
-    }
+    const allowed = rasterKeys(project);
     const token = randomUUID();
     this.sessions.set(token, {
       directory: await mkdtemp(join(tmpdir(), PREFIX)),
@@ -116,6 +105,7 @@ export class RenderAssets {
     token: string,
     project: Project,
     resolution: ExportResolution,
+    required?: ReadonlySet<string>,
   ): ReadonlyMap<string, StagedRaster> {
     const session = this.sessions.get(token);
     if (
@@ -124,7 +114,7 @@ export class RenderAssets {
       session.resolution !== resolution
     )
       throw new Error("The export layers do not match this immutable film");
-    for (const key of session.allowed)
+    for (const key of required ?? session.allowed)
       if (!session.layers.has(key))
         throw new Error(`A render layer is missing: ${key.split(":")[0]}`);
     const dimensions = frameDimensions(project.ratio, resolution);

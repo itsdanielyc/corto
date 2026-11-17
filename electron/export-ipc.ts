@@ -12,6 +12,7 @@ import { appendScene, createProject, createScene } from "../src/domain/project";
 import { RenderAssets } from "./render-assets";
 import type { RenderRaster } from "../contracts/services";
 import { resolutionSchema } from "../contracts/values";
+import { ExportDestinations } from "./export-destinations";
 
 /** Own one export job and keep native save/reveal paths out of renderer-controlled data. */
 export function registerExportCommands(
@@ -32,6 +33,57 @@ export function registerExportCommands(
   if (!binary) throw new Error("FFmpeg is not available for this platform");
   const rasters = new RenderAssets();
   const renderer = new MovieRenderer(binary, repository, rasters);
+  const destinations = new ExportDestinations();
+  const chooseDestination = async (
+    project: ReturnType<typeof parseProject>,
+    sample: boolean,
+  ) => {
+    const window = getWindow();
+    if (!window) return null;
+    const name =
+      project.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() ||
+      "Corto film";
+    const extension = project.output.format;
+    return (
+      testPreset("CORTO_EXPORT_PATH") ??
+      (
+        await dialog.showSaveDialog(window, {
+          title: "Choose the export destination",
+          defaultPath: join(
+            app.getPath("videos"),
+            `${name}${sample ? "-sample" : ""}.${extension}`,
+          ),
+          filters: [
+            {
+              name: `${extension.toUpperCase()} export`,
+              extensions: [extension],
+            },
+          ],
+        })
+      ).filePath ??
+      null
+    );
+  };
+  ipcMain.handle(
+    nativeChannels.chooseExportDestination,
+    async (event, input, sample: unknown) => {
+      assertMainSender(event, getWindow());
+      if (sample !== undefined && typeof sample !== "boolean")
+        throw new Error("Invalid export sample choice");
+      const project = parseProject(input);
+      const path = await chooseDestination(project, sample === true);
+      return path ? destinations.issue(project, path) : null;
+    },
+  );
+  ipcMain.handle(
+    nativeChannels.releaseExportDestination,
+    (event, token: unknown) => {
+      assertMainSender(event, getWindow());
+      if (typeof token !== "string")
+        throw new Error("Invalid export destination token");
+      destinations.release(token);
+    },
+  );
   ipcMain.handle(
     nativeChannels.beginRenderAssets,
     (event, project, resolution) => {
@@ -75,33 +127,21 @@ export function registerExportCommands(
     )
       throw new Error("The movie request is incomplete");
     const project = parseProject(input.project);
+    const resolution = resolutionSchema.parse(input.resolution);
     const extension = project.output.format;
-    const name =
-      project.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() ||
-      "Corto film";
     const destination =
-      testPreset("CORTO_EXPORT_PATH") ??
-      (
-        await dialog.showSaveDialog(window, {
-          title: "Export your movie",
-          defaultPath: join(
-            app.getPath("videos"),
-            `${name}${"sample" in input && input.sample === true ? "-sample" : ""}.${extension}`,
-          ),
-          filters: [
-            {
-              name: `${extension.toUpperCase()} export`,
-              extensions: [extension],
-            },
-          ],
-        })
-      ).filePath;
+      "destinationToken" in input && input.destinationToken !== undefined
+        ? destinations.take(String(input.destinationToken), project)
+        : await chooseDestination(
+            project,
+            "sample" in input && input.sample === true,
+          );
     if (!destination) return null;
     const controller = new AbortController();
     const finished = renderer.render(
       {
         project,
-        resolution: input.resolution,
+        resolution,
         overlays: input.overlays,
         subtitleOverlays:
           "subtitleOverlays" in input ? input.subtitleOverlays : undefined,
@@ -169,12 +209,13 @@ export function registerExportCommands(
           await rm(directory, { recursive: true, force: true });
       }
     },
-    active: () => job !== null,
+    active: () => job !== null || rasters.active,
     cancelAndWait: async () => {
       const current = job;
       current?.controller.abort();
       await current?.finished.catch(() => undefined);
       await rasters.dispose();
+      destinations.clear();
     },
   };
 }

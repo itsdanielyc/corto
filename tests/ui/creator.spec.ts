@@ -12,7 +12,9 @@ async function photos(page: Page) {
       join(process.cwd(), "tests/fixtures/blue.png"),
     ]);
   await expect(page.getByTestId("scene-card")).toHaveCount(2);
-  await expect(page.getByTestId("save-status")).toHaveText("Saved on this device");
+  await expect(page.getByTestId("save-status")).toHaveText(
+    "Saved on this device",
+  );
 }
 async function menu(page: Page, name: string) {
   await page
@@ -115,9 +117,7 @@ test("example avoids an untouched draft and versions restore without overwriting
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByRole("button", { name: /Try an example/ })
-    .click();
+  await page.getByRole("button", { name: /Try an example/ }).click();
   await expect(page.getByLabel("Project name")).toHaveValue("Mountain days");
   await page.getByRole("button", { name: "My films", exact: true }).click();
   await expect(

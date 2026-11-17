@@ -1,7 +1,7 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { MAX_VOICE_SECONDS, voiceRecordingFile } from "../media/voice";
-
 interface Recording {
   recorder: MediaRecorder;
   stream: MediaStream;
@@ -10,7 +10,6 @@ interface Recording {
   timer: number;
   clockTimer: number;
 }
-
 /** The microphone exists only between an explicit recording action and stop/discard/close. */
 export function VoiceRecorder({
   onReady,
@@ -19,6 +18,7 @@ export function VoiceRecorder({
   onReady: (file: File) => Promise<void>;
   report: (error: unknown) => void;
 }) {
+  const t = useT();
   const [state, setState] = useState<
     "idle" | "requesting" | "recording" | "saving"
   >("idle");
@@ -130,10 +130,10 @@ export function VoiceRecorder({
         <>
           <button className="button primary" onClick={() => stop(false)}>
             <Square size={15} />
-            Stop and add narration
+            {t("Stop and add narration")}
           </button>
           <button className="text-button" onClick={() => stop(true)}>
-            Discard recording
+            {t("Discard recording")}
           </button>
         </>
       ) : (
@@ -146,16 +146,16 @@ export function VoiceRecorder({
         >
           <Mic size={16} />
           {state === "idle"
-            ? "Record narration"
+            ? t("Record narration")
             : state === "requesting"
-              ? "Waiting for microphone…"
-              : "Saving narration…"}
+              ? t("Waiting for microphone…")
+              : t("Saving narration…")}
         </button>
       )}
       <span role="status" className="dialog-note">
         {state === "recording"
           ? `Recording locally · ${elapsed}s · up to 5 minutes`
-          : "Your voice stays on this device."}
+          : t("Your voice stays on this device.")}
       </span>
     </div>
   );

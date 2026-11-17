@@ -5,7 +5,9 @@ import {
   type Scene,
 } from "../../contracts/project";
 import { createScene } from "./project";
-import { filmDuration } from "./timeline";
+import { buildTimeline, filmDuration } from "./timeline";
+import { transitionOverlap } from "./composition";
+import { createAudioClip } from "./audio";
 
 export const THEMES = {
   family: {
@@ -45,6 +47,8 @@ export const THEMES = {
   },
 } as const;
 export interface SlideshowOptions {
+  musicAssetId?: string | null;
+  musicOffset?: number;
   assetIds: string[];
   theme: keyof typeof THEMES;
   order: "selection" | "name" | "date";
@@ -54,6 +58,166 @@ export interface SlideshowOptions {
   fitSeconds?: number;
   title: string;
   beats?: number[];
+}
+
+// Time O(scenes log beats), space O(scenes + beats). Neighbour overlap checks preserve the exact soundtrack endpoint.
+function alignPhotosToBeats(
+  scenes: Scene[],
+  assets: Project["assets"],
+  onsets: readonly number[],
+): Scene[] {
+  const beats = [...onsets].filter(Number.isFinite).sort((a, b) => a - b);
+  if (!beats.length) return scenes;
+  const timeline = buildTimeline(scenes);
+  const result = [...scenes];
+  for (let index = 1; index < result.length; index++) {
+    if (
+      !result[index - 1].assetId ||
+      !result[index].assetId ||
+      assets[result[index - 1].assetId!].kind !== "image" ||
+      assets[result[index].assetId!].kind !== "image"
+    )
+      continue;
+    const target = timeline[index].start;
+    let low = 0;
+    let high = beats.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (beats[middle] < target) low = middle + 1;
+      else high = middle;
+    }
+    const nearest = [beats[low - 1], beats[low]]
+      .filter((value): value is number => value !== undefined)
+      .sort((a, b) => Math.abs(a - target) - Math.abs(b - target))[0];
+    const shift = nearest - target;
+    if (Math.abs(shift) > 0.5) continue;
+    const first = {
+      ...result[index - 1],
+      duration: result[index - 1].duration + shift,
+    };
+    const second = {
+      ...result[index],
+      duration: result[index].duration - shift,
+    };
+    if (
+      [first.duration, second.duration].some(
+        (value) => value < 0.25 || value > 120,
+      )
+    )
+      continue;
+    const candidate = (position: number) =>
+      position === index - 1
+        ? first
+        : position === index
+          ? second
+          : result[position];
+    let safe = true;
+    for (let position = Math.max(0, index - 2); position <= index; position++)
+      if (
+        Math.abs(
+          transitionOverlap(result[position], result[position + 1]) -
+            transitionOverlap(candidate(position), candidate(position + 1)),
+        ) > 0.000001
+      )
+        safe = false;
+    if (safe) {
+      result[index - 1] = first;
+      result[index] = second;
+    }
+  }
+  return result;
+}
+
+function slideshowMusic(
+  project: Project,
+  options: Pick<SlideshowOptions, "musicAssetId" | "musicOffset">,
+  duration: number,
+): Project["audioClips"] {
+  const previous = project.audioClips.find((clip) => clip.role === "music");
+  const id =
+    options.musicAssetId === undefined
+      ? previous?.assetId
+      : options.musicAssetId;
+  if (!id) return [];
+  const asset = project.assets[id];
+  if (asset?.kind !== "audio")
+    throw new Error("Choose an audio file for the slideshow soundtrack");
+  const existing = previous?.assetId === id ? previous : null;
+  return [
+    {
+      ...createAudioClip(asset, "music"),
+      offset: options.musicOffset ?? existing?.offset ?? 0,
+      start: 0,
+      duration,
+      loop: true,
+      followFilm: true,
+      volume: existing?.volume ?? 0.5,
+      fadeIn: Math.min(existing?.fadeIn ?? 0.3, duration / 2),
+      fadeOut: Math.min(existing?.fadeOut ?? 0.3, duration / 2),
+    },
+  ];
+}
+
+const TEMPLATE_CAPTIONS: Record<keyof typeof THEMES, readonly string[]> = {
+  family: [
+    "Family album",
+    "A new chapter.",
+    "Everyday magic",
+    "Made with love",
+  ],
+  holiday: [
+    "A little adventure",
+    "The journey",
+    "Our favourite moments",
+    "Until next time.",
+  ],
+  birthday: [
+    "Happy birthday!",
+    "The good times",
+    "Make a wish",
+    "Made with love",
+  ],
+  memorial: [
+    "In loving memory",
+    "A life remembered",
+    "Stories we will keep",
+    "Forever in our hearts",
+  ],
+  wedding: [
+    "Our wedding",
+    "Before the day",
+    "The celebration",
+    "With love, always",
+  ],
+};
+export const projectTemplateCaptions = (
+  theme: keyof typeof THEMES,
+): readonly string[] => TEMPLATE_CAPTIONS[theme];
+/** Editable chapter/title structures also work before any photos have been imported. */
+export function buildProjectTemplate(
+  project: Project,
+  themeId: keyof typeof THEMES,
+  title: string,
+  musicAssetId?: string | null,
+): Project {
+  const theme = THEMES[themeId];
+  const scenes = TEMPLATE_CAPTIONS[themeId].map((caption, index) => ({
+    ...createScene(null),
+    caption: index === 0 && title.trim() ? title.trim() : caption,
+    captionStyle: theme.style,
+    background: theme.background,
+    transition: theme.transition,
+    transitionSeconds: theme.seconds,
+    duration: index === 0 ? 3 : 4,
+  }));
+  return parseProject({
+    ...project,
+    name: title.trim() || theme.name,
+    scenes,
+    audioClips: slideshowMusic(project, { musicAssetId }, filmDuration(scenes)),
+    subtitles: [],
+    markers: [],
+  });
 }
 
 /** Missing EXIF dates sort after dated media, with filename and original selection as stable fallbacks. */
@@ -168,23 +332,12 @@ export function buildSlideshow(
     });
   if (options.fitSeconds)
     scenes = fitPhotos(scenes, project.assets, options.fitSeconds);
-  if (options.beats?.length) {
-    let position = 0;
-    scenes = scenes.map((scene) => {
-      const next = options.beats!.find(
-        (beat) => beat >= position + scene.duration - 0.25,
-      );
-      const duration =
-        next && next - position <= scene.duration + 0.5
-          ? Math.max(0.25, next - position)
-          : scene.duration;
-      position += duration;
-      return { ...scene, duration };
-    });
-  }
+  if (options.beats?.length)
+    scenes = alignPhotosToBeats(scenes, project.assets, options.beats);
   return parseProject({
     ...project,
     scenes,
+    audioClips: slideshowMusic(project, options, filmDuration(scenes)),
     subtitles: [],
     markers: [],
     name: options.title.trim() || theme.name,

@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.2] - 2026-11-17
+
+### Added
+
+- Editable slideshows from folders/selections, music fitting and beat alignment, themes and ready-to-edit project templates.
+- Photo motion, rotation/flips, focal crop, blur fill, colour/auto-enhance and local subject cut-outs; video speed/pitch, visual trim, reverse, stabilisation, shot detection, proxies and frame/audio extraction.
+- Adjustable overlapping transitions, multiple styled/animated titles, rolling credits, subtitle styles, shapes/stickers, picture-in-picture, collage, chroma key and imported LUTs.
+- Original CC0 music/SFX, measured waveforms and sound lanes, clip fades/boost, noise/loudness processing and M4A/WAV export.
+- Optional local Whisper caption drafts and cached model downloads; photos, speech and footage stay on the device.
+- Multi-selection, clipboard/settings copy, context menus, proportional timeline/ruler/zoom, markers/chapters/groups, folder capture/import and replace/relink/cleanup tools.
+- 4K, frame-rate choices, export selection/range/playhead sample, GIF, quality/destination controls, probed hardware encoding with software fallback, bounded threads and background export queue.
+- Film rename/duplicate/delete, 30 metadata versions, project defaults, English/Spanish, opt-in release checks and `.corto` file-open integration.
+
+### Changed and fixed
+
+- Browser movies use the bundled local WebAssembly encoder with deterministic frame/audio timing.
+- Schema 3 migrates known older projects explicitly and uses one canonical placed-sound model. Future schemas fail visibly.
+- Limits rise to 1,000 scenes, three hours, 2,500 assets and 64 GB per project; 8 GB per asset. Raster layers stage incrementally instead of sharing a 32 MB aggregate ceiling.
+- GIF/TIFF/SVG and legacy camcorder/video import retain originals; unused empty drafts, insertion targets and save/recovery status are corrected.
+
+### Distribution and limits
+
+- Desktop previews remain unsigned/unnotarized because no publisher certificates are configured. Credential-gated signing is prepared; update checks link to releases and never silently install them.
+- Browser codec budgets: 256 MB per source and 512 MB working files. Local models require an explicit initial download; cut-out copies are bounded to 4K. Experimental WebM remains advisory (issue #8).
+
 ## [0.1.1] - 2026-11-16
 
 ### Added

@@ -167,13 +167,14 @@ export async function importNativeMedia(
     const original = { ...asset, isOriginalOnly: true };
     const convertedDiagnostic = await probe(binary, output, signal);
     const convertedMetadata = mediaMetadata(convertedDiagnostic);
-    if (!convertedMetadata.width || !convertedMetadata.height) throw new Error(`The converted media has no readable picture: ${convertedDiagnostic}`);
+    if (!convertedMetadata.width || !convertedMetadata.height)
+      throw new Error(
+        `The converted media has no readable picture: ${convertedDiagnostic}`,
+      );
     const converted = mediaAssetSchema.parse({
       ...asset,
       ...convertedMetadata,
-      duration: still
-        ? 0
-        : convertedMetadata.duration,
+      duration: still ? 0 : convertedMetadata.duration,
       id: randomUUID(),
       mime: still ? "image/png" : "video/mp4",
       size: (await stat(output)).size,

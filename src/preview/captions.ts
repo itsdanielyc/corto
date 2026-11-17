@@ -11,6 +11,8 @@ export function loadCaptionFonts(): Promise<unknown> {
   fontsReady ??= Promise.all([
     document.fonts.load('400 60px "DM Serif Display"'),
     document.fonts.load('700 60px "Manrope Variable"'),
+    document.fonts.load('400 60px "JetBrains Mono Variable"'),
+    document.fonts.load('400 60px "Nunito Variable"'),
   ]);
   return fontsReady;
 }

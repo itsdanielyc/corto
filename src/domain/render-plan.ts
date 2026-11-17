@@ -41,11 +41,12 @@ export function resolveRenderRange(
 
 /** Source-match uses the first video frame rate; still-only projects retain the normal 30 fps default. */
 export function outputFrameRate(project: Project): number {
+  if (project.output.format === "gif") return 15;
   if (project.output.fps !== "source") return project.output.fps;
   const first = project.scenes
     .map((scene) => (scene.assetId ? project.assets[scene.assetId] : null))
     .find((asset) => asset?.kind === "video" && asset.fps);
-  return first?.fps ?? 30;
+  return first?.fps && first.fps >= 4 ? first.fps : 30;
 }
 
 // Time O(scenes), space O(scenes). No all-scenes filter graph or repeatedly re-encoded prefix is needed.

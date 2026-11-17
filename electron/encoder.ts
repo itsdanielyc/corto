@@ -2,12 +2,13 @@ import { availableParallelism } from "node:os";
 import type { OutputSettings } from "../contracts/project";
 import { runFfmpeg } from "./ffmpeg-process";
 
-export interface Encoder {
-  name: string;
-  threads: number;
-  quality: number;
-}
+import type { Encoder } from "../src/export/ffmpeg-types";
+export type { Encoder } from "../src/export/ffmpeg-types";
+export { encoderArguments } from "../src/export/encoder-settings";
 const cache = new Map<string, string>();
+export function rejectHardwareEncoder(binary: string): void {
+  cache.set(binary, "libx264");
+}
 
 /** Probe a real tiny encode; advertised hardware availability alone is insufficient. */
 export async function chooseEncoder(
@@ -59,35 +60,4 @@ export async function chooseEncoder(
     }
   }
   return { name, threads, quality: settings.quality };
-}
-
-export function encoderArguments(encoder: Encoder, bitrate?: number): string[] {
-  return [
-    "-c:v",
-    encoder.name,
-    ...(encoder.name === "libx264"
-      ? [
-          "-preset",
-          "veryfast",
-          "-crf",
-          String(Math.round(35 - encoder.quality * 0.25)),
-        ]
-      : []),
-    ...(bitrate
-      ? [
-          "-b:v",
-          String(bitrate),
-          "-maxrate",
-          String(Math.round(bitrate * 1.5)),
-          "-bufsize",
-          String(bitrate * 2),
-        ]
-      : encoder.name !== "libx264"
-        ? ["-b:v", "8000000"]
-        : []),
-    "-threads",
-    String(encoder.threads),
-    "-pix_fmt",
-    "yuv420p",
-  ];
 }

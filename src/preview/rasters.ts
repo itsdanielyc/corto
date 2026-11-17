@@ -1,3 +1,4 @@
+import { sceneRasterKey } from "../export/raster-scope";
 import type { RenderRaster } from "../../contracts/services";
 import type {
   ExportResolution,
@@ -152,12 +153,12 @@ export async function* projectRasters(
     for (const item of scene.textItems) {
       signal.throwIfAborted();
       yield await raster(
-        `text:${item.id}`,
+        sceneRasterKey("text", scene.id, item.id),
         textCanvas(item, width, height, false),
       );
       if (item.animation === "typewriter")
         yield await raster(
-          `textmask:${item.id}`,
+          sceneRasterKey("textmask", scene.id, item.id),
           textCanvas(item, width, height, true),
         );
     }
@@ -186,7 +187,7 @@ export async function* projectRasters(
           0,
           null,
         );
-        yield await raster(`layer:${layer.id}`, canvas);
+        yield await raster(sceneRasterKey("layer", scene.id, layer.id), canvas);
       }
   }
   if (project.subtitles.length)

@@ -1,48 +1,115 @@
-import { useRef, useState } from "react";
+import { useT } from "../i18n/locale";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Download,
   FolderOpen,
   LoaderCircle,
   Monitor,
-  ShieldCheck,
   Save,
+  ShieldCheck,
 } from "lucide-react";
-import type { MovieResult, ExportProgress } from "../../contracts/platform";
-import type { Project } from "../../contracts/project";
-import { filmDuration, formatTime, frameDimensions } from "../domain/timeline";
-import { browserRecordingFormat } from "../export/format";
+import type {
+  ExportProgress,
+  MovieRequest,
+  MovieResult,
+} from "../../contracts/platform";
+import { parseProject, type Project } from "../../contracts/project";
 import type { CortoPlatform } from "../platform/types";
-import { Modal } from "./primitives";
+import { filmDuration, formatTime, frameDimensions } from "../domain/timeline";
+import { selectedFilm } from "../domain/selected-film";
+import { browserRecordingFormat } from "../export/format";
 import {
   EXPORT_PRESETS,
-  estimatedMovieBytes,
+  exportBitrate,
   presetResolution,
 } from "../export/presets";
-
+import { Modal } from "./primitives";
+import { OutputOptions } from "./tools/OutputOptions";
+const RATIO_LABELS = {
+  landscape: "16:9",
+  portrait: "9:16",
+  square: "1:1",
+  classic: "4:3",
+  feed: "4:5",
+  cinema: "2.35:1",
+} as const;
+type RenderMovie = CortoPlatform["renderMovie"];
+/** Export choices create immutable requests; the application queue owns jobs after the dialog closes. */
 export function ExportDialog({
   project,
   platform,
   onClose,
+  renderMovie,
+  time = 0,
+  selectedIds = new Set<string>(),
 }: {
   project: Project;
   platform: CortoPlatform;
   onClose: () => void;
+  renderMovie?: RenderMovie;
+  time?: number;
+  selectedIds?: ReadonlySet<string>;
 }) {
-  const [preset, setPreset] = useState<keyof typeof EXPORT_PRESETS>("tv");
-  const resolution = presetResolution(preset);
+  const t = useT();
+  const [settings, setSettings] = useState(project.output);
+  const [rangeMode, setRangeMode] = useState<"all" | "selection" | "range">(
+    "all",
+  );
+  const total = filmDuration(project.scenes);
+  const [rangeStart, setRangeStart] = useState(0);
+  const [rangeEnd, setRangeEnd] = useState(total);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [result, setResult] = useState<MovieResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const surface = useRef<HTMLCanvasElement>(null);
-  const browserFormat = browserRecordingFormat();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const native = platform.kind === "native";
-  const format = native ? "MP4" : browserFormat?.label;
+  const browser = browserRecordingFormat();
+  const format =
+    native || browser?.label === "MP4"
+      ? settings.format.toUpperCase()
+      : browser?.label;
+  const resolution = settings.resolution;
   const dimensions = frameDimensions(project.ratio, resolution);
-
+  const preset = ["tv", "phone", "small"].includes(settings.preset)
+    ? (settings.preset as keyof typeof EXPORT_PRESETS)
+    : undefined;
+  const seconds =
+    rangeMode === "range"
+      ? Math.max(0, rangeEnd - rangeStart)
+      : rangeMode === "selection"
+        ? filmDuration(
+            project.scenes.filter((scene) => selectedIds.has(scene.id)),
+          )
+        : total;
+  const videoBits =
+    exportBitrate({ resolution, preset }) *
+    (resolution === "2160p" ? 4 : 1) *
+    (0.35 + settings.quality / 100);
+  const estimatedBytes =
+    settings.format === "wav"
+      ? seconds * 48000 * 2 * 2
+      : settings.format === "m4a"
+        ? (seconds * 192000) / 8
+        : (seconds * (videoBits + 192000)) / 8;
+  const choosePreset = (id: keyof typeof EXPORT_PRESETS) =>
+    setSettings((previous) => ({
+      ...previous,
+      preset: id,
+      resolution: presetResolution(id),
+      quality: id === "small" ? 50 : 70,
+      fps: 30,
+    }));
   const close = () => {
-    if (abort.current) abort.current.abort();
+    if (browser?.label === "WebM" && abort.current) abort.current.abort();
     else onClose();
   };
   const start = async (sample = false) => {
@@ -51,15 +118,45 @@ export function ExportDialog({
     setError(null);
     setProgress({ fraction: 0, message: "Getting your film ready" });
     try {
-      const movie = await platform.renderMovie(
-        { project, resolution, overlays: [], preset, sample },
-        setProgress,
+      let exporting = parseProject({ ...project, output: settings });
+      if (!sample && rangeMode === "selection")
+        exporting = selectedFilm(exporting, selectedIds);
+      const sampleStart = Math.max(
+        0,
+        Math.min(time, Math.max(0, total - 0.25)),
+      );
+      const range = sample
+        ? { start: sampleStart, end: Math.min(total, sampleStart + 5) }
+        : rangeMode === "range"
+          ? { start: rangeStart, end: rangeEnd }
+          : undefined;
+      const request: MovieRequest = {
+        project: exporting,
+        resolution,
+        overlays: [],
+        preset,
+        sample,
+        range,
+      };
+      const prepared = platform.prepareExport
+        ? await platform.prepareExport(request)
+        : request;
+      if (!prepared) return;
+      if (controller.signal.aborted) {
+        await platform.disposeExport?.(prepared);
+        controller.signal.throwIfAborted();
+      }
+      const movie = await (renderMovie ?? platform.renderMovie.bind(platform))(
+        prepared,
+        (value) => {
+          if (mounted.current) setProgress(value);
+        },
         controller.signal,
         surface.current ?? undefined,
       );
-      if (movie) setResult(movie);
+      if (movie && mounted.current) setResult(movie);
     } catch (failure) {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted && mounted.current)
         setError(
           failure instanceof Error
             ? failure.message
@@ -67,24 +164,22 @@ export function ExportDialog({
         );
     } finally {
       abort.current = null;
-      setProgress(null);
+      if (mounted.current) setProgress(null);
     }
   };
-
   return (
     <Modal
-      title={result ? "A little film. All yours." : "Make it a movie."}
+      title={t(result ? "A little film. All yours." : "Make it a movie.")}
       onClose={close}
       className="export-dialog"
     >
-      {!native && (
+      {!native && browser?.label === "WebM" && (
         <canvas
           ref={surface}
           className="export-render-preview"
           hidden={!progress}
-          width={dimensions.width}
-          height={dimensions.height}
-          aria-label="Movie being exported"
+          {...dimensions}
+          aria-label={t("Movie being exported")}
         />
       )}
       {result ? (
@@ -93,16 +188,16 @@ export function ExportDialog({
             <Check size={28} />
           </div>
           <h3>
-            Ready for the big screen.
+            {t("Ready for the big screen.")}
             <br />
-            Or the family group chat.
+            {t("Or the family group chat.")}
           </h3>
           <p>{result.fileName}</p>
           <span>
             {result.location === "file"
-              ? "Saved to your chosen folder."
-              : "Your browser has started the download."}{" "}
-            No watermark, just your story.
+              ? t("Saved to your chosen folder.")
+              : t("Your browser has started the download.")}{" "}
+            {t("No watermark, just your story.")}
           </span>
           {result.location === "file" && (
             <button
@@ -114,101 +209,124 @@ export function ExportDialog({
               }}
             >
               <FolderOpen size={16} />
-              Show in folder
+              {t("Show in folder")}
             </button>
           )}
           <button className="button primary" onClick={onClose}>
-            Back to my film
+            {t("Back to my film")}
           </button>
         </div>
       ) : (
         <>
           <p className="modal-introduction">
-            A birthday, a big adventure, an ordinary Sunday.
+            {t("A birthday, a big adventure, an ordinary Sunday.")}
             <br />
-            Some moments deserve a replay.
+            {t("Some moments deserve a replay.")}
           </p>
           <div className="export-summary">
             <Monitor size={23} />
             <div>
               <strong>{project.name}</strong>
               <span>
-                {project.scenes.length} scenes ·{" "}
-                {formatTime(filmDuration(project.scenes))} ·{" "}
-                {project.ratio === "landscape"
-                  ? "16:9"
-                  : project.ratio === "portrait"
-                    ? "9:16"
-                    : "1:1"}
+                {project.scenes.length}
+                {t(" scenes \u00B7 ")}
+                {formatTime(total)}
+                {t(" \u00B7")} {RATIO_LABELS[project.ratio]}
               </span>
             </div>
-            <span className="format-badge">{format ?? "Unavailable"}</span>
+            <span className="format-badge">{format ?? t("Unavailable")}</span>
           </div>
           <fieldset className="export-options" disabled={!!progress}>
-            <legend>Choose where to share</legend>
-            {(
-              [
-                { id: "tv", ...EXPORT_PRESETS.tv },
-                { id: "phone", ...EXPORT_PRESETS.phone },
-                { id: "small", ...EXPORT_PRESETS.small },
-              ] as const
-            ).map((option) => (
-              <label
-                key={option.id}
-                className={
-                  preset === option.id
-                    ? "resolution-option selected"
-                    : "resolution-option"
-                }
-              >
-                <input
-                  type="radio"
-                  name="resolution"
-                  value={option.id}
-                  checked={preset === option.id}
-                  onChange={() => setPreset(option.id)}
-                />
-                <div>
-                  <strong>
-                    {option.title}
-                    <small>{option.resolution}</small>
-                  </strong>
-                  <span>{option.subtitle}</span>
-                </div>
-                <span className="radio-visual" />
-              </label>
-            ))}
+            <legend>{t("Choose where to share")}</legend>
+            {(["tv", "phone", "small"] as const).map((id) => {
+              const option = EXPORT_PRESETS[id];
+              return (
+                <label
+                  key={id}
+                  className={
+                    settings.preset === id
+                      ? "resolution-option selected"
+                      : "resolution-option"
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="resolution"
+                    value={id}
+                    checked={settings.preset === id}
+                    onChange={() => choosePreset(id)}
+                  />
+                  <div>
+                    <strong>
+                      {t(option.title)}
+                      <small>{option.resolution}</small>
+                    </strong>
+                    <span>{t(option.subtitle)}</span>
+                  </div>
+                  <span className="radio-visual" />
+                </label>
+              );
+            })}
+            <OutputOptions
+              settings={settings}
+              onChange={setSettings}
+              native={native}
+              rangeMode={rangeMode}
+              onRangeMode={setRangeMode}
+              rangeStart={rangeStart}
+              rangeEnd={rangeEnd}
+              total={total}
+              onRange={(start, end) => {
+                setRangeStart(start);
+                setRangeEnd(end);
+              }}
+              selectedCount={selectedIds.size}
+            />
           </fieldset>
           <p className="export-details">
-            {dimensions.width} × {dimensions.height} · 30 fps ·{" "}
-            {native
-              ? "H.264 video + AAC audio"
-              : format === "MP4"
-                ? "MP4 browser recording"
-                : format === "WebM"
-                  ? "WebM browser recording"
-                  : "MP4 recording unavailable in this browser"}
+            {settings.format === "mp4" && (
+              <>
+                {dimensions.width}
+                {t(" \u00D7 ")}
+                {dimensions.height}
+                {t(" \u00B7")}{" "}
+                {settings.fps === "source"
+                  ? t("source frame rate")
+                  : `${settings.fps} fps`}{" "}
+                {t("\u00B7")}{" "}
+              </>
+            )}
+            {settings.format === "mp4"
+              ? t("Local H.264 + AAC encoding")
+              : settings.format === "gif"
+                ? t("Animated GIF · up to 960 pixels, 15 fps")
+                : settings.format === "wav"
+                  ? t("Uncompressed PCM audio")
+                  : t("AAC audio")}
           </p>
           <p className="dialog-note">
-            Estimated size: about{" "}
-            {(
-              estimatedMovieBytes(filmDuration(project.scenes), preset) /
-              1_000_000
-            ).toFixed(1)}{" "}
-            MB. Actual size varies with the scenes. Aspect ratio stays{" "}
-            {project.ratio}; change it in the editor if needed.
+            {t("Estimated size: about ")}
+            {(estimatedBytes / 1000000).toFixed(1)}
+            {t(" MB. Actual size varies with the scenes.")}
+            {settings.format === "gif" &&
+              " GIF sizes vary considerably with movement."}{" "}
+            {t("Aspect ratio stays ")}
+            {project.ratio}
+            {t(".")}
           </p>
           {!native && format && (
             <div className="web-export-note">
-              Browser export runs in real time. Keep this tab visible until it
-              finishes.{format === "WebM" && " For MP4, use the desktop app."}
+              {t(
+                "Your movie is encoded on this device. No upload is needed. Large source files and long jobs work best in the desktop app.",
+              )}
             </div>
           )}
           {!format && (
             <div>
               <p className="inline-error">
-                For MP4 export, open this project in Corto for desktop. Save a
-                portable copy to take your media and edits with you.
+                {t(
+                  "For MP4 export, open this project in Corto for desktop. Save a portable copy to take your media and edits with you.",
+                )}
               </p>
               <button
                 className="button secondary"
@@ -219,64 +337,78 @@ export function ExportDialog({
                 }}
               >
                 <Save size={15} />
-                Save portable project
+                {t("Save portable project")}
               </button>
             </div>
           )}
           {progress ? (
             <div className="export-progress">
               <div>
-                <span>
-                  <LoaderCircle size={14} className="spin" />
-                  {progress.message}
-                </span>
-                <strong>{Math.floor(progress.fraction * 100)}%</strong>
+                <LoaderCircle className="spin" size={17} />
+                <span>{progress.message}</span>
+                <strong>
+                  {Math.round(progress.fraction * 100)}
+                  {t("%")}
+                </strong>
               </div>
               <progress
-                aria-label="Movie export progress"
-                max="1"
+                max={1}
                 value={progress.fraction}
+                aria-label={t("Movie export progress")}
               />
-              <button
-                className="text-button"
-                onClick={() => abort.current?.abort()}
-              >
-                Cancel export
-              </button>
+              <div className="tool-button-row">
+                <button
+                  className="button secondary"
+                  onClick={() => abort.current?.abort()}
+                >
+                  {t("Cancel export")}
+                </button>
+                {browser?.label !== "WebM" && (
+                  <button className="button primary" onClick={onClose}>
+                    {t("Continue editing while exporting")}
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <button
               className="button primary export-start"
-              disabled={!format}
+              disabled={
+                !format ||
+                !project.scenes.length ||
+                (rangeMode === "selection" && !selectedIds.size)
+              }
               onClick={() => {
-                void start(false);
+                void start();
               }}
             >
               <Download size={17} />
-              Export {format ?? "movie"}
+              {t("Export ")}
+              {format ?? t("movie")}
             </button>
           )}
           {!progress && (
             <button
-              className="button secondary export-sample"
+              className="text-button sample-export"
               disabled={!format}
+              title={t("Starts at the current playhead")}
               onClick={() => {
                 void start(true);
               }}
             >
-              Export first 5 seconds as a sample
+              {t("Export 5-second sample at playhead")}
             </button>
           )}
         </>
       )}
       {error && (
         <p className="inline-error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       <div className="export-privacy">
         <ShieldCheck size={14} />
-        Made on your device. Kept off the cloud.
+        {t("Made on your device. Kept off the cloud.")}
       </div>
     </Modal>
   );

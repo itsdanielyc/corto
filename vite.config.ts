@@ -13,6 +13,12 @@ export default defineConfig({
     ],
   },
   resolve: {
+    conditions: [
+      "onnxruntime-web-use-extern-wasm",
+      "module",
+      "browser",
+      "development|production",
+    ],
     alias: [
       { find: /^buffer$/, replacement: "buffer/" },
       { find: /^events$/, replacement: "events/" },

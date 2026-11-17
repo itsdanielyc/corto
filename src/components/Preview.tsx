@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Film, Maximize2 } from "lucide-react";
 import type { Project } from "../../contracts/project";
@@ -9,8 +10,8 @@ import { loadCaptionFonts } from "../preview/captions";
 import { CompositionPlayer } from "../preview/composition-player";
 import { renderProjectFrame } from "../preview/composite";
 import { IconButton } from "./primitives";
-
 interface PreviewProperties {
+  preferProxies?: boolean;
   project: Project;
   platform: CortoPlatform;
   resources: MediaResources;
@@ -20,7 +21,6 @@ interface PreviewProperties {
   onPlaying: (playing: boolean) => void;
   report: (error: unknown) => void;
 }
-
 /** A single composition surface serves still preview, playback and browser/native export assets. */
 export function Preview({
   project,
@@ -30,7 +30,9 @@ export function Preview({
   onTime,
   onPlaying,
   report,
+  preferProxies = false,
 }: PreviewProperties) {
+  const t = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const clock = useRef(time);
@@ -41,9 +43,9 @@ export function Preview({
         project,
         (id) => platform.assetUrl(id),
         undefined,
-        true,
+        preferProxies,
       ),
-    [project, platform],
+    [project, platform, preferProxies],
   );
   const sound = useMemo(
     () =>
@@ -60,7 +62,6 @@ export function Preview({
   useEffect(() => {
     if (!playing) clock.current = time;
   }, [time, playing]);
-
   useEffect(() => {
     const controller = new AbortController();
     let animation = 0;
@@ -142,7 +143,6 @@ export function Preview({
     onPlaying,
     report,
   ]);
-
   return (
     <div
       className={`preview-stage ${project.scenes.length ? "has-film" : ""}`}
@@ -157,11 +157,11 @@ export function Preview({
             height={dimensions.height}
             data-ratio={project.ratio}
             data-testid="preview-canvas"
-            aria-label="Film preview"
+            aria-label={t("Film preview")}
           />
           <IconButton
             icon={Maximize2}
-            label="Full screen preview"
+            label={t("Full screen preview")}
             className="fullscreen-button"
             onClick={() => {
               void stage.current?.requestFullscreen().catch(report);
@@ -175,11 +175,11 @@ export function Preview({
             alt=""
           />
           <p>
-            A little life.
+            {t("A little life.")}
             <br />
-            <em>A little film.</em>
+            <em>{t("A little film.")}</em>
           </p>
-          <span>Your photos, clips and stories go here.</span>
+          <span>{t("Your photos, clips and stories go here.")}</span>
           <Film size={18} aria-hidden="true" />
         </div>
       )}

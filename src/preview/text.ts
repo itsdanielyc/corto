@@ -3,8 +3,8 @@ import type { TextItem } from "../../contracts/project";
 export const FONT_FAMILIES = {
   serif: '"DM Serif Display", Georgia, serif',
   sans: '"Manrope Variable", sans-serif',
-  mono: "ui-monospace, Consolas, monospace",
-  rounded: '"Manrope Variable", sans-serif',
+  mono: '"JetBrains Mono Variable", monospace',
+  rounded: '"Nunito Variable", sans-serif',
 } as const;
 export interface TextLayout {
   lines: string[];

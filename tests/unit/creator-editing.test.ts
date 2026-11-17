@@ -8,6 +8,7 @@ import {
   removeUnusedAssets,
 } from "../../src/domain/editing";
 import { buildSlideshow, sortMedia } from "../../src/domain/slideshow";
+import { buildTimeline, filmDuration } from "../../src/domain/timeline";
 import type { MediaAsset } from "../../contracts/project";
 const photo = (id: string, capturedAt?: string): MediaAsset => ({
   id,
@@ -19,6 +20,27 @@ const photo = (id: string, capturedAt?: string): MediaAsset => ({
   height: 90,
   duration: 0,
   capturedAt,
+});
+
+it("aligns photo boundaries to measured beats while retaining the exact soundtrack length", () => {
+  let project = createProject();
+  for (const id of ["a", "b", "c"]) project = addAsset(project, photo(id));
+  const draft = buildSlideshow(project, {
+    assetIds: ["a", "b", "c"],
+    theme: "family",
+    order: "selection",
+    seconds: 5,
+    motion: false,
+    dateCaptions: false,
+    title: "",
+    fitSeconds: 12,
+    beats: [0, 4, 8, 12],
+  });
+  const starts = buildTimeline(draft.scenes).map((entry) => entry.start);
+  expect(starts[0]).toBe(0);
+  expect(starts[1]).toBeCloseTo(4, 6);
+  expect(starts[2]).toBeCloseTo(8, 6);
+  expect(filmDuration(draft.scenes)).toBeCloseTo(12, 4);
 });
 
 it("inserts and copies independent scene/layer identities and extends ordered selections", () => {

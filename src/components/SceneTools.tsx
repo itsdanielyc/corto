@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
 import type { MediaOperation } from "../../contracts/services";
 import {
@@ -19,7 +20,9 @@ import { TextTools } from "./tools/TextTools";
 import { OverlayTools } from "./tools/OverlayTools";
 import { VideoTools } from "./tools/VideoTools";
 import { Modal } from "./primitives";
-
+import { BackgroundRemoval } from "./BackgroundRemoval";
+import { sliceScene } from "../domain/scene-slice";
+import { cameraPose } from "../domain/composition";
 export function SceneTools({
   project,
   scene,
@@ -28,6 +31,7 @@ export function SceneTools({
   onProject,
   onClose,
   report,
+  preferProxies = false,
 }: {
   project: Project;
   scene: Scene;
@@ -36,10 +40,13 @@ export function SceneTools({
   onProject: (update: (project: Project) => Project) => void;
   onClose: () => void;
   report: (error: unknown) => void;
+  preferProxies?: boolean;
 }) {
+  const t = useT();
   const [tab, setTab] = useState("picture");
   const [localTime, setLocalTime] = useState(Math.min(0.6, scene.duration / 2));
   const [busy, setBusy] = useState(false);
+  const [operationError, setOperationError] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
   const cancel = useRef<AbortController | null>(null);
   const asset = scene.assetId ? project.assets[scene.assetId] : null;
@@ -50,8 +57,11 @@ export function SceneTools({
   const dimensions = frameDimensions(project.ratio, "720p");
   useEffect(() => {
     const controller = new AbortController();
-    const player = new CompositionPlayer(project, (id) =>
-      platform.assetUrl(id),
+    const player = new CompositionPlayer(
+      project,
+      (id) => platform.assetUrl(id),
+      undefined,
+      preferProxies,
     );
     void loadCaptionFonts()
       .then(() => player.prepare(time, controller.signal))
@@ -71,7 +81,7 @@ export function SceneTools({
       controller.abort();
       player.dispose();
     };
-  }, [project, platform, time, report]);
+  }, [project, platform, time, report, preferProxies]);
   useEffect(() => () => cancel.current?.abort(), []);
   const saveFrame = async () => {
     const player = new CompositionPlayer(project, (id) =>
@@ -100,6 +110,7 @@ export function SceneTools({
       throw new Error("This media tool is unavailable on this platform");
     const controller = new AbortController();
     cancel.current = controller;
+    setOperationError("");
     setBusy(true);
     try {
       const start =
@@ -129,22 +140,29 @@ export function SceneTools({
       );
       controller.signal.throwIfAborted();
       onProject((current) => {
+        const currentScene = current.scenes.find(
+          (item) => item.id === scene.id,
+        );
+        if (!currentScene || currentScene.assetId !== asset.id) return current;
         if (result.boundaries) {
           const boundaries = [
             scene.start,
             ...result.boundaries,
             scene.start + scene.duration * scene.speed,
           ];
-          const scenes = boundaries
-            .slice(0, -1)
-            .map((start, index) => ({
-              ...scene,
-              id: index ? crypto.randomUUID() : scene.id,
-              start,
-              duration: (boundaries[index + 1] - start) / scene.speed,
-              textItems: [],
-              layers: [],
-            }));
+          const scenes = boundaries.slice(0, -1).map((start, index) => ({
+            ...sliceScene(
+              scene,
+              asset.kind,
+              (start - scene.start) / scene.speed,
+              (boundaries[index + 1] - start) / scene.speed,
+              index ? crypto.randomUUID() : scene.id,
+            ),
+            transition:
+              index < boundaries.length - 2
+                ? ("cut" as const)
+                : scene.transition,
+          }));
           return parseProject({
             ...current,
             scenes: current.scenes.flatMap((item) =>
@@ -169,7 +187,11 @@ export function SceneTools({
             [
               {
                 ...createScene(derived),
-                transform: scene.transform,
+                transform: {
+                  ...scene.transform,
+                  ...cameraPose(scene, localTime),
+                  motion: "none",
+                },
                 adjustments: scene.adjustments,
               },
             ],
@@ -206,6 +228,13 @@ export function SceneTools({
         };
         return parseProject(next);
       });
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setOperationError(
+          error instanceof Error
+            ? error.message
+            : "This media tool could not finish",
+        );
     } finally {
       setBusy(false);
       cancel.current = null;
@@ -213,7 +242,7 @@ export function SceneTools({
   };
   return (
     <Modal
-      title="Scene tools"
+      title={t("Scene tools")}
       onClose={busy ? () => cancel.current?.abort() : onClose}
       className="creator-dialog"
     >
@@ -222,7 +251,7 @@ export function SceneTools({
           <canvas
             ref={canvas}
             {...dimensions}
-            aria-label="Scene tools preview"
+            aria-label={t("Scene tools preview")}
             onPointerDown={(event) => {
               if (tab !== "picture" || !asset) return;
               const bounds = event.currentTarget.getBoundingClientRect();
@@ -242,9 +271,9 @@ export function SceneTools({
             }}
           />
           <label className="range-label">
-            Preview scene time
+            {t("Preview scene time")}
             <input
-              aria-label="Preview scene time"
+              aria-label={t("Preview scene time")}
               type="range"
               min={0}
               max={scene.duration}
@@ -254,8 +283,9 @@ export function SceneTools({
             />
           </label>
           <p className="dialog-note">
-            Click the picture to position the crop focus. Scrub to check
-            movement and timed items.
+            {t(
+              "Click the picture to position the crop focus. Scrub to check movement and timed items.",
+            )}
           </p>
           <button
             className="button secondary"
@@ -263,14 +293,14 @@ export function SceneTools({
               void saveFrame().catch(report);
             }}
           >
-            Save composed frame as PNG
+            {t("Save composed frame as PNG")}
           </button>
         </div>
         <div className="creator-controls">
           <div
             className="tool-tabs"
             role="tablist"
-            aria-label="Scene tool categories"
+            aria-label={t("Scene tool categories")}
           >
             {[
               ["picture", "Picture"],
@@ -284,20 +314,35 @@ export function SceneTools({
                 key={id}
                 onClick={() => setTab(id)}
               >
-                {name}
+                {t(name)}
               </button>
             ))}
           </div>
-          <div className="tool-content" role="tabpanel">
+          {operationError && (
+            <p className="inline-error" role="alert">
+              {t(operationError)}
+            </p>
+          )}
+          <fieldset className="tool-content" role="tabpanel" disabled={busy}>
             {tab === "picture" && (
-              <PictureTools
-                project={project}
-                scene={scene}
-                asset={asset}
-                platform={platform}
-                onChange={onChange}
-                report={report}
-              />
+              <>
+                <PictureTools
+                  project={project}
+                  scene={scene}
+                  asset={asset}
+                  platform={platform}
+                  onChange={onChange}
+                  report={report}
+                />
+                {asset?.kind === "image" && (
+                  <BackgroundRemoval
+                    scene={scene}
+                    asset={asset}
+                    platform={platform}
+                    onChange={onProject}
+                  />
+                )}
+              </>
             )}
             {tab === "video" && asset?.kind === "video" && (
               <VideoTools
@@ -318,7 +363,7 @@ export function SceneTools({
                 onChange={onChange}
               />
             )}
-          </div>
+          </fieldset>
         </div>
       </div>
       <div className="modal-actions">
@@ -327,11 +372,11 @@ export function SceneTools({
             className="button secondary"
             onClick={() => cancel.current?.abort()}
           >
-            Cancel media operation
+            {t("Cancel media operation")}
           </button>
         )}
         <button className="button primary" disabled={busy} onClick={onClose}>
-          Done
+          {t("Done")}
         </button>
       </div>
     </Modal>

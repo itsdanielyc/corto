@@ -13,16 +13,16 @@
 The UI sees `CortoPlatform`, never `ipcRenderer`. Shared TypeScript contracts plus runtime schemas validate project boundaries and native export requests. Contract tests exercise persistence with both real file storage and the labelled mock. Production web is a real browser adapter, not the mock. The mock announces itself only in test mode.
 
 ## Data and state
-- A versioned `Project` owns ordered scenes, media metadata, the legacy soundtrack, placed sound and timed subtitle cues.
+- A versioned `Project` owns ordered scenes, media metadata, canonical placed sound and timed subtitle cues.
 - Scene IDs and asset IDs are generated opaque UUIDs. Edits preserve structural sharing; undo history is bounded.
 - Source media stays immutable. Edits use durations, source offsets, captions, fitting and transitions.
 - Browser media lives as Blobs in IndexedDB, separate from metadata. Desktop media lives in an application workspace addressed by validated opaque IDs.
 - Autosave serialises writes and retains a recoverable last project. Explicit portable `.corto` containers include a bounded JSON manifest and streamed original media; no external paths are accepted. See docs/project-format.md.
-- Schema v2 explicitly migrates the strict known v1 shape; unknown/future schemas fail visibly. Compatible phone copies link to immutable archived originals; both travel in portable projects (ADR 005).
+- Schema v3 explicitly migrates the strict known v1/v2 shapes; unknown/future schemas fail visibly. Compatible phone copies link to immutable archived originals; both travel in portable projects (ADRs 005–006).
 - Local project catalogues keep distinct named films. Recovery opens a new identity; a corrupt catalogue entry remains visible while other films remain accessible. Desktop snapshots are independent files.
 
 ## Rendering
-Preview uses one canvas composition surface and only the current media element; timeline boundaries are computed once per edit. Native export renders scenes sequentially to bounded temporary files, concatenates them and mixes music. A frame-compatible caption overlay is rasterised in the renderer so native/browser typography agrees. Temporary export outputs are cleaned on failure or cancellation; only a complete movie reaches the destination.
+Preview uses one canvas composition surface and a bounded current/next media pool with independent clocks for repeated assets and overlays. Native and browser-WASM export consume the same pure frame/filter plans, render bounded scene/overlap segments, concatenate once and mix sound. Text is rasterised incrementally so typography agrees without aggregating every PNG in IPC. Temporary output is cleaned on failure/cancellation; only a complete movie reaches its destination.
 
 ## Platform integration
 Native file selection, save destination and reveal-in-folder are confined to Electron. Environment-controlled dialog presets are accepted only in automated-test mode. No arbitrary shell commands, arbitrary renderer paths or remote navigation are exposed.
@@ -35,6 +35,7 @@ Native file selection, save destination and reveal-in-folder are confined to Ele
 - Effects/capture/model/proxy services live behind typed adapters. Native jobs own temporary paths and fixed subprocess arguments; browser effects use local workers. No renderer filesystem/process or remote-code primitive is added.
 - Export queues own immutable project snapshots; editing never mutates an active job. Temporary outputs are atomic and cancelled jobs clean only their owned directories.
 - Version/trash/preferences metadata is separate from immutable originals. Removing project references never silently deletes shared source files or another film's history.
+- Optional models run in a worker using locally bundled ONNX/WASM code and explicitly downloaded, revision-pinned public model data. Speech uses short source windows; cut-outs retain their original photo. See ADR 008.
 
 ## Deliberately simple
 - A single linear storyboard instead of a general multitrack graph. Add tracks only if user jobs require overlapping clips.

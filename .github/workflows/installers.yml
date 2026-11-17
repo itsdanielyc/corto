@@ -11,8 +11,8 @@ on:
       appimage_repetitions:
         description: AppImage diagnostic repetitions
         type: choice
-        options: ['1', '30']
-        default: '1'
+        options: ["1", "30"]
+        default: "1"
   workflow_call:
 
 concurrency:
@@ -36,9 +36,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
     env:
-      # No certificate lookup in the keychain, so macOS builds stay unsigned
-      # (ad hoc) and electron-builder never tries to notarize.
+      # Missing credentials produce unsigned previews. Configured identities must sign successfully.
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_LINK: ${{ startsWith(matrix.os, 'macos') && secrets.MAC_CSC_LINK || '' }}
+      CSC_KEY_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+      WIN_CSC_LINK: ${{ startsWith(matrix.os, 'windows') && secrets.WIN_CSC_LINK || '' }}
+      WIN_CSC_KEY_PASSWORD: ${{ startsWith(matrix.os, 'windows') && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+      APPLE_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_ID || '' }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+      APPLE_TEAM_ID: ${{ startsWith(matrix.os, 'macos') && secrets.APPLE_TEAM_ID || '' }}
       CORTO_APPIMAGE_REPETITIONS: ${{ inputs.appimage_repetitions || '1' }}
     steps:
       - uses: actions/checkout@v7

@@ -30,6 +30,7 @@ jobs:
   packages:
     needs: gate
     uses: ./.github/workflows/installers.yml
+    secrets: inherit
 
   web:
     needs: gate
@@ -90,13 +91,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            pattern: '*.deb'
+            pattern: "*.deb"
           - os: windows-latest
-            pattern: '*-setup.exe'
+            pattern: "*-setup.exe"
           - os: macos-latest
-            pattern: '*arm64.dmg'
+            pattern: "*arm64.dmg"
           - os: macos-15-intel
-            pattern: '*x64.dmg'
+            pattern: "*x64.dmg"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

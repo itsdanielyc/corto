@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { memo, useMemo, useRef, useState } from "react";
 import {
   CircleHelp,
@@ -18,7 +19,6 @@ import { formatTime } from "../domain/timeline";
 import { IconButton } from "./primitives";
 import { sortMedia } from "../domain/slideshow";
 import { usedAssetIds } from "../domain/editing";
-
 export type LibraryMode = "media" | "titles" | "music";
 interface LibraryProperties {
   mode: LibraryMode;
@@ -39,14 +39,14 @@ interface LibraryProperties {
   onSlideshow: () => void;
   onReplace: (id: string, file: File) => void;
 }
-
 export function NavigationRail({
   mode,
   onMode,
   onHelp,
 }: Pick<LibraryProperties, "mode" | "onMode" | "onHelp">) {
+  const t = useT();
   return (
-    <nav className="navigation-rail" aria-label="Creative tools">
+    <nav className="navigation-rail" aria-label={t("Creative tools")}>
       {(
         [
           { id: "media", label: "Media", icon: Images },
@@ -56,28 +56,27 @@ export function NavigationRail({
       ).map((item) => (
         <button
           key={item.id}
-          aria-label={item.label}
+          aria-label={t(item.label)}
           aria-pressed={mode === item.id}
           className={mode === item.id ? "rail-item selected" : "rail-item"}
           onClick={() => onMode(item.id)}
         >
           <item.icon size={20} strokeWidth={1.7} />
-          <span>{item.label}</span>
+          <span>{t(item.label)}</span>
         </button>
       ))}
       <div className="rail-spacer" />
       <button
         className="rail-item"
-        aria-label="Help and shortcuts"
+        aria-label={t("Help and shortcuts")}
         onClick={onHelp}
       >
         <CircleHelp size={20} />
-        <span>Help</span>
+        <span>{t("Help")}</span>
       </button>
     </nav>
   );
 }
-
 export const Library = memo(function Library({
   mode,
   project,
@@ -95,6 +94,7 @@ export const Library = memo(function Library({
   onSlideshow,
   onReplace,
 }: LibraryProperties) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"name" | "date" | "used">("name");
   const [context, setContext] = useState<string | null>(null);
@@ -128,16 +128,16 @@ export const Library = memo(function Library({
   return (
     <aside
       className="media-library"
-      aria-label="Media library"
+      aria-label={t("Media library")}
       data-geo="library"
     >
       <div className="library-heading">
         <h2>
           {mode === "media"
-            ? "Your media"
+            ? t("Your media")
             : mode === "music"
-              ? "Make it feel something."
-              : "A few words."}
+              ? t("Make it feel something.")
+              : t("A few words.")}
         </h2>
         {mode === "media" && (
           <span className="count-badge">
@@ -151,10 +151,10 @@ export const Library = memo(function Library({
       </div>
       <p className="library-description">
         {mode === "media"
-          ? "All the moments that make your film."
+          ? t("All the moments that make your film.")
           : mode === "music"
-            ? "Give your memories a soundtrack."
-            : "A beginning, an ending, or a little context."}
+            ? t("Give your memories a soundtrack.")
+            : t("A beginning, an ending, or a little context.")}
       </p>
       {mode !== "titles" && (
         <button
@@ -167,27 +167,27 @@ export const Library = memo(function Library({
           ) : (
             <Plus size={17} />
           )}
-          {mode === "music" ? "Import music" : "Import media"}
+          {mode === "music" ? t("Import music") : t("Import media")}
         </button>
       )}
       {mode === "music" && (
         <button className="button secondary" onClick={onSound}>
-          Sound &amp; narration
+          {t("Sound & narration")}
         </button>
       )}
       {mode === "media" && (
         <div className="library-secondary-actions">
           <button className="text-button" onClick={onFolder}>
-            Import folder
+            {t("Import folder")}
           </button>
           <button className="text-button" onClick={onSlideshow}>
-            Make a slideshow
+            {t("Make a slideshow")}
           </button>
         </div>
       )}
       {mode === "titles" && (
         <button className="button secondary" onClick={onSubtitles}>
-          Timed subtitles
+          {t("Timed subtitles")}
         </button>
       )}
       {mode === "titles" ? (
@@ -197,12 +197,12 @@ export const Library = memo(function Library({
             onClick={() => onTitle("A new chapter.")}
           >
             <span>
-              A new
+              {t("A new")}
               <br />
-              <em>chapter.</em>
+              <em>{t("chapter.")}</em>
             </span>
             <small>
-              Classic title
+              {t("Classic title")}
               <Plus size={14} />
             </small>
           </button>
@@ -211,12 +211,12 @@ export const Library = memo(function Library({
             onClick={() => onTitle("GOOD TIMES,\nGREAT COMPANY.", "modern")}
           >
             <span>
-              GOOD TIMES,
+              {t("GOOD TIMES,")}
               <br />
-              GREAT COMPANY.
+              {t("GREAT COMPANY.")}
             </span>
             <small>
-              Bold statement
+              {t("Bold statement")}
               <Plus size={14} />
             </small>
           </button>
@@ -224,14 +224,14 @@ export const Library = memo(function Library({
             className="title-preset minimal"
             onClick={() => onTitle("MADE WITH LOVE", "minimal")}
           >
-            <span>MADE WITH LOVE</span>
+            <span>{t("MADE WITH LOVE")}</span>
             <small>
-              A quiet note
+              {t("A quiet note")}
               <Plus size={14} />
             </small>
           </button>
           <p className="library-tip">
-            Add a title card, then make it yours in the scene panel.
+            {t("Add a title card, then make it yours in the scene panel.")}
           </p>
         </div>
       ) : (
@@ -240,10 +240,10 @@ export const Library = memo(function Library({
             <label className="library-search">
               <Search size={15} />
               <input
-                aria-label="Search media"
-                placeholder={
-                  mode === "music" ? "Find your music" : "Find a moment"
-                }
+                aria-label={t("Search media")}
+                placeholder={t(
+                  mode === "music" ? "Find your music" : "Find a moment",
+                )}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -252,17 +252,17 @@ export const Library = memo(function Library({
           <div className={`asset-grid ${mode === "music" ? "audio-grid" : ""}`}>
             {!!assets.length && (
               <label className="library-sort">
-                Sort
+                {t("Sort")}
                 <select
-                  aria-label="Library sort"
+                  aria-label={t("Library sort")}
                   value={sort}
                   onChange={(event) =>
                     setSort(event.target.value as typeof sort)
                   }
                 >
-                  <option value="name">Filename</option>
-                  <option value="date">Date taken</option>
-                  <option value="used">Used first</option>
+                  <option value="name">{t("Filename")}</option>
+                  <option value="date">{t("Date taken")}</option>
+                  <option value="used">{t("Used first")}</option>
                 </select>
               </label>
             )}
@@ -286,8 +286,10 @@ export const Library = memo(function Library({
                   }}
                   disabled={busy || !!resource?.error}
                   onClick={() => onAdd(asset)}
-                  aria-label={`${asset.kind === "audio" ? "Use" : "Add"} ${asset.name}`}
-                  title={resource?.error ?? asset.name}
+                  aria-label={t(
+                    `${asset.kind === "audio" ? "Use" : "Add"} ${asset.name}`,
+                  )}
+                  title={t(resource?.error ?? asset.name)}
                 >
                   <div className="media-poster">
                     {asset.kind === "audio" ? (
@@ -317,13 +319,15 @@ export const Library = memo(function Library({
                   </span>
                   <small>
                     {used.has(asset.id) && (
-                      <span className="used-indicator">Used · </span>
+                      <span className="used-indicator">
+                        {t("Used \u00B7 ")}
+                      </span>
                     )}
                     {asset.kind === "audio"
                       ? formatTime(asset.duration)
                       : asset.kind === "image"
-                        ? "Photo"
-                        : "Video"}
+                        ? t("Photo")
+                        : t("Video")}
                   </small>
                 </button>
               );
@@ -338,15 +342,19 @@ export const Library = memo(function Library({
               )}
               <p>
                 {query
-                  ? "No matching media"
+                  ? t("No matching media")
                   : mode === "music"
-                    ? "Your soundtrack starts here"
-                    : "A home for your moments"}
+                    ? t("Your soundtrack starts here")
+                    : t("A home for your moments")}
               </p>
               <span>
                 {mode === "music"
-                  ? "MP3, WAV, M4A, AAC or FLAC.\nYour music stays on your device."
-                  : "Bring in photos and video clips.\nWe’ll put them in your storyboard."}
+                  ? t(
+                      "MP3, WAV, M4A, AAC or FLAC.\nYour music stays on your device.",
+                    )
+                  : t(
+                      "Bring in photos and video clips.\nWe’ll put them in your storyboard.",
+                    )}
               </span>
               {!Object.keys(project.assets).length && mode === "media" && (
                 <button
@@ -354,7 +362,8 @@ export const Library = memo(function Library({
                   disabled={busy}
                   onClick={onExample}
                 >
-                  Try an example<span>↗</span>
+                  {t("Try an example")}
+                  <span>{t("\u2197")}</span>
                 </button>
               )}
             </div>
@@ -362,10 +371,10 @@ export const Library = memo(function Library({
           {mode === "music" && musicClip && soundtrack && (
             <div className="music-settings">
               <div className="setting-heading">
-                <h3>Your soundtrack</h3>
+                <h3>{t("Your soundtrack")}</h3>
                 <IconButton
                   icon={X}
-                  label="Remove soundtrack"
+                  label={t("Remove soundtrack")}
                   onClick={() =>
                     onMusic(
                       project.audioClips.filter(
@@ -377,10 +386,13 @@ export const Library = memo(function Library({
               </div>
               <p className="track-name">{soundtrack.name}</p>
               <label className="range-label">
-                Music volume
-                <span>{Math.round(musicClip.volume * 100)}%</span>
+                {t("Music volume")}
+                <span>
+                  {Math.round(musicClip.volume * 100)}
+                  {t("%")}
+                </span>
                 <input
-                  aria-label="Music volume"
+                  aria-label={t("Music volume")}
                   type="range"
                   min="0"
                   max="100"
@@ -417,7 +429,7 @@ export const Library = memo(function Library({
                     )
                   }
                 />
-                Loop to the end of the film
+                {t("Loop to the end of the film")}
               </label>
             </div>
           )}
@@ -426,17 +438,17 @@ export const Library = memo(function Library({
       <div className="library-footer">
         <ShieldCheck size={16} />
         <span>
-          Yours to make.
+          {t("Yours to make.")}
           <br />
-          <strong>Yours to keep.</strong>
+          <strong>{t("Yours to keep.")}</strong>
         </span>
-        {backend === "mock" && <span className="mock-badge">mock</span>}
+        {backend === "mock" && <span className="mock-badge">{t("mock")}</span>}
       </div>
       <input
         hidden
         ref={replacement}
         type="file"
-        aria-label="Replace library media"
+        aria-label={t("Replace library media")}
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           event.currentTarget.value = "";
@@ -448,13 +460,14 @@ export const Library = memo(function Library({
         <div
           className="library-replace-menu"
           role="menu"
-          aria-label="Media actions"
+          aria-label={t("Media actions")}
         >
           <button role="menuitem" onClick={() => replacement.current?.click()}>
-            Replace / relink {project.assets[context]?.name}
+            {t("Replace / relink ")}
+            {project.assets[context]?.name}
           </button>
           <button role="menuitem" onClick={() => setContext(null)}>
-            Close menu
+            {t("Close menu")}
           </button>
         </div>
       )}

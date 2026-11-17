@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: Commit containing the recording implementation
+        description: Full commit SHA or branch containing the implementation
         required: true
-        default: 10d473d
+        default: main
       repetitions:
         type: choice
         options: ["30", "20"]

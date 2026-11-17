@@ -1,8 +1,8 @@
+import { useT } from "../../i18n/locale";
 import { useState } from "react";
 import { visualLayerSchema } from "../../../contracts/creative";
 import type { Project, Scene, VisualLayer } from "../../../contracts/project";
 import { Choice, Colour, Numeric, Slider, Toggle, ToolSection } from "./Fields";
-
 export function OverlayTools({
   project,
   scene,
@@ -12,6 +12,7 @@ export function OverlayTools({
   scene: Scene;
   onChange: (changes: Partial<Scene>) => void;
 }) {
+  const t = useT();
   const [selected, setSelected] = useState(scene.layers[0]?.id ?? "");
   const [mediaId, setMediaId] = useState("");
   const media = Object.values(project.assets).filter(
@@ -65,9 +66,10 @@ export function OverlayTools({
   };
   return (
     <>
-      <ToolSection title="Picture in picture & stickers">
+      <ToolSection title={t("Picture in picture & stickers")}>
         <Choice
-          label="Overlay media"
+          label={t("Overlay media")}
+          translateOptions={false}
           value={mediaId}
           options={[
             ["", "Choose a photo or clip"],
@@ -81,36 +83,37 @@ export function OverlayTools({
             disabled={!mediaId || scene.layers.length >= 8}
             onClick={() => add("media", mediaId)}
           >
-            Add picture in picture
+            {t("Add picture in picture")}
           </button>
           <button
             className="button secondary"
             disabled={scene.layers.length >= 8}
             onClick={() => add("shape")}
           >
-            Add shape / sticker
+            {t("Add shape / sticker")}
           </button>
           <button
             className="button secondary"
             disabled={media.length < 2}
             onClick={() => collage(2)}
           >
-            Two-picture split
+            {t("Two-picture split")}
           </button>
           <button
             className="button secondary"
             disabled={media.length < 4}
             onClick={() => collage(4)}
           >
-            Four-picture collage
+            {t("Four-picture collage")}
           </button>
         </div>
       </ToolSection>
       {layer && (
         <>
-          <ToolSection title="Selected overlay">
+          <ToolSection title={t("Selected overlay")}>
             <Choice
-              label="Overlay item"
+              label={t("Overlay item")}
+              translateOptions={false}
               value={layer.id}
               options={scene.layers.map((item, index) => [
                 item.id,
@@ -121,7 +124,7 @@ export function OverlayTools({
             {layer.kind !== "media" ? (
               <>
                 <Choice
-                  label="Shape or sticker"
+                  label={t("Shape or sticker")}
                   value={layer.shape}
                   options={[
                     ["rectangle", "Rectangle"],
@@ -138,17 +141,17 @@ export function OverlayTools({
                   onChange={(shape) => update({ shape })}
                 />
                 <Colour
-                  label="Shape colour"
+                  label={t("Shape colour")}
                   value={layer.colour}
                   onChange={(colour) => update({ colour })}
                 />
                 <Colour
-                  label="Shape outline"
+                  label={t("Shape outline")}
                   value={layer.stroke}
                   onChange={(stroke) => update({ stroke })}
                 />
                 <Slider
-                  label="Shape outline width"
+                  label={t("Shape outline width")}
                   value={layer.strokeWidth}
                   max={0.03}
                   step={0.001}
@@ -158,7 +161,7 @@ export function OverlayTools({
             ) : (
               <>
                 <Choice
-                  label="Overlay framing"
+                  label={t("Overlay framing")}
                   value={layer.fit}
                   options={[
                     ["cover", "Fill"],
@@ -167,18 +170,21 @@ export function OverlayTools({
                   onChange={(fit) => update({ fit })}
                 />
                 <Toggle
-                  label="Loop overlay clip"
+                  label={t("Loop overlay clip")}
                   checked={layer.loop}
                   onChange={(loop) => update({ loop })}
                 />
-                <Slider
-                  label="Overlay sound volume"
-                  value={layer.volume}
-                  max={4}
-                  onChange={(volume) => update({ volume })}
-                />
+                {project.assets[layer.assetId!]?.kind === "video" &&
+                  project.assets[layer.assetId!]?.hasAudio !== false && (
+                    <Slider
+                      label={t("Overlay sound volume")}
+                      value={layer.volume}
+                      max={4}
+                      onChange={(volume) => update({ volume })}
+                    />
+                  )}
                 <Toggle
-                  label="Remove a key colour"
+                  label={t("Remove a key colour")}
                   checked={!!layer.keyColour}
                   onChange={(enabled) =>
                     update({ keyColour: enabled ? "#00ff00" : null })
@@ -187,12 +193,12 @@ export function OverlayTools({
                 {layer.keyColour && (
                   <>
                     <Colour
-                      label="Key colour"
+                      label={t("Key colour")}
                       value={layer.keyColour}
                       onChange={(keyColour) => update({ keyColour })}
                     />
                     <Slider
-                      label="Key tolerance"
+                      label={t("Key tolerance")}
                       value={layer.keyTolerance}
                       min={0.01}
                       max={0.8}
@@ -203,37 +209,37 @@ export function OverlayTools({
               </>
             )}
           </ToolSection>
-          <ToolSection title="Position & timing">
+          <ToolSection title={t("Position & timing")}>
             <Slider
-              label="Overlay X position"
+              label={t("Overlay X position")}
               value={layer.x}
               min={-1}
               max={2}
               onChange={(x) => update({ x })}
             />
             <Slider
-              label="Overlay Y position"
+              label={t("Overlay Y position")}
               value={layer.y}
               min={-1}
               max={2}
               onChange={(y) => update({ y })}
             />
             <Slider
-              label="Overlay width"
+              label={t("Overlay width")}
               value={layer.width}
               min={0.02}
               max={2}
               onChange={(width) => update({ width })}
             />
             <Slider
-              label="Overlay height"
+              label={t("Overlay height")}
               value={layer.height}
               min={0.02}
               max={2}
               onChange={(height) => update({ height })}
             />
             <Slider
-              label="Overlay rotation"
+              label={t("Overlay rotation")}
               value={layer.rotation}
               min={-180}
               max={180}
@@ -241,27 +247,27 @@ export function OverlayTools({
               onChange={(rotation) => update({ rotation })}
             />
             <Slider
-              label="Overlay opacity"
+              label={t("Overlay opacity")}
               value={layer.opacity}
               onChange={(opacity) => update({ opacity })}
             />
             <Numeric
-              label="Overlay starts (seconds)"
+              label={t("Overlay starts (seconds)")}
               value={layer.start}
               max={(layer.end ?? scene.duration) - 0.01}
               onChange={(start) => update({ start })}
             />
             <Numeric
-              label="Overlay ends (seconds)"
+              label={t("Overlay ends (seconds)")}
               value={layer.end ?? scene.duration}
               min={layer.start + 0.01}
               max={scene.duration}
               onChange={(end) => update({ end })}
             />
           </ToolSection>
-          <ToolSection title="Simple end position">
+          <ToolSection title={t("Simple end position")}>
             <Toggle
-              label="Animate overlay position"
+              label={t("Animate overlay position")}
               checked={layer.endX !== null}
               onChange={(enabled) =>
                 update({
@@ -273,14 +279,14 @@ export function OverlayTools({
             {layer.endX !== null && (
               <>
                 <Slider
-                  label="Overlay end X"
+                  label={t("Overlay end X")}
                   value={layer.endX}
                   min={-1}
                   max={2}
                   onChange={(endX) => update({ endX })}
                 />
                 <Slider
-                  label="Overlay end Y"
+                  label={t("Overlay end Y")}
                   value={layer.endY ?? layer.y}
                   min={-1}
                   max={2}
@@ -289,14 +295,14 @@ export function OverlayTools({
               </>
             )}
             <Slider
-              label="Overlay end scale"
+              label={t("Overlay end scale")}
               value={layer.endScale}
               min={0.1}
               max={6}
               onChange={(endScale) => update({ endScale })}
             />
             <Slider
-              label="Overlay end opacity"
+              label={t("Overlay end opacity")}
               value={layer.endOpacity ?? layer.opacity}
               onChange={(endOpacity) => update({ endOpacity })}
             />
@@ -308,7 +314,7 @@ export function OverlayTools({
                 })
               }
             >
-              Remove this overlay
+              {t("Remove this overlay")}
             </button>
           </ToolSection>
         </>

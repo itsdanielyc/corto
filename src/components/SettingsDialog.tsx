@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useState } from "react";
 import { preferencesSchema } from "../../contracts/creative";
 import type { Preferences, Project } from "../../contracts/project";
@@ -6,7 +7,6 @@ import type { CortoPlatform } from "../platform/types";
 import { Modal } from "./primitives";
 import { Choice, Colour, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { TRANSITION_CHOICES } from "./tools/PictureTools";
-
 export function SettingsDialog({
   project,
   platform,
@@ -18,6 +18,7 @@ export function SettingsDialog({
   onSave: (preferences: Preferences) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [preferences, setPreferences] = useState(() =>
     preferencesSchema.parse({
       defaults: project.defaults,
@@ -54,21 +55,21 @@ export function SettingsDialog({
   };
   return (
     <Modal
-      title="Settings & defaults"
+      title={t("Settings & defaults")}
       onClose={onClose}
       className="slideshow-dialog"
     >
       <div className="slideshow-layout">
-        <ToolSection title="New scenes">
+        <ToolSection title={t("New scenes")}>
           <Numeric
-            label="Default photo duration"
+            label={t("Default photo duration")}
             value={preferences.defaults.photoSeconds}
             min={0.25}
             max={120}
             onChange={(photoSeconds) => defaults({ photoSeconds })}
           />
           <Choice
-            label="Default photo framing"
+            label={t("Default photo framing")}
             value={preferences.defaults.fit}
             options={[
               ["cover", "Fill frame"],
@@ -77,20 +78,20 @@ export function SettingsDialog({
             onChange={(fit) => defaults({ fit })}
           />
           <Choice
-            label="Default transition"
+            label={t("Default transition")}
             value={preferences.defaults.transition}
             options={TRANSITION_CHOICES}
             onChange={(transition) => defaults({ transition })}
           />
           <Numeric
-            label="Default transition duration"
+            label={t("Default transition duration")}
             value={preferences.defaults.transitionSeconds}
             min={0}
             max={5}
             onChange={(transitionSeconds) => defaults({ transitionSeconds })}
           />
           <Choice
-            label="Default title style"
+            label={t("Default title style")}
             value={preferences.defaults.titleStyle}
             options={[
               ["classic", "Classic"],
@@ -100,12 +101,12 @@ export function SettingsDialog({
             onChange={(titleStyle) => defaults({ titleStyle })}
           />
           <Colour
-            label="Default background"
+            label={t("Default background")}
             value={preferences.defaults.background}
             onChange={(background) => defaults({ background })}
           />
           <Choice
-            label="Default export resolution"
+            label={t("Default export resolution")}
             value={preferences.output.resolution}
             options={[
               ["720p", "HD · 720p"],
@@ -120,14 +121,25 @@ export function SettingsDialog({
             }
           />
           <p className="dialog-note">
-            These defaults apply to new scenes in this film and new films.
-            Existing scenes keep their edits.
+            {t(
+              "These defaults apply to new scenes in this film and new films. Existing scenes keep their edits.",
+            )}
           </p>
         </ToolSection>
         <div>
-          <ToolSection title="Editor">
+          <ToolSection title={t("Editor")}>
+            <button
+              className="button secondary"
+              onClick={() => {
+                void import("../models/cache")
+                  .then((module) => module.clearModelFiles())
+                  .catch((error) => setError(String(error)));
+              }}
+            >
+              {t("Remove downloaded local models")}
+            </button>
             <Choice
-              label="Language"
+              label={t("Language")}
               value={preferences.locale}
               options={[
                 ["en", "English"],
@@ -136,14 +148,14 @@ export function SettingsDialog({
               onChange={(locale) => setPreferences({ ...preferences, locale })}
             />
             <Toggle
-              label="Use proportional timeline"
+              label={t("Use proportional timeline")}
               checked={preferences.timeline}
               onChange={(timeline) =>
                 setPreferences({ ...preferences, timeline })
               }
             />
             <Numeric
-              label="Timeline zoom"
+              label={t("Timeline zoom")}
               value={preferences.timelineZoom}
               min={4}
               max={200}
@@ -153,24 +165,25 @@ export function SettingsDialog({
               }
             />
             <Toggle
-              label="Prefer editing proxies when available"
+              label={t("Prefer editing proxies when available")}
               checked={preferences.proxyEditing}
               onChange={(proxyEditing) =>
                 setPreferences({ ...preferences, proxyEditing })
               }
             />
           </ToolSection>
-          <ToolSection title="Updates">
+          <ToolSection title={t("Updates")}>
             <Toggle
-              label="Check for new releases when Corto opens"
+              label={t("Check for new releases when Corto opens")}
               checked={preferences.checkUpdates}
               onChange={(checkUpdates) =>
                 setPreferences({ ...preferences, checkUpdates })
               }
             />
             <p className="dialog-note">
-              Checking contacts GitHub for public release information. Your
-              projects and media stay on this device.
+              {t(
+                "Checking contacts GitHub for public release information. Your projects and media stay on this device.",
+              )}
             </p>
             <button
               className="button secondary"
@@ -184,13 +197,15 @@ export function SettingsDialog({
                   .catch((error) => setError(String(error)));
               }}
             >
-              Check for updates
+              {t("Check for updates")}
             </button>
             {checked &&
               (update ? (
                 <>
                   <p>
-                    Version {update.version} is available.
+                    {t("Version ")}
+                    {update.version}
+                    {t(" is available.")}
                     {!update.signed && " This is an unsigned preview."}
                   </p>
                   <a
@@ -199,11 +214,11 @@ export function SettingsDialog({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Open release downloads
+                    {t("Open release downloads")}
                   </a>
                 </>
               ) : (
-                <p>You are using the latest published version.</p>
+                <p>{t("You are using the latest published version.")}</p>
               ))}
           </ToolSection>
         </div>
@@ -215,7 +230,7 @@ export function SettingsDialog({
       )}
       <div className="modal-actions">
         <button className="button secondary" onClick={onClose}>
-          Cancel
+          {t("Cancel")}
         </button>
         <button
           className="button primary"
@@ -223,7 +238,7 @@ export function SettingsDialog({
             void save();
           }}
         >
-          Save settings
+          {t("Save settings")}
         </button>
       </div>
     </Modal>

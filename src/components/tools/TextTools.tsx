@@ -1,8 +1,8 @@
+import { applicationLocale, useT } from "../../i18n/locale";
 import { useState } from "react";
 import { textItemSchema } from "../../../contracts/creative";
 import type { Scene, TextItem } from "../../../contracts/project";
 import { Choice, Colour, Numeric, Slider, Toggle, ToolSection } from "./Fields";
-
 const TEMPLATES = {
   heading: {
     label: "Heading",
@@ -70,7 +70,6 @@ const TEMPLATES = {
     y: 0.88,
   },
 } as const;
-
 export function TextTools({
   scene,
   onChange,
@@ -78,6 +77,7 @@ export function TextTools({
   scene: Scene;
   onChange: (changes: Partial<Scene>) => void;
 }) {
+  const t = useT();
   const [selectedId, setSelectedId] = useState(scene.textItems[0]?.id ?? "");
   const item =
     scene.textItems.find((candidate) => candidate.id === selectedId) ??
@@ -92,13 +92,24 @@ export function TextTools({
   };
   const add = (template: keyof typeof TEMPLATES) => {
     const { label: _label, ...settings } = TEMPLATES[template];
-    const next = textItemSchema.parse({ id: crypto.randomUUID(), ...settings });
+    const next = textItemSchema.parse({
+      id: crypto.randomUUID(),
+      ...settings,
+      text:
+        template === "date"
+          ? new Date().toLocaleDateString(applicationLocale(), {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })
+          : t(settings.text),
+    });
     onChange({ textItems: [...scene.textItems, next] });
     setSelectedId(next.id);
   };
   return (
     <>
-      <ToolSection title="Add a text item">
+      <ToolSection title={t("Add a text item")}>
         <div className="template-buttons">
           {Object.entries(TEMPLATES).map(([id, template]) => (
             <button
@@ -107,16 +118,17 @@ export function TextTools({
               key={id}
               onClick={() => add(id as keyof typeof TEMPLATES)}
             >
-              {template.label}
+              {t(template.label)}
             </button>
           ))}
         </div>
       </ToolSection>
       {item && (
         <>
-          <ToolSection title="Words & timing">
+          <ToolSection title={t("Words & timing")}>
             <Choice
-              label="Text item"
+              label={t("Text item")}
+              translateOptions={false}
               value={item.id}
               options={scene.textItems.map((text, index) => [
                 text.id,
@@ -125,9 +137,9 @@ export function TextTools({
               onChange={setSelectedId}
             />
             <label className="field-label">
-              Text
+              {t("Text")}
               <textarea
-                aria-label="Text item words"
+                aria-label={t("Text item words")}
                 rows={5}
                 maxLength={8000}
                 value={item.text}
@@ -135,22 +147,22 @@ export function TextTools({
               />
             </label>
             <Numeric
-              label="Text starts (seconds)"
+              label={t("Text starts (seconds)")}
               value={item.start}
               max={(item.end ?? scene.duration) - 0.01}
               onChange={(start) => update({ start })}
             />
             <Numeric
-              label="Text ends (seconds)"
+              label={t("Text ends (seconds)")}
               value={item.end ?? scene.duration}
               min={item.start + 0.01}
               max={scene.duration}
               onChange={(end) => update({ end })}
             />
           </ToolSection>
-          <ToolSection title="Typography">
+          <ToolSection title={t("Typography")}>
             <Choice
-              label="Font"
+              label={t("Font")}
               value={item.font}
               options={[
                 ["serif", "DM Serif Display"],
@@ -161,29 +173,29 @@ export function TextTools({
               onChange={(font) => update({ font })}
             />
             <Slider
-              label="Text size"
+              label={t("Text size")}
               value={item.size}
               min={0.01}
               max={0.4}
               onChange={(size) => update({ size })}
             />
             <Toggle
-              label="Bold"
+              label={t("Bold")}
               checked={item.bold}
               onChange={(bold) => update({ bold })}
             />
             <Toggle
-              label="Italic"
+              label={t("Italic")}
               checked={item.italic}
               onChange={(italic) => update({ italic })}
             />
             <Colour
-              label="Text colour"
+              label={t("Text colour")}
               value={item.colour}
               onChange={(colour) => update({ colour })}
             />
             <Choice
-              label="Text alignment"
+              label={t("Text alignment")}
               value={item.align}
               options={[
                 ["left", "Left"],
@@ -193,53 +205,53 @@ export function TextTools({
               onChange={(align) => update({ align })}
             />
             <Colour
-              label="Outline colour"
+              label={t("Outline colour")}
               value={item.outline}
               onChange={(outline) => update({ outline })}
             />
             <Slider
-              label="Outline width"
+              label={t("Outline width")}
               value={item.outlineWidth}
               max={0.02}
               step={0.001}
               onChange={(outlineWidth) => update({ outlineWidth })}
             />
             <Toggle
-              label="Text shadow"
+              label={t("Text shadow")}
               checked={item.shadow}
               onChange={(shadow) => update({ shadow })}
             />
             <Colour
-              label="Text box colour"
+              label={t("Text box colour")}
               value={item.boxColour}
               onChange={(boxColour) => update({ boxColour })}
             />
             <Slider
-              label="Text box opacity"
+              label={t("Text box opacity")}
               value={item.boxOpacity}
               onChange={(boxOpacity) => update({ boxOpacity })}
             />
           </ToolSection>
-          <ToolSection title="Placement & animation">
+          <ToolSection title={t("Placement & animation")}>
             <Slider
-              label="Text X position"
+              label={t("Text X position")}
               value={item.x}
               onChange={(x) => update({ x })}
             />
             <Slider
-              label="Text Y position"
+              label={t("Text Y position")}
               value={item.y}
               onChange={(y) => update({ y })}
             />
             <Slider
-              label="Text width"
+              label={t("Text width")}
               value={item.width}
               min={0.1}
               max={1}
               onChange={(width) => update({ width })}
             />
             <Choice
-              label="Text animation"
+              label={t("Text animation")}
               value={item.animation}
               options={[
                 ["none", "Still"],
@@ -251,13 +263,15 @@ export function TextTools({
               ]}
               onChange={(animation) => update({ animation })}
             />
-            <Numeric
-              label="Text animation duration"
-              value={item.animationSeconds}
-              min={0.1}
-              max={10}
-              onChange={(animationSeconds) => update({ animationSeconds })}
-            />
+            {!["none", "credits"].includes(item.animation) && (
+              <Numeric
+                label={t("Text animation duration")}
+                value={item.animationSeconds}
+                min={0.1}
+                max={10}
+                onChange={(animationSeconds) => update({ animationSeconds })}
+              />
+            )}
             <button
               className="text-button"
               onClick={() =>
@@ -268,7 +282,7 @@ export function TextTools({
                 })
               }
             >
-              Remove this text item
+              {t("Remove this text item")}
             </button>
           </ToolSection>
         </>

@@ -1,5 +1,5 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useState } from "react";
-
 /** Keep incomplete numeric typing local; only finite committed values reach the editing model. */
 export function TimingField({
   label,
@@ -16,13 +16,14 @@ export function TimingField({
   max?: number;
   step?: number;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
   return (
     <label>
       {label}
       <input
-        aria-label={label}
+        aria-label={t(label)}
         type="number"
         min={min}
         max={max}

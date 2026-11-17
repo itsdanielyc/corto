@@ -77,8 +77,11 @@ export function useEditorController() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectionRef = useRef(selectedIds);
-  const existingSceneIds = new Set(project.scenes.map(scene => scene.id));
-  selectionRef.current = new Set([...selectedIds].filter(id => existingSceneIds.has(id)));
+  const validSelection = useMemo(() => {
+    const existingSceneIds = new Set(project.scenes.map((scene) => scene.id));
+    return new Set([...selectedIds].filter((id) => existingSceneIds.has(id)));
+  }, [selectedIds, project.scenes]);
+  selectionRef.current = validSelection;
   const anchorRef = useRef<string | null>(null);
   const clipboard = useRef<{
     scenes: Scene[];
@@ -286,7 +289,7 @@ export function useEditorController() {
   );
 
   const addMedia = useCallback(
-    (asset: MediaAsset) => {
+    (asset: MediaAsset, afterId?: string) => {
       if (asset.kind === "audio") {
         edit((project) => addMusic(project, asset));
         return;
@@ -303,7 +306,11 @@ export function useEditorController() {
         ...(asset.kind === "image" ? { duration: defaults.photoSeconds } : {}),
       };
       edit((project) =>
-        insertScenes(project, [scene], selectedRef.current?.id ?? null),
+        insertScenes(
+          project,
+          [scene],
+          afterId ?? selectedRef.current?.id ?? null,
+        ),
       );
       const start =
         buildTimeline(current.current.present.scenes).find(
@@ -691,8 +698,8 @@ export function useEditorController() {
     total,
     selected,
     selectedIndex,
-    selectedIds: selectedIds.size
-      ? selectedIds
+    selectedIds: validSelection.size
+      ? validSelection
       : new Set(selected ? [selected.id] : []),
     sceneAction,
     selectScene,

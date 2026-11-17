@@ -1,9 +1,9 @@
+import { useT } from "../../i18n/locale";
 import type { MediaAsset, Project, Scene } from "../../../contracts/project";
 import type { CortoPlatform } from "../../platform/types";
 import { Choice, Colour, Slider, Toggle, ToolSection } from "./Fields";
 import { autoAdjustments } from "../../domain/colour";
 import { MediaPool } from "../../preview/media-pool";
-
 export const MOTION_CHOICES = [
   ["none", "Still"],
   ["zoom-in", "Slow zoom in"],
@@ -42,6 +42,7 @@ export function PictureTools({
   onChange: (changes: Partial<Scene>) => void;
   report: (error: unknown) => void;
 }) {
+  const t = useT();
   const transform = (changes: Partial<Scene["transform"]>) =>
     onChange({ transform: { ...scene.transform, ...changes } });
   const enhance = async () => {
@@ -66,7 +67,7 @@ export function PictureTools({
   return (
     <>
       {asset && (
-        <ToolSection title="Framing & movement">
+        <ToolSection title={t("Framing & movement")}>
           <div className="tool-button-row">
             <button
               className="button secondary"
@@ -77,31 +78,31 @@ export function PictureTools({
                 })
               }
             >
-              Rotate 90°
+              {t("Rotate 90\u00B0")}
             </button>
             <button
               className="button secondary"
               aria-pressed={scene.transform.flipX}
               onClick={() => transform({ flipX: !scene.transform.flipX })}
             >
-              Flip horizontal
+              {t("Flip horizontal")}
             </button>
             <button
               className="button secondary"
               aria-pressed={scene.transform.flipY}
               onClick={() => transform({ flipY: !scene.transform.flipY })}
             >
-              Flip vertical
+              {t("Flip vertical")}
             </button>
           </div>
           <Choice
-            label="Motion"
+            label={t("Motion")}
             value={scene.transform.motion}
             options={MOTION_CHOICES}
             onChange={(motion) => transform({ motion })}
           />
           <Choice
-            label="Fit"
+            label={t("Fit")}
             value={scene.fit}
             options={[
               ["cover", "Fill / crop"],
@@ -110,17 +111,17 @@ export function PictureTools({
             onChange={(fit) => onChange({ fit })}
           />
           <Slider
-            label="Crop focus X"
+            label={t("Crop focus X")}
             value={scene.transform.focusX}
             onChange={(focusX) => transform({ focusX })}
           />
           <Slider
-            label="Crop focus Y"
+            label={t("Crop focus Y")}
             value={scene.transform.focusY}
             onChange={(focusY) => transform({ focusY })}
           />
           <Slider
-            label="Start zoom"
+            label={t("Start zoom")}
             value={scene.transform.zoom}
             min={1}
             max={6}
@@ -129,17 +130,17 @@ export function PictureTools({
           {scene.transform.motion === "custom" && (
             <>
               <Slider
-                label="End focus X"
+                label={t("End focus X")}
                 value={scene.transform.endFocusX}
                 onChange={(endFocusX) => transform({ endFocusX })}
               />
               <Slider
-                label="End focus Y"
+                label={t("End focus Y")}
                 value={scene.transform.endFocusY}
                 onChange={(endFocusY) => transform({ endFocusY })}
               />
               <Slider
-                label="End zoom"
+                label={t("End zoom")}
                 value={scene.transform.endZoom}
                 min={1}
                 max={6}
@@ -149,9 +150,9 @@ export function PictureTools({
           )}
         </ToolSection>
       )}
-      <ToolSection title="Background">
+      <ToolSection title={t("Background")}>
         <Choice
-          label="Background treatment"
+          label={t("Background treatment")}
           value={scene.backdrop.kind}
           options={[
             ["solid", "Solid colour"],
@@ -165,7 +166,8 @@ export function PictureTools({
         />
         {scene.backdrop.kind === "photo" && (
           <Choice
-            label="Background photo"
+            label={t("Background photo")}
+            translateOptions={false}
             value={scene.backdrop.assetId ?? ""}
             options={[
               ["", "Choose a photo"],
@@ -183,21 +185,21 @@ export function PictureTools({
           />
         )}
         <Colour
-          label="Background colour"
+          label={t("Background colour")}
           value={scene.background}
           onChange={(background) => onChange({ background })}
         />
         {scene.backdrop.kind === "gradient" && (
           <>
             <Colour
-              label="Second colour"
+              label={t("Second colour")}
               value={scene.backdrop.secondColour}
               onChange={(secondColour) =>
                 onChange({ backdrop: { ...scene.backdrop, secondColour } })
               }
             />
             <Slider
-              label="Gradient angle"
+              label={t("Gradient angle")}
               value={scene.backdrop.angle}
               max={360}
               step={1}
@@ -209,9 +211,9 @@ export function PictureTools({
         )}
       </ToolSection>
       {asset && (
-        <ToolSection title="Colour & looks">
+        <ToolSection title={t("Colour & looks")}>
           <Choice
-            label="Look"
+            label={t("Look")}
             value={scene.adjustments.look}
             options={[
               ["none", "Original"],
@@ -230,7 +232,7 @@ export function PictureTools({
             (key) => (
               <Slider
                 key={key}
-                label={key[0].toUpperCase() + key.slice(1)}
+                label={t(key[0].toUpperCase() + key.slice(1))}
                 value={scene.adjustments[key]}
                 min={key === "contrast" ? -0.9 : -1}
                 max={1}
@@ -248,7 +250,7 @@ export function PictureTools({
               void enhance().catch(report);
             }}
           >
-            Auto enhance
+            {t("Auto enhance")}
           </button>
           <button
             className="text-button"
@@ -264,10 +266,11 @@ export function PictureTools({
               })
             }
           >
-            Reset colour
+            {t("Reset colour")}
           </button>
           <Choice
-            label="Imported .cube look"
+            label={t("Imported .cube look")}
+            translateOptions={false}
             value={scene.adjustments.lutAssetId ?? ""}
             options={[
               ["", "No imported look"],
@@ -283,19 +286,19 @@ export function PictureTools({
             }}
           />
           <p className="dialog-note">
-            Import a .cube file with Import media, then choose it here.
+            {t("Import a .cube file with Import media, then choose it here.")}
           </p>
         </ToolSection>
       )}
-      <ToolSection title="Transitions">
+      <ToolSection title={t("Transitions")}>
         <Choice
-          label="Transition to next scene"
+          label={t("Transition to next scene")}
           value={scene.transition}
           options={TRANSITION_CHOICES}
           onChange={(transition) => onChange({ transition })}
         />
         <Slider
-          label="Transition duration"
+          label={t("Transition duration")}
           value={scene.transitionSeconds}
           min={0}
           max={5}
@@ -303,7 +306,7 @@ export function PictureTools({
           onChange={(transitionSeconds) => onChange({ transitionSeconds })}
         />
         <Toggle
-          label="Shade picture behind the simple title"
+          label={t("Shade picture behind the simple title")}
           checked={scene.captionShade}
           onChange={(captionShade) => onChange({ captionShade })}
         />

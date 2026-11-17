@@ -1,7 +1,7 @@
+import { useT } from "../../i18n/locale";
 import type { MediaAsset, Scene } from "../../../contracts/project";
 import type { MediaOperation } from "../../../contracts/services";
 import { Choice, Numeric, Slider, Toggle, ToolSection } from "./Fields";
-
 export function VideoTools({
   scene,
   asset,
@@ -15,20 +15,28 @@ export function VideoTools({
   onChange: (changes: Partial<Scene>) => void;
   onOperation: (operation: MediaOperation["operation"]) => void;
 }) {
+  const t = useT();
   const maximumEnd = asset.duration;
   return (
     <>
-      <ToolSection title="Trim the source">
+      <ToolSection title={t("Trim the source")}>
         <Slider
-          label="Visual trim in"
+          label={t("Visual trim in")}
           value={scene.start}
           min={0}
-          max={Math.max(0, maximumEnd - scene.duration * scene.speed)}
+          max={Math.max(0, scene.start + (scene.duration - 0.25) * scene.speed)}
           step={0.01}
-          onChange={(start) => onChange({ start })}
+          onChange={(start) =>
+            onChange({
+              start,
+              duration:
+                (scene.start + scene.duration * scene.speed - start) /
+                scene.speed,
+            })
+          }
         />
         <Slider
-          label="Visual trim out"
+          label={t("Visual trim out")}
           value={scene.start + scene.duration * scene.speed}
           min={scene.start + 0.25 * scene.speed}
           max={maximumEnd}
@@ -38,15 +46,15 @@ export function VideoTools({
           }
         />
         <Numeric
-          label="Source in point"
+          label={t("Source in point")}
           value={scene.start}
           max={maximumEnd - scene.duration * scene.speed}
           onChange={(start) => onChange({ start })}
         />
       </ToolSection>
-      <ToolSection title="Speed & original sound">
+      <ToolSection title={t("Speed & original sound")}>
         <Choice
-          label="Playback speed"
+          label={t("Playback speed")}
           value={String(scene.speed)}
           options={[
             ["0.25", "¼ speed"],
@@ -65,38 +73,39 @@ export function VideoTools({
           }}
         />
         <Toggle
-          label="Preserve voice pitch"
+          label={t("Preserve voice pitch")}
           checked={scene.preservePitch}
           onChange={(preservePitch) => onChange({ preservePitch })}
         />
         <Toggle
-          label="Loop this clip"
+          label={t("Loop this clip")}
           checked={scene.loop}
           onChange={(loop) => onChange({ loop })}
         />
         <Slider
-          label="Original audio gain"
+          label={t("Original audio gain")}
           value={scene.volume}
           max={4}
           onChange={(volume) => onChange({ volume })}
         />
         <Numeric
-          label="Original sound fade in"
+          label={t("Original sound fade in")}
           value={scene.audioFadeIn}
           max={scene.duration / 2}
           onChange={(audioFadeIn) => onChange({ audioFadeIn })}
         />
         <Numeric
-          label="Original sound fade out"
+          label={t("Original sound fade out")}
           value={scene.audioFadeOut}
           max={scene.duration / 2}
           onChange={(audioFadeOut) => onChange({ audioFadeOut })}
         />
       </ToolSection>
-      <ToolSection title="Non-destructive clip tools">
+      <ToolSection title={t("Non-destructive clip tools")}>
         <p className="dialog-note">
-          Each operation creates a new local copy. Your original stays in the
-          library.
+          {t(
+            "Each operation creates a new local copy. Your original stays in the library.",
+          )}
         </p>
         <div className="tool-button-row">
           {(
@@ -122,9 +131,9 @@ export function VideoTools({
           ))}
         </div>
       </ToolSection>
-      <ToolSection title="Chroma key">
+      <ToolSection title={t("Chroma key")}>
         <Toggle
-          label="Remove clip key colour"
+          label={t("Remove clip key colour")}
           checked={!!scene.keyColour}
           onChange={(enabled) =>
             onChange({ keyColour: enabled ? "#00ff00" : null })
@@ -133,9 +142,9 @@ export function VideoTools({
         {scene.keyColour && (
           <>
             <label className="field-label">
-              Clip key colour
+              {t("Clip key colour")}
               <input
-                aria-label="Clip key colour"
+                aria-label={t("Clip key colour")}
                 type="color"
                 value={scene.keyColour}
                 onChange={(event) =>
@@ -144,7 +153,7 @@ export function VideoTools({
               />
             </label>
             <Slider
-              label="Clip key tolerance"
+              label={t("Clip key tolerance")}
               value={scene.keyTolerance}
               min={0.01}
               max={0.8}

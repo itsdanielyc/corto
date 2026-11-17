@@ -37,7 +37,9 @@ export class AudioTimelinePlayer {
   }
 
   async prepare(): Promise<void> {
-    if (this.clips.length) this.context = this.output?.context as AudioContext ?? new AudioContext();
+    if (this.clips.length)
+      this.context =
+        (this.output?.context as AudioContext) ?? new AudioContext();
     for (const clip of this.clips) {
       const url = await this.resolveUrl(clip.assetId);
       if (this.disposed) return;
@@ -59,7 +61,8 @@ export class AudioTimelinePlayer {
       if (this.context) {
         sound.source = this.context.createMediaElementSource(audio);
         sound.gain = this.context.createGain();
-        sound.source.connect(sound.gain); sound.gain.connect(this.output ?? this.context.destination);
+        sound.source.connect(sound.gain);
+        sound.gain.connect(this.output ?? this.context.destination);
       }
     }
     if (!this.disposed) this.ready = true;
@@ -68,7 +71,8 @@ export class AudioTimelinePlayer {
   /** Synchronize to the film clock, seeking only at starts, loops and meaningful drift. */
   sync(time: number, playing: boolean): void {
     if (!this.ready || this.disposed) return;
-    if (playing && this.context?.state === "suspended") void this.context.resume().catch(this.report);
+    if (playing && this.context?.state === "suspended")
+      void this.context.resume().catch(this.report);
     const duck = this.windows.some(
       (window) => time >= window.start && time < window.end,
     );

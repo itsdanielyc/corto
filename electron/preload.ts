@@ -53,6 +53,10 @@ const bridge: ElectronBridge = {
     ipcRenderer.invoke(nativeChannels.savePortable, project),
   exportMovie: (request) =>
     ipcRenderer.invoke(nativeChannels.exportMovie, request),
+  chooseExportDestination: (project, sample) =>
+    ipcRenderer.invoke(nativeChannels.chooseExportDestination, project, sample),
+  releaseExportDestination: (token) =>
+    ipcRenderer.invoke(nativeChannels.releaseExportDestination, token),
   beginRenderAssets: (project, resolution) =>
     ipcRenderer.invoke(nativeChannels.beginRenderAssets, project, resolution),
   stageRenderAsset: (token, raster) =>

@@ -16,16 +16,13 @@ const recordingFormats: readonly RecordingFormat[] = [
 /** Detect the actual encoder instead of advertising an output the browser cannot produce. */
 export function browserRecordingFormat(): RecordingFormat | null {
   if (
-    typeof MediaRecorder === "undefined" ||
-    typeof HTMLCanvasElement.prototype.captureStream !== "function"
+    import.meta.env.VITE_CORTO_EXPERIMENTAL_WEBM === "1" &&
+    typeof MediaRecorder !== "undefined" &&
+    !MediaRecorder.isTypeSupported(recordingFormats[0].mime) &&
+    MediaRecorder.isTypeSupported(recordingFormats[1].mime)
   )
-    return null;
-  return (
-    recordingFormats.find(
-      (format) =>
-        (format.extension === "mp4" ||
-          import.meta.env.VITE_CORTO_EXPERIMENTAL_WEBM === "1") &&
-        MediaRecorder.isTypeSupported(format.mime),
-    ) ?? null
-  );
+    return recordingFormats[1];
+  return typeof Worker !== "undefined" && typeof WebAssembly !== "undefined"
+    ? recordingFormats[0]
+    : null;
 }

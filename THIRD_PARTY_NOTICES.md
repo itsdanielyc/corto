@@ -30,3 +30,11 @@ See `public/demo/CREDITS.md` and the acknowledgements in About Corto. The exampl
 - Browser HEVC/HDR conversion uses `@ffmpeg/ffmpeg` 0.12.15 (MIT wrapper) and a separately loaded, unmodified `@ffmpeg/core` 0.12.10 worker/core (GPL-2.0-or-later), based on FFmpeg 5.1.4. No CDN or media-conversion service is contacted. The core, its upstream build recipes and FFmpeg source are included/referenced in the same release source-information bundle. Core build recipes retain optional-library source locations and licenses.
 - The application source license does not replace the licenses of separately distributed codecs. All codec copyright/license notices remain with their owners. These workers and their locally served files can be replaced and rebuilt from the documented upstream sources.
 - Synthetic phone test fixtures are CC0; see `tests/fixtures/PHONE-CREDITS.md`.
+
+## Creator tools
+- Nunito and JetBrains Mono: SIL Open Font License 1.1; upstream notices are bundled in `public/licenses`.
+- The 20 original music compositions/recordings and eight original sound effects are dedicated under CC0 1.0; see `public/sounds/LICENSE.txt`. They use no third-party musical samples.
+- Transformers.js 4.3.2: Apache 2.0; ONNX Runtime Web: MIT, Microsoft. Runtime code/WASM is bundled, with license texts in `public/licenses`. Optional Node/CUDA downloads are not used.
+- Optional Whisper Tiny model data is derived from OpenAI Whisper (upstream MIT); the official Hugging Face model card identifies its model package as Apache 2.0. The pinned ONNX conversion is downloaded only when invoked. Sources: https://github.com/openai/whisper and https://huggingface.co/openai/whisper-tiny.
+- Optional U²-Net Small data: Apache 2.0, Xuebin Qin and the U²-Net authors. The revision-pinned CORS mirror is verified against the upstream-distributed weight file's SHA-256 before inference. Sources: https://github.com/xuebinqin/U-2-Net and https://github.com/danielgatis/rembg. Model weights are not bundled in the installers.
+- EXIF parsing uses exifr 7.1.3 (MIT). Original image metadata stays local.

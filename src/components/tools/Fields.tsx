@@ -1,27 +1,30 @@
+import { useT } from "../../i18n/locale";
 import { useEffect, useState, type ReactNode } from "react";
-
 export function Choice<T extends string>({
   label,
   value,
   options,
   onChange,
+  translateOptions = true,
 }: {
   label: string;
   value: T;
   options: readonly (readonly [T, string])[];
   onChange: (value: T) => void;
+  translateOptions?: boolean;
 }) {
+  const t = useT();
   return (
     <label className="field-label">
-      {label}
+      {t(label)}
       <select
-        aria-label={label}
+        aria-label={t(label)}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
       >
         {options.map(([id, title]) => (
           <option key={id} value={id}>
-            {title}
+            {translateOptions ? t(title) : title}
           </option>
         ))}
       </select>
@@ -43,13 +46,14 @@ export function Numeric({
   step?: number;
   onChange: (value: number) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(String(Number(value.toFixed(3))));
   useEffect(() => setDraft(String(Number(value.toFixed(3)))), [value]);
   return (
     <label className="field-label">
-      {label}
+      {t(label)}
       <input
-        aria-label={label}
+        aria-label={t(label)}
         type="number"
         min={min}
         max={max}
@@ -84,12 +88,13 @@ export function Slider({
   step?: number;
   onChange: (value: number) => void;
 }) {
+  const t = useT();
   return (
     <label className="range-label">
-      {label}
+      {t(label)}
       <span>{Number(value.toFixed(2))}</span>
       <input
-        aria-label={label}
+        aria-label={t(label)}
         type="range"
         min={min}
         max={max}
@@ -109,11 +114,12 @@ export function Colour({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const t = useT();
   return (
     <label className="field-label inline-field">
-      {label}
+      {t(label)}
       <input
-        aria-label={label}
+        aria-label={t(label)}
         type="color"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -130,6 +136,7 @@ export function Toggle({
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
+  const t = useT();
   return (
     <label className="tool-toggle">
       <input
@@ -137,7 +144,7 @@ export function Toggle({
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
       />
-      {label}
+      {t(label)}
     </label>
   );
 }
@@ -148,9 +155,10 @@ export function ToolSection({
   title: string;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <section className="tool-section">
-      <h3>{title}</h3>
+      <h3>{t(title)}</h3>
       <div className="tool-fields">{children}</div>
     </section>
   );

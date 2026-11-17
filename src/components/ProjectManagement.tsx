@@ -1,9 +1,9 @@
+import { useT } from "../i18n/locale";
 import { useState } from "react";
 import type { ProjectSummary } from "../../contracts/platform";
 import type { Project } from "../../contracts/project";
 import type { ProjectVersion } from "../../contracts/services";
 import type { CortoPlatform } from "../platform/types";
-
 /** Manage catalogue metadata and restore history into separate identities. */
 export function ProjectManagement({
   project,
@@ -20,6 +20,7 @@ export function ProjectManagement({
   onRestored: (project: Project) => void;
   onRefresh: () => void;
 }) {
+  const t = useT();
   const [name, setName] = useState(project.name);
   const [open, setOpen] = useState(false);
   const [remove, setRemove] = useState(false);
@@ -50,14 +51,15 @@ export function ProjectManagement({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        Manage {project.name}
+        {t("Manage ")}
+        {project.name}
       </button>
       {open && (
         <div className="tool-fields">
           <label className="field-label">
-            Film name
+            {t("Film name")}
             <input
-              aria-label={`Rename ${project.name}`}
+              aria-label={t(`Rename ${project.name}`)}
               maxLength={80}
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -78,7 +80,7 @@ export function ProjectManagement({
                 });
               }}
             >
-              Rename film
+              {t("Rename film")}
             </button>
             <button
               className="button secondary"
@@ -93,14 +95,14 @@ export function ProjectManagement({
                 });
               }}
             >
-              Duplicate film
+              {t("Duplicate film")}
             </button>
             <button
               className="text-button"
               disabled={busy}
               onClick={() => setRemove(true)}
             >
-              Delete film
+              {t("Delete film")}
             </button>
             <button
               className="text-button"
@@ -111,20 +113,21 @@ export function ProjectManagement({
                 );
               }}
             >
-              Version history
+              {t("Version history")}
             </button>
           </div>
           {remove && (
             <div className="delete-confirmation">
               <p>
-                Remove this film from My films? Original media stays in the
-                local workspace.
+                {t(
+                  "Remove this film from My films? Original media stays in the local workspace.",
+                )}
               </p>
               <button
                 className="button secondary"
                 onClick={() => setRemove(false)}
               >
-                Keep film
+                {t("Keep film")}
               </button>
               <button
                 className="button primary"
@@ -139,15 +142,19 @@ export function ProjectManagement({
                   });
                 }}
               >
-                Remove from My films
+                {t("Remove from My films")}
               </button>
             </div>
           )}
           {versions && (
             <div className="version-list">
-              <strong>Last {versions.length} saved versions</strong>
+              <strong>
+                {t("Last ")}
+                {versions.length}
+                {t(" saved versions")}
+              </strong>
               {!versions.length && (
-                <p>A version is kept when a saved film changes.</p>
+                <p>{t("A version is kept when a saved film changes.")}</p>
               )}
               {versions.map((version) => (
                 <button
@@ -164,8 +171,9 @@ export function ProjectManagement({
                     });
                   }}
                 >
-                  {new Date(version.savedAt).toLocaleString()} ·{" "}
-                  {version.sceneCount} scenes · Restore as copy
+                  {new Date(version.savedAt).toLocaleString()}
+                  {t(" \u00B7")} {version.sceneCount}
+                  {t(" scenes \u00B7 Restore as copy")}
                 </button>
               ))}
             </div>

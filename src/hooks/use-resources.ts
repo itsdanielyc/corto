@@ -28,8 +28,10 @@ export function useResources(
         try {
           const url = await platform.assetUrl(asset.id);
           const poster = await posterFromUrl(asset, url);
+          if (cancelled) return;
           cache.current[asset.id] = { url, poster };
         } catch (error) {
+          if (cancelled) return;
           cache.current[asset.id] = {
             url: "",
             poster: null,

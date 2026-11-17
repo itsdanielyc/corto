@@ -18,6 +18,7 @@ test("an unsupported browser offers an accessible desktop-export fallback", asyn
 }) => {
   await page.addInitScript(() => {
     MediaRecorder.isTypeSupported = () => false;
+    Object.defineProperty(window, "Worker", { value: undefined });
   });
   await page.reload();
   await page
@@ -40,7 +41,10 @@ test("an unsupported browser offers an accessible desktop-export fallback", asyn
 test("multiple films resume and recovery keeps the latest edit", async ({
   page,
 }) => {
-  test.skip(process.platform === "darwin" && !process.env.CORTO_RECOVERY_DIAGNOSTIC, "Saved-status race quarantined under issue #18; retained in recovery diagnosis");
+  test.skip(
+    process.platform === "darwin" && !process.env.CORTO_RECOVERY_DIAGNOSTIC,
+    "Saved-status race quarantined under issue #18; retained in recovery diagnosis",
+  );
   await page.getByLabel("Project name").fill("First memory");
   await page.getByLabel("Project name").press("Tab");
   await expect(page.getByTestId("save-status")).toHaveText(
@@ -181,6 +185,6 @@ test("export offers destination presets, an honest size estimate and a sample", 
   await page.getByRole("radio", { name: /Small file/ }).check();
   await expect(page.getByText("1280 × 720", { exact: false })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Export first 5 seconds as a sample" }),
+    page.getByRole("button", { name: "Export 5-second sample at playhead" }),
   ).toBeVisible();
 });
