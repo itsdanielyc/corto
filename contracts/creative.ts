@@ -185,6 +185,7 @@ export const outputSettingsSchema = z.strictObject({
 export const preferencesSchema = z.strictObject({
   locale: z.enum(["en", "es"]).default("en"),
   defaults: projectDefaultsSchema.prefault({}),
+  output: outputSettingsSchema.prefault({}),
   timeline: z.boolean().default(false),
   timelineZoom: z.number().finite().min(4).max(200).default(24),
   proxyEditing: z.boolean().default(false),
