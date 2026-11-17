@@ -70,6 +70,7 @@ export interface NativeBridge extends ProjectRepository, CreatorServices {
   savePortable(project: Project): Promise<boolean>;
   exportMovie(request: MovieRequest): Promise<MovieResult | null>;
   cancelExport(): Promise<void>;
+  cancelMedia?(): Promise<void>;
   onExportProgress(listener: (progress: ExportProgress) => void): () => void;
   revealExport(): Promise<void>;
   beginRenderAssets?(project: Project, resolution: ExportResolution): Promise<string>;
