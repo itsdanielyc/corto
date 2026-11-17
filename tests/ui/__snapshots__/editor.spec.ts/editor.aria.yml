@@ -27,6 +27,7 @@
   - combobox "Library sort":
     - option "Filename" [selected]
     - option "Date taken"
+    - option "Media type"
     - option "Used first"
   - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Used · Photo/
   - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Used · Photo/
