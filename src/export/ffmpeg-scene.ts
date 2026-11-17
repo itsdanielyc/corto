@@ -281,24 +281,19 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
   }
   const fade = Math.min(scene.transitionSeconds, scene.duration / 2);
   if (scene.transition === "fade" && fade > 0) {
-    const black = count++;
-    args.push(
-      "-f",
-      "lavfi",
-      "-i",
-      `color=c=black:s=${width}x${height}:r=${fps}:d=${duration + 1 / fps}`,
+    // FFmpeg's fade dims luma and returns chroma to neutral (scaling chroma
+    // towards 0 turned fades green), with a per-plane ramp instead of a
+    // per-pixel expression. Frames are shifted to scene time so a segment that
+    // starts mid-scene fades from the right point.
+    base = apply(
+      base,
+      [
+        `setpts=PTS+${localStart}/TB`,
+        `fade=t=in:st=0:d=${fade}`,
+        `fade=t=out:st=${scene.duration - fade}:d=${fade}`,
+        "setpts=PTS-STARTPTS",
+      ].join(","),
     );
-    const blended = label();
-    const rgbBase = label();
-    const rgbBlack = label();
-    // Scale RGB planes, not YUV: multiplying chroma towards 0 instead of its
-    // neutral midpoint turns every fade green.
-    filters.push(
-      `[${base}]format=gbrp[${rgbBase}]`,
-      `[${black}:v]format=gbrp[${rgbBlack}]`,
-      `[${rgbBase}][${rgbBlack}]blend=all_expr='A*max(0,min(1,min((T+${localStart})/${fade},(${scene.duration - localStart}-T)/${fade})))'[${blended}]`,
-    );
-    base = blended;
   }
   const picture = apply(base, `fps=${fps},setsar=1,format=yuv420p`);
   let sound: string;

@@ -141,6 +141,14 @@ it("fades a photo through black over its chosen duration without a colour cast",
   expect(half[0]).toBeLessThan(200);
   expect(half[1]).toBeLessThan(40);
   expect(half[2]).toBeLessThan(40);
+  // A range starting partway into the fade-in continues from that brightness.
+  const late = await render(repository, project, "photo-late.mp4", {
+    start: 0.15,
+    end: 2,
+  });
+  const resumed = pixel(late, 0.15)[0];
+  expect(resumed).toBeGreaterThan(Math.max(0, half[0] - 40));
+  expect(resumed).toBeLessThan(half[0] + 40);
 }, 30000);
 
 async function crossfadeProject(
