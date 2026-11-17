@@ -27,6 +27,7 @@ export interface UpdateInformation { version: string; url: string; signed: boole
 /** Optional platform services are capability checked at the UI boundary. */
 export interface CreatorServices {
   onProjectOpened?(listener: (project: Project) => void): () => void;
+  audioSamples?(project: Project, request: { assetId: string; start: number; duration: number; speed: number; preservePitch: boolean }): Promise<Float32Array>;
   importMedia?(file: File): Promise<ImportedMedia>;
   processMedia?(project: Project, request: MediaOperation, signal?: AbortSignal): Promise<MediaOperationResult>;
   projectAction?(request: ProjectAction): Promise<Project | null>;

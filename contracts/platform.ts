@@ -103,4 +103,5 @@ export const nativeChannels = {
   savePreferences: "corto:save-preferences",
   checkForUpdate: "corto:check-for-update",
   projectOpened: "corto:project-opened",
+  audioSamples: "corto:audio-samples",
 } as const;
