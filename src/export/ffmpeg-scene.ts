@@ -201,6 +201,12 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
     const targetHeight = `${height * layer.height}*${scale}`;
     const baseWidth = Math.max(2, Math.round(width * layer.width));
     const baseHeight = Math.max(2, Math.round(height * layer.height));
+    // Per-frame scaling changes the frame size, which later filters fix at their
+    // first frame. A transparent canvas sized for the largest scale keeps every
+    // frame the same size, so nothing is clipped or left behind.
+    const largest = Math.max(1, layer.endScale);
+    const canvasWidth = 2 * Math.ceil((baseWidth * largest) / 2);
+    const canvasHeight = 2 * Math.ceil((baseHeight * largest) / 2);
     const chain = [
       `setpts=PTS-STARTPTS+${Math.max(0, layer.start - localStart)}/TB`,
       `tpad=stop_mode=clone:stop_duration=${duration}`,
@@ -214,7 +220,12 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
       ...(layer.keyColour
         ? [`colorkey=0x${layer.keyColour.slice(1)}:${layer.keyTolerance}:0.05`]
         : []),
-      `rotate=${(layer.rotation * Math.PI) / 180}:c=none:ow=rotw(iw):oh=roth(ih)`,
+      `pad=${canvasWidth}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2:color=black@0:eval=frame`,
+      ...(layer.rotation
+        ? [
+            `rotate=${(layer.rotation * Math.PI) / 180}:c=black@0:ow=rotw(iw):oh=roth(ih)`,
+          ]
+        : []),
       ...(layer.endOpacity !== null && layer.endOpacity !== layer.opacity
         ? [
             `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*(${layer.opacity}+${layer.endOpacity - layer.opacity}*${progress.replace("(t+", "(T+")})'`,
@@ -270,18 +281,19 @@ export function creatorSceneArguments(input: CreatorSceneInput): string[] {
   }
   const fade = Math.min(scene.transitionSeconds, scene.duration / 2);
   if (scene.transition === "fade" && fade > 0) {
-    const black = count++;
-    args.push(
-      "-f",
-      "lavfi",
-      "-i",
-      `color=c=black:s=${width}x${height}:r=${fps}:d=${duration + 1 / fps}`,
+    // FFmpeg's fade dims luma and returns chroma to neutral (scaling chroma
+    // towards 0 turned fades green), with a per-plane ramp instead of a
+    // per-pixel expression. Frames are shifted to scene time so a segment that
+    // starts mid-scene fades from the right point.
+    base = apply(
+      base,
+      [
+        `setpts=PTS+${localStart}/TB`,
+        `fade=t=in:st=0:d=${fade}`,
+        `fade=t=out:st=${scene.duration - fade}:d=${fade}`,
+        "setpts=PTS-STARTPTS",
+      ].join(","),
     );
-    const blended = label();
-    filters.push(
-      `[${base}][${black}:v]blend=all_expr='A*max(0,min(1,min((T+${localStart})/${fade},(${scene.duration - localStart}-T)/${fade})))'[${blended}]`,
-    );
-    base = blended;
   }
   const picture = apply(base, `fps=${fps},setsar=1,format=yuv420p`);
   let sound: string;

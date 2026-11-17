@@ -26,7 +26,9 @@ export function transitionArguments(input: {
 }): string[] {
   const { segment, fps } = input;
   const duration = segment.frames / fps;
-  const audio = `[0:a][1:a]acrossfade=d=${segment.fullDuration}:c1=tri:c2=tri,atrim=start=${segment.trimStart}:duration=${duration},asetpts=PTS-STARTPTS[sound]`;
+  // A streaming linear crossfade. acrossfade holds back all of its output until
+  // both inputs end, so `-frames:v` closed a trimmed part before any audio arrived.
+  const audio = `[0:a]afade=t=out:st=0:d=${segment.fullDuration}:curve=tri[outgoing];[1:a]afade=t=in:st=0:d=${segment.fullDuration}:curve=tri[incoming];[outgoing][incoming]amix=inputs=2:duration=longest:normalize=0,atrim=start=${segment.trimStart}:duration=${duration},asetpts=PTS-STARTPTS[sound]`;
   const picture = `[0:v]setpts=PTS-STARTPTS,fps=${fps}[a];[1:v]setpts=PTS-STARTPTS,fps=${fps}[b];[a][b]xfade=transition=${TRANSITIONS[segment.from.scene.transition] ?? "fade"}:duration=${segment.fullDuration}:offset=0,trim=start=${segment.trimStart}:duration=${duration},setpts=PTS-STARTPTS[picture]`;
   return [
     "-i",

@@ -63,6 +63,16 @@ Scope: all numbered software capabilities and six findings in the user's Downloa
 Rulings: preserve original supplied brand and a simple editor; no unrelated redesign. Treat the audit's competitor claims as supplied research, not validated user demand. External signing identity is not fabricated. Hardware/model-dependent features report actual capabilities and have working software/local paths. Derivative media and queued exports use immutable snapshots and bounded workers/processes. All new tests are observed red; no skipped or placeholder feature may be called implemented.
 Ruling: publish the web editor from verified release tags, not unreleased main commits. Schema-v3 development must not make the public web writer incompatible with the currently downloadable v0.1.1 desktop reader. Manual deployments still require a real published version and matching commit; automatic reruns cannot roll back a newer release.
 
+## v0.1.2 bug sweep fixes
+Source: the v0.1.2 bug sweep (17 Nov 2026). Role: solo, one branch per batch.
+
+| # | Slice | Done when | Levels | Status |
+|---|---|---|---|---|
+| 26 | Export correctness | Fade-through-black keeps neutral colour; ranges starting inside a transition keep audio and mix music; animated layers neither smear nor clip; preview slide/push/zoom/blur match export, each with a test seen red first | L1/L3/L4/L6 | done on branch fix/export-correctness; CI 44093131135 green on all four desktop targets; not merged |
+
+Ruling: the preview follows FFmpeg `xfade` for slide, push, zoom and blur rather than export following the preview, because the export is what people keep and the bundled native (6.1) and web (5.1) FFmpeg builds lack cover-style transitions. Cost if wrong: four preview animations change again.
+Ruling: the crossfade audio uses two streaming linear fades mixed together instead of `acrossfade`, which buffers its whole output until both inputs end. Same curve; cost if wrong: a level difference in crossfades, covered by the existing dissolve and audio-output tests.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- "Fade through black" no longer turns title cards and other plain-colour scenes green in exported movies, GIFs and web exports; photo fades keep their colours.
+- Exports and five-second samples that start partway through a transition keep their sound, and no longer fail when the film has music.
+- Animated picture-in-picture and shape layers that shrink no longer leave a smear of earlier frames, and rotated layers that grow are no longer clipped.
+- Slide, push, zoom and blur transitions now look the same in the preview as in the exported movie.
+
 ## [0.1.2] - 2026-11-17
 
 ### Added
