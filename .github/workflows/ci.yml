@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       local_models:
-        description: Prove real local models in the native shell on all desktop targets
+        description: Prove local models and a 500-photo movie on all desktop targets
         type: boolean
         default: false
       browser_recording_repetitions:
@@ -50,7 +50,7 @@ env:
 jobs:
   models:
     if: ${{ inputs.local_models }}
-    name: local models (${{ matrix.os }})
+    name: models and long film (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -74,16 +74,17 @@ jobs:
       - run: npm ci
       - run: node node_modules/electron/install.js
       - run: npm run build
-      - name: Real native model/cache journey
+      - name: Real native models and 500-photo encode
         shell: bash
         env:
           CORTO_MODEL_TESTS: "1"
+          CORTO_STRESS_TESTS: "1"
           NO_AT_BRIDGE: "1"
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a npm run test:e2e -- tests/e2e/models.spec.ts
+            xvfb-run -a npm run test:e2e -- tests/e2e/models.spec.ts tests/e2e/large-film.spec.ts
           else
-            npm run test:e2e -- tests/e2e/models.spec.ts
+            npm run test:e2e -- tests/e2e/models.spec.ts tests/e2e/large-film.spec.ts
           fi
       - uses: actions/upload-artifact@v7
         if: always()
@@ -117,7 +118,7 @@ jobs:
             playwright-report
             test-results
   unit:
-    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
+    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: unit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -133,7 +134,7 @@ jobs:
       - run: npm run test:unit
 
   web:
-    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
+    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: production web / offline
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -160,7 +161,7 @@ jobs:
           retention-days: 7
 
   integration:
-    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
+    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: integration (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -178,7 +179,7 @@ jobs:
       - run: npm run test:integration
 
   ui:
-    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
+    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: ui (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -243,7 +244,7 @@ jobs:
           retention-days: 7
 
   e2e:
-    if: ${{ !inputs.native_export_repetitions || inputs.native_export_repetitions == '0' }}
+    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -312,7 +313,7 @@ jobs:
   sheet:
     name: contact sheet
     needs: [e2e]
-    if: ${{ always() && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ always() && !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
