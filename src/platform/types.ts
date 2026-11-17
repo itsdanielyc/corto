@@ -24,4 +24,6 @@ export interface CortoPlatform extends ProjectRepository, CreatorServices {
   ): Promise<MovieResult | null>;
   revealExport(): Promise<void>;
   releaseMediaUrls(): void;
+  prepareExport?(request: MovieRequest): Promise<MovieRequest | null>;
+  disposeExport?(request: MovieRequest): Promise<void>;
 }
