@@ -10,6 +10,8 @@ interface EditorShortcutsProperties {
   togglePlayback: () => void;
   deleteSelected: () => void;
   moveSelected: (direction: number) => void;
+  sceneAction: (action: string) => void;
+  seekByKey: (key: string) => void;
 }
 
 /** Keep shortcut policy and editable-field exclusions independent of project and media effects. */
@@ -22,6 +24,8 @@ export function useEditorShortcuts({
   togglePlayback,
   deleteSelected,
   moveSelected,
+  sceneAction,
+  seekByKey,
 }: EditorShortcutsProperties) {
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -64,6 +68,30 @@ export function useEditorShortcuts({
       } else if (!editable && event.altKey && event.key === "ArrowRight") {
         event.preventDefault();
         moveSelected(1);
+      } else if (
+        !editable &&
+        modifier &&
+        ["a", "c", "x", "v", "d"].includes(event.key.toLowerCase())
+      ) {
+        event.preventDefault();
+        const actions: Record<string, string> = {
+          a: "select-all",
+          c: "copy",
+          x: "cut",
+          v: "paste",
+          d: "duplicate",
+        };
+        sceneAction(actions[event.key.toLowerCase()]);
+      } else if (!editable && !modifier && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        sceneAction("split");
+      } else if (
+        !editable &&
+        !modifier &&
+        ["Home", "End", "ArrowLeft", "ArrowRight"].includes(event.key)
+      ) {
+        event.preventDefault();
+        seekByKey(event.key);
       }
     };
     window.addEventListener("keydown", key);
@@ -76,5 +104,7 @@ export function useEditorShortcuts({
     togglePlayback,
     deleteSelected,
     moveSelected,
+    sceneAction,
+    seekByKey,
   ]);
 }

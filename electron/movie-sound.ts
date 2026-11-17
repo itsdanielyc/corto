@@ -14,21 +14,36 @@ export function soundMixArguments(
   output: string,
   total: number,
   trimmedLoops: ReadonlyMap<string, string> = new Map(),
+  rangeStart = 0,
 ): string[] | null {
-  const clips = projectAudioClips(project).filter((clip) => clip.start < total);
+  const clips = projectAudioClips(project).filter(
+    (clip) =>
+      clip.start < rangeStart + total &&
+      clip.start + clip.duration > rangeStart,
+  );
   if (!clips.length) return null;
   const arguments_: string[] = ["-t", String(total), "-i", input];
   const filters: string[] = [];
   const windows = project.duckMusic ? duckingWindows(project) : [];
   const duckExpression = windows.length
-    ? `if(gt(${windows.map((window) => `between(t,${window.start},${window.end})`).join("+")},0),${MUSIC_DUCK_GAIN},1)`
+    ? `if(gt(${windows.map((window) => `between(t,${window.start - rangeStart},${window.end - rangeStart})`).join("+")},0),${MUSIC_DUCK_GAIN},1)`
     : "1";
   for (const [index, clip] of clips.entries()) {
-    const duration = Math.min(clip.duration, total - clip.start);
+    const skip = Math.max(0, rangeStart - clip.start);
+    const start = Math.max(0, clip.start - rangeStart);
+    const duration = Math.min(clip.duration - skip, total - start);
+    const sourceDuration = project.assets[clip.assetId].duration;
+    const loopDuration = sourceDuration - clip.offset;
     if (clip.loop) arguments_.push("-stream_loop", "-1");
     arguments_.push(
       "-ss",
-      String(trimmedLoops.has(clip.id) ? 0 : clip.offset),
+      String(
+        trimmedLoops.has(clip.id)
+          ? skip % loopDuration
+          : clip.loop
+            ? (clip.offset + skip) % sourceDuration
+            : clip.offset + skip,
+      ),
       // Bound the demuxer as well as the filter: looping inputs must have a finite EOF on every engine version.
       "-t",
       String(duration),
@@ -40,15 +55,10 @@ export function soundMixArguments(
     const chain = [
       `atrim=duration=${duration}`,
       "asetpts=PTS-STARTPTS",
-      `volume=${clip.volume}`,
+      `volume='${clip.volume}*max(0,min(1,min(${clip.fadeIn ? `(t+${skip})/${clip.fadeIn}` : "1"},${clip.fadeOut ? `(${clip.duration - skip}-t)/${clip.fadeOut}` : "1"})))':eval=frame`,
     ];
-    if (clip.fadeIn) chain.push(`afade=t=in:d=${clip.fadeIn}`);
-    if (clip.fadeOut)
-      chain.push(
-        `afade=t=out:st=${Math.max(0, clip.duration - clip.fadeOut)}:d=${clip.fadeOut}`,
-      );
     chain.push(
-      `adelay=${Math.round(clip.start * 1000)}:all=1`,
+      `adelay=${Math.round(start * 1000)}:all=1`,
       `apad=whole_dur=${total}`,
       `atrim=duration=${total}`,
     );

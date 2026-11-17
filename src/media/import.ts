@@ -13,6 +13,8 @@ const extensionMimes: Readonly<Record<string, string>> = {
   png: "image/png",
   webp: "image/webp",
   bmp: "image/bmp",
+  gif: "image/gif",
+  svg: "image/svg+xml",
   mp4: "video/mp4",
   mov: "video/quicktime",
   m4v: "video/x-m4v",
@@ -103,7 +105,7 @@ export async function inspectFile(
 ): Promise<{ asset: MediaAsset; poster: string | null }> {
   if (!file.size) throw new Error(`${file.name} is empty`);
   if (file.size > LIMITS.assetBytes)
-    throw new Error(`${file.name} exceeds the 2 GB per-file limit`);
+    throw new Error(`${file.name} exceeds the 8 GB per-file limit`);
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
   const mime = extensionMimes[extension] ?? file.type;
   const kind = mime.startsWith("image/")
@@ -174,7 +176,7 @@ export async function posterFromUrl(
   asset: MediaAsset,
   url: string,
 ): Promise<string | null> {
-  if (asset.kind === "audio") return null;
+  if (asset.kind === "audio" || asset.kind === "lut") return null;
   const element =
     asset.kind === "image" ? new Image() : document.createElement("video");
   try {

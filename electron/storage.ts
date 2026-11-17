@@ -30,6 +30,10 @@ import {
   unavailableSummary,
 } from "../src/domain/catalogue";
 import type { ProjectSummary } from "../contracts/platform";
+import type { ProjectAction } from "../contracts/services";
+import { preferencesSchema } from "../contracts/creative";
+import type { Preferences } from "../contracts/project";
+import { FileVersions } from "./project-versions";
 
 /** File-backed working copy. Opaque media IDs never become caller-controlled paths. */
 export class FileProjectRepository implements ProjectRepository {
@@ -38,8 +42,11 @@ export class FileProjectRepository implements ProjectRepository {
   private readonly initialized: Promise<void>;
   private readonly projectsDirectory: string;
   private pendingSave: Promise<void> = Promise.resolve();
+  private readonly versions: FileVersions;
+  private readonly deletedIds = new Set<string>();
 
   constructor(private readonly directory: string) {
+    this.versions = new FileVersions(join(directory, "versions"));
     this.mediaDirectory = join(directory, "media");
     this.manifestPath = join(directory, "current.json");
     this.projectsDirectory = join(directory, "projects");
@@ -89,8 +96,10 @@ export class FileProjectRepository implements ProjectRepository {
     }
   }
 
-  async saveProject(input: Project): Promise<void> {
+  async saveProject(input: Project, activate = true): Promise<void> {
     const project = parseProject(input);
+    if (this.deletedIds.has(project.id))
+      throw new Error("This film was removed from My films");
     const save = this.pendingSave
       .catch(() => undefined)
       .then(async () => {
@@ -109,6 +118,11 @@ export class FileProjectRepository implements ProjectRepository {
             );
         }
         const record = saveRecord(project, previous);
+        if (
+          previous &&
+          JSON.stringify(previous.project) !== JSON.stringify(project)
+        )
+          await this.versions.archive(previous.project, previous.updatedAt);
         if (record.previous)
           await writeAtomic(
             join(this.projectsDirectory, `${project.id}.previous.json`),
@@ -124,6 +138,7 @@ export class FileProjectRepository implements ProjectRepository {
             mode: 0o600,
           }),
         );
+        if (!activate) return;
         try {
           await copyFile(
             this.manifestPath,
@@ -141,6 +156,66 @@ export class FileProjectRepository implements ProjectRepository {
       });
     this.pendingSave = save;
     return save;
+  }
+
+  async projectAction(request: ProjectAction): Promise<Project | null> {
+    const id = identifierSchema.parse(request.id);
+    const project = await this.openProject(id);
+    if (request.operation === "delete") {
+      this.deletedIds.add(id);
+      await this.pendingSave.catch(() => undefined);
+      const trash = join(this.directory, "trash");
+      await mkdir(trash, { recursive: true, mode: 0o700 });
+      await copyFile(
+        join(this.projectsDirectory, `${id}.json`),
+        join(trash, `${id}.json`),
+      );
+      await rm(join(this.projectsDirectory, `${id}.json`));
+      const active = await this.loadProject();
+      if (active?.id === id) await rm(this.manifestPath);
+      return null;
+    }
+    const next = parseProject({
+      ...project,
+      id: request.operation === "duplicate" ? crypto.randomUUID() : id,
+      name:
+        request.operation === "rename"
+          ? request.name
+          : `${project.name.slice(0, 72)} (copy)`,
+    });
+    await this.saveProject(next, false);
+    return next;
+  }
+  async listVersions(id: string) {
+    await this.pendingSave.catch(() => undefined);
+    return this.versions.list(identifierSchema.parse(id));
+  }
+  async restoreVersion(id: string, version: string) {
+    const project = await this.versions.restore(
+      identifierSchema.parse(id),
+      identifierSchema.parse(version),
+    );
+    await this.saveProject(project);
+    return project;
+  }
+  async loadPreferences(): Promise<Preferences> {
+    await this.initialized;
+    const path = join(this.directory, "preferences.json");
+    try {
+      if ((await stat(path)).size > 16384)
+        throw new Error("The preferences file is damaged");
+      return preferencesSchema.parse(JSON.parse(await readFile(path, "utf8")));
+    } catch (error) {
+      if (hasFileErrorCode(error, "ENOENT")) return preferencesSchema.parse({});
+      throw error;
+    }
+  }
+  async savePreferences(input: Preferences): Promise<void> {
+    const preferences = preferencesSchema.parse(input);
+    await this.initialized;
+    await writeAtomic(join(this.directory, "preferences.json"), (path) =>
+      writeFile(path, JSON.stringify(preferences), { flag: "wx", mode: 0o600 }),
+    );
   }
 
   async listProjects() {

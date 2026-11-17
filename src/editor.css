@@ -2,6 +2,7 @@
 @import "./styles/editor.css";
 @import "./styles/dialogs.css";
 @import "./styles/responsive.css";
+@import "./styles/creator.css";
 
 :root {
   font-family: "Manrope Variable", sans-serif;

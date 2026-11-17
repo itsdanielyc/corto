@@ -7,11 +7,19 @@ import { registerProjectCommands, testPreset } from "./project-ipc";
 import { handleMediaRequests, registerMediaScheme } from "./media-protocol";
 import { registerExportCommands } from "./export-ipc";
 import { writeAtomic } from "./atomic-file";
+import { configureCapture, projectOpenIntegration } from "./shell-integration";
 
 registerMediaScheme();
 let mainWindow: BrowserWindow | null = null;
 let nativeExporter: ReturnType<typeof registerExportCommands> | null = null;
 let readinessReported = false;
+let repositoryForOpen: FileProjectRepository | null = null;
+const projectFiles = projectOpenIntegration(
+  () => repositoryForOpen,
+  () => mainWindow,
+);
+if (process.env.CORTO_E2E !== "1" && !app.requestSingleInstanceLock())
+  app.exit(0);
 
 function reportInstallerReadiness(): void {
   const output = process.env.CORTO_SMOKE_OUTPUT;
@@ -121,11 +129,15 @@ app.whenReady().then(() => {
     testPreset("CORTO_WORKSPACE_ROOT") ??
       join(app.getPath("userData"), "workspace-v1"),
   );
+  repositoryForOpen = repository;
   handleMediaRequests(repository);
   registerProjectCommands(
     repository,
     () => mainWindow,
-    reportInstallerReadiness,
+    () => {
+      reportInstallerReadiness();
+      projectFiles.rendererReady();
+    },
   );
   const exporter = registerExportCommands(repository, () => mainWindow);
   nativeExporter = exporter;
@@ -141,15 +153,18 @@ app.whenReady().then(() => {
           permission === "media" &&
           "mediaTypes" in details &&
           !!details.mediaTypes?.length &&
-          details.mediaTypes.every((type) => type === "audio"),
+          details.mediaTypes.every(
+            (type) => type === "audio" || type === "video",
+          ),
       ),
   );
   session.defaultSession.setPermissionCheckHandler(
     (contents, permission, _origin, details) =>
       contents === mainWindow?.webContents &&
       permission === "media" &&
-      details.mediaType === "audio",
+      (details.mediaType === "audio" || details.mediaType === "video"),
   );
+  configureCapture(() => mainWindow);
   ipcMain.handle(channels.platformInfo, () => platformInfo());
   createWindow();
   app.on("activate", () => {

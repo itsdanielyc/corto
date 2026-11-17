@@ -3,27 +3,19 @@ import type {
   MovieRequest,
   MovieResult,
 } from "../../contracts/platform";
-import { EXPORT_FPS, parseProject } from "../../contracts/project";
-import {
-  buildTimeline,
-  locateScene,
-  fadeOpacity,
-  filmDuration,
-  frameDimensions,
-} from "../domain/timeline";
-import { type VisualMedia } from "../media/import";
+import { parseProject } from "../../contracts/project";
+import { frameDimensions } from "../domain/timeline";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
 import { loadCaptionFonts } from "../preview/captions";
-import { MediaPool } from "../preview/media-pool";
-import { renderFrame } from "../preview/render-frame";
-import { seekVideo } from "../preview/seek";
+import { CompositionPlayer } from "../preview/composition-player";
+import { renderProjectFrame } from "../preview/composite";
+import { outputFrameRate, resolveRenderRange } from "../domain/render-plan";
+import { waitForAudioClock } from "./audio-clock";
 import { browserRecordingFormat } from "./format";
 import { finalizeWebm } from "./finalize-webm";
 import { withCancellation } from "./cancellation";
 import { AudioTimelinePlayer } from "../preview/audio-timeline";
-import { drawSubtitle } from "../preview/subtitles";
-import { subtitleAt } from "../domain/subtitles";
-import { exportBitrate, sampleProject } from "./presets";
+import { exportBitrate } from "./presets";
 
 const AUDIO_SAMPLE_RATE = 48000;
 const AUDIO_BITRATE = 192000;
@@ -52,7 +44,9 @@ export async function renderBrowserMovie(
   signal: AbortSignal,
   surface?: HTMLCanvasElement,
 ): Promise<MovieResult> {
-  const project = sampleProject(parseProject(request.project), request.sample);
+  const project = parseProject(request.project);
+  const range = resolveRenderRange(project, request.range, request.sample);
+  const fps = outputFrameRate(project);
   const format = browserRecordingFormat();
   if (!format)
     throw new Error(
@@ -78,7 +72,6 @@ export async function renderBrowserMovie(
     willReadFrequently: true,
   });
   if (!drawing) throw new Error("A drawing surface could not be created");
-  const pool = new MediaPool();
   const audio = new AudioContext({ sampleRate: AUDIO_SAMPLE_RATE });
   const destination = audio.createMediaStreamDestination();
   const limiter = audio.createDynamicsCompressor();
@@ -86,8 +79,7 @@ export async function renderBrowserMovie(
   limiter.knee.value = 0;
   limiter.ratio.value = 20;
   limiter.connect(destination);
-  const clipGain = audio.createGain();
-  clipGain.connect(limiter);
+  const player = new CompositionPlayer(project, assetUrl, limiter);
   const silence = audio.createConstantSource();
   silence.offset.value = 0;
   silence.connect(destination);
@@ -137,118 +129,40 @@ export async function renderBrowserMovie(
     await audio.resume();
     await loadCaptionFonts();
     await withCancellation(() => soundtrack.prepare(), activeSignal);
-    const timeline = buildTimeline(project.scenes);
-    const total = filmDuration(project.scenes);
-    interface PreparedScene {
-      media: VisualMedia | null;
-      source: MediaElementAudioSourceNode | null;
-    }
-    const prepared = new Map<number, PreparedScene>();
-    const preparing = new Map<number, Promise<void>>();
-    const prepareScene = (index: number): Promise<void> => {
-      if (index >= project.scenes.length) return Promise.resolve();
-      const existing = preparing.get(index);
-      if (existing) return existing;
-      const operation = (async () => {
-        const scene = project.scenes[index];
-        const asset = scene.assetId ? project.assets[scene.assetId] : null;
-        const media = asset
-          ? await withCancellation(
-              async () => pool.get(asset, await assetUrl(asset.id), scene.id),
-              activeSignal,
-            )
-          : null;
-        let source: MediaElementAudioSourceNode | null = null;
-        if (media instanceof HTMLVideoElement) {
-          source = audio.createMediaElementSource(media);
-          await seekVideo(media, scene.start, activeSignal);
-          await withCancellation(() => media.play(), activeSignal);
-          media.pause();
-          await seekVideo(media, scene.start, activeSignal);
-        }
-        prepared.set(index, { media, source });
-      })();
-      preparing.set(index, operation);
-      return operation;
-    };
-    await Promise.all([prepareScene(0), prepareScene(1)]);
+    const total = range.end - range.start;
+    let media = await player.prepare(range.start, activeSignal);
+    renderProjectFrame(drawing, project, range.start, media);
+    await waitForAudioClock(audio, activeSignal);
     activeSignal.throwIfAborted();
-    const initial = prepared.get(0)!;
-    renderFrame(drawing, project.scenes[0], initial.media, 0);
-    drawSubtitle(drawing, subtitleAt(project.subtitles, 0));
-    soundtrack.sync(0, true);
     recorder.start(250);
-    videoTrack.requestFrame();
-    const started = performance.now();
+    const started = audio.currentTime;
     let elapsed = 0;
-    let activeIndex = -1;
-    let activeMedia: PreparedScene | null = null;
     let paintedFrame = -1;
     let notifiedAt = -Infinity;
     while (elapsed < total) {
       activeSignal.throwIfAborted();
       if (playbackError) throw playbackError;
-      const location = locateScene(timeline, elapsed)!;
-      if (activeIndex !== location.index) {
-        if (activeMedia?.media instanceof HTMLVideoElement)
-          activeMedia.media.pause();
-        activeMedia?.source?.disconnect();
-        const next = prepared.get(location.index);
-        if (!next)
-          throw new Error(
-            "This device could not prepare the next scene in real time. Try the desktop app for this film.",
-          );
-        activeMedia = next;
-        activeIndex = location.index;
-        if (next.media instanceof HTMLVideoElement)
-          void next.media.play().catch((error) => {
-            playbackError = error;
-          });
-        next.source?.connect(clipGain);
-        for (const index of prepared.keys())
-          if (index < activeIndex) {
-            prepared.delete(index);
-            preparing.delete(index);
-          }
-        pool.retain(
-          new Set(
-            [
-              project.scenes[activeIndex].id,
-              project.scenes[activeIndex + 1]?.id,
-            ].filter((id): id is string => !!id),
-          ),
-        );
-        void prepareScene(activeIndex + 1).catch((error) => {
-          if (!activeSignal.aborted) playbackError = error;
-        });
-      }
-      const frame = Math.floor(elapsed * EXPORT_FPS);
+      const time = range.start + elapsed;
+      media = await player.prepare(time, activeSignal);
+      await player.play(media, time);
+      const frame = Math.floor(elapsed * fps);
       if (frame !== paintedFrame) {
-        soundtrack.sync(elapsed, true);
-        clipGain.gain.value =
-          location.scene.volume *
-          fadeOpacity(location.scene, location.localTime);
-        renderFrame(
-          drawing,
-          location.scene,
-          activeMedia!.media,
-          location.localTime,
-        );
-        drawSubtitle(drawing, subtitleAt(project.subtitles, elapsed));
+        soundtrack.sync(time, true);
+        renderProjectFrame(drawing, project, time, media);
         videoTrack.requestFrame();
         paintedFrame = frame;
       }
       if (elapsed - notifiedAt >= 0.1) {
         progress({
           fraction: Math.min(0.99, elapsed / total),
-          message: `Recording scene ${activeIndex + 1} of ${project.scenes.length}`,
+          message: "Recording your film",
         });
         notifiedAt = elapsed;
       }
-      elapsed = ((await nextFrame(activeSignal)) - started) / 1000;
+      await nextFrame(activeSignal);
+      elapsed = audio.currentTime - started;
     }
-    if (activeMedia?.media instanceof HTMLVideoElement)
-      activeMedia.media.pause();
+    player.pause();
     soundtrack.pause();
     recorder.stop();
     let movie = await recorded;
@@ -273,7 +187,7 @@ export async function renderBrowserMovie(
     soundtrack.dispose();
     silence.stop();
     stream.getTracks().forEach((track) => track.stop());
-    pool.dispose();
+    player.dispose();
     await audio.close();
     document.removeEventListener("visibilitychange", hidden);
   }

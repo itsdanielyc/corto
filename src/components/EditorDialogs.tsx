@@ -14,6 +14,11 @@ export type EditorDialog =
   | "projects"
   | "sound"
   | "subtitles"
+  | "scene-tools"
+  | "slideshow"
+  | "film-tools"
+  | "settings"
+  | "capture"
   | null;
 interface EditorDialogsProperties {
   dialog: EditorDialog;
@@ -71,6 +76,11 @@ export function EditorDialogs({
               ["Open a project", "⌘ / Ctrl O"],
               ["Delete selected scene", "Delete"],
               ["Move selected scene", "Alt ← / →"],
+              ["Split / duplicate scene", "S / ⌘ Ctrl D"],
+              ["Copy / cut / paste scenes", "⌘ Ctrl C / X / V"],
+              ["Select all scenes", "⌘ Ctrl A"],
+              ["First / last frame", "Home / End"],
+              ["Step one frame", "← / →"],
             ].map(([label, key]) => (
               <div key={label}>
                 <dt>{label}</dt>

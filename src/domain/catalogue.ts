@@ -1,5 +1,6 @@
 import type { ProjectSummary, SavedProject } from "../../contracts/platform";
 import { parseProject, type Project } from "../../contracts/project";
+import { filmDuration } from "./timeline";
 
 /** Keep the last distinct edit rather than replacing recovery with identical autosaves. */
 export function saveRecord(
@@ -25,7 +26,7 @@ export function summarizeProject(record: SavedProject): ProjectSummary {
     name: project.name,
     updatedAt: record.updatedAt,
     sceneCount: project.scenes.length,
-    duration: project.scenes.reduce((sum, scene) => sum + scene.duration, 0),
+    duration: filmDuration(project.scenes),
     thumbnail: first?.assetId ? project.assets[first.assetId] : null,
     hasRecovery: record.previous !== null,
   };

@@ -38,9 +38,18 @@ export function useProject(
     let cancelled = false;
     void platform
       .loadProject()
-      .then((project) => {
+      .then(async (project) => {
         if (cancelled) return;
         if (project) replace(project);
+        else if (platform.loadPreferences) {
+          const preferences = await platform.loadPreferences();
+          if (!cancelled)
+            replace({
+              ...createProject(),
+              defaults: preferences.defaults,
+              output: preferences.output,
+            });
+        }
         setLoaded(true);
       })
       .catch((error) => {
@@ -58,6 +67,14 @@ export function useProject(
   useEffect(() => {
     if (!loaded || !canAutosave || paused) return;
     const snapshot = history.present;
+    if (
+      !snapshot.scenes.length &&
+      !Object.keys(snapshot.assets).length &&
+      snapshot.name === "Untitled film"
+    ) {
+      setSaveStatus("saved");
+      return;
+    }
     setSaveStatus("pending");
     const timer = window.setTimeout(() => {
       setSaveStatus("saving");

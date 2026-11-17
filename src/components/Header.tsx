@@ -35,6 +35,10 @@ interface HeaderProperties {
   onProjects: () => void;
   onSound: () => void;
   onSubtitles: () => void;
+  onSlideshow: () => void;
+  onFilmTools: () => void;
+  onSettings: () => void;
+  onCapture: () => void;
 }
 const statusLabels: Record<SaveStatus, string> = {
   loading: "Opening local project",
@@ -197,6 +201,18 @@ export function Header(properties: HeaderProperties) {
             </button>
             <button role="menuitem" onClick={action(properties.onSound)}>
               Sound &amp; narration
+            </button>
+            <button role="menuitem" onClick={action(properties.onSlideshow)}>
+              Make a slideshow
+            </button>
+            <button role="menuitem" onClick={action(properties.onFilmTools)}>
+              Film tools & bulk edits
+            </button>
+            <button role="menuitem" onClick={action(properties.onCapture)}>
+              Record camera or screen
+            </button>
+            <button role="menuitem" onClick={action(properties.onSettings)}>
+              Settings & defaults
             </button>
             <button role="menuitem" onClick={action(properties.onSubtitles)}>
               Timed subtitles

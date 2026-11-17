@@ -43,7 +43,7 @@ Source: user-provided `Corto-missing-features.md`, dated 16 November 2026; imple
 | F37 | Audio | I · P2 | Noise reduction for narration and clips. | planned |
 | F38 | Audio | I · P2 | Normalise or match loudness across clips. | planned |
 | F39 | Audio | I · P3 | Audio-only export (for example, the narration on its own). | planned |
-| F40 | Audio | I · P3 | Remove the duplicate music systems. | planned |
+| F40 | Audio | I · P3 | Remove the duplicate music systems. | proven: canonical placed sounds; CI 43996516140 |
 | F41 | Overlays, layers and effects | B · P2 | Stickers, emoji, arrows and shapes. | planned |
 | F42 | Overlays, layers and effects | B · P2 | Picture-in-picture, or one overlay layer for an image, logo or video on top. | planned |
 | F43 | Overlays, layers and effects | I · P2 | Split screen / collage ("then and now"). | planned |
@@ -80,7 +80,7 @@ Source: user-provided `Corto-missing-features.md`, dated 16 November 2026; imple
 | F74 | Projects and app | B · P1 | Delete, rename and duplicate ("Save as") films from My films. | planned |
 | F75 | Projects and app | B · P1 | Double-click a `.corto` file to open it. | planned |
 | F76 | Projects and app | B · P1 | Signed installers and an update channel. | planned |
-| F77 | Projects and app | B · P1 | Raise the limits that real tributes hit. | planned |
+| F77 | Projects and app | B · P1 | Raise the limits that real tributes hit. | model raised/tested (500-scene fixture); long export proof pending |
 | F78 | Projects and app | B · P2 | Localisation. | planned |
 | F79 | Projects and app | I · P2 | Version history (more than one recovery snapshot). | planned |
 | F80 | Projects and app | I · P3 | Project-wide defaults: photo duration, transition, fit, title style and background. | planned |
@@ -92,7 +92,7 @@ Source: user-provided `Corto-missing-features.md`, dated 16 November 2026; imple
 | B02 | Example does not retain an untouched empty draft | planned |
 | B03 | Desktop import uses bundled FFmpeg for unsupported browser codecs | planned |
 | B04 | Thread use follows a bounded machine/user budget | planned |
-| B05 | One canonical placed-sound model and one editor path | planned |
+| B05 | One canonical placed-sound model and one editor path | resolved: one canonical sound model; CI 43996516140 |
 | B06 | Long-caption export stages bounded raster data instead of an aggregate PNG cap | planned |
 
 ## External dependencies

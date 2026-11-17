@@ -13,15 +13,12 @@ import type { Project } from "../../contracts/project";
 import { filmDuration, formatTime, frameDimensions } from "../domain/timeline";
 import { browserRecordingFormat } from "../export/format";
 import type { CortoPlatform } from "../platform/types";
-import { createCaptionOverlays } from "../preview/captions";
 import { Modal } from "./primitives";
 import {
   EXPORT_PRESETS,
   estimatedMovieBytes,
   presetResolution,
-  sampleProject,
 } from "../export/presets";
-import { createSubtitleOverlays } from "../preview/subtitles";
 
 export function ExportDialog({
   project,
@@ -54,15 +51,8 @@ export function ExportDialog({
     setError(null);
     setProgress({ fraction: 0, message: "Getting your film ready" });
     try {
-      const exporting = sampleProject(project, sample);
-      const overlays = native
-        ? await createCaptionOverlays(exporting, resolution, controller.signal)
-        : [];
-      const subtitleOverlays = native
-        ? await createSubtitleOverlays(exporting, resolution, controller.signal)
-        : [];
       const movie = await platform.renderMovie(
-        { project, resolution, overlays, subtitleOverlays, preset, sample },
+        { project, resolution, overlays: [], preset, sample },
         setProgress,
         controller.signal,
         surface.current ?? undefined,

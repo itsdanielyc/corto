@@ -9,13 +9,10 @@ import {
 } from "../../contracts/project";
 import {
   addAsset,
-  appendScene,
   changeScene,
   createProject,
   createScene,
-  duplicateScene,
   moveScene,
-  removeScene,
   splitScene,
 } from "../domain/project";
 import { buildTimeline, filmDuration, locateScene } from "../domain/timeline";
@@ -26,6 +23,14 @@ import { importMedia } from "../media/phone";
 import { createPlatform } from "../platform";
 import { type LibraryMode } from "../components/Library";
 import { addMusic } from "../domain/audio";
+import {
+  changeScenes,
+  cloneScenes,
+  insertScenes,
+  replaceMedia,
+  sceneEffects,
+  selectScenes,
+} from "../domain/editing";
 
 function readableError(error: unknown): string {
   if (error instanceof DOMException && error.name === "QuotaExceededError")
@@ -70,6 +75,16 @@ export function useEditorController() {
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectionRef = useRef(selectedIds);
+  const existingSceneIds = new Set(project.scenes.map(scene => scene.id));
+  selectionRef.current = new Set([...selectedIds].filter(id => existingSceneIds.has(id)));
+  const anchorRef = useRef<string | null>(null);
+  const clipboard = useRef<{
+    scenes: Scene[];
+    assets: Project["assets"];
+  } | null>(null);
+  const effectsClipboard = useRef<ReturnType<typeof sceneEffects> | null>(null);
 
   const [mode, setMode] = useState<LibraryMode>("media");
 
@@ -82,6 +97,7 @@ export function useEditorController() {
   const [dialog, setDialog] = useState<EditorDialog>(null);
 
   const mediaInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
 
   const musicInput = useRef<HTMLInputElement>(null);
 
@@ -130,13 +146,24 @@ export function useEditorController() {
   }, [total]);
 
   const selectScene = useCallback(
-    (id: string) => {
+    (id: string, options?: { additive?: boolean; range?: boolean }) => {
       const entry = buildTimeline(current.current.present.scenes).find(
         (item) => item.scene.id === id,
       );
       if (!entry) return;
       setPlaying(false);
       setSelectedId(id);
+      setSelectedIds(
+        selectScenes(
+          current.current.present.scenes,
+          selectionRef.current,
+          id,
+          anchorRef.current,
+          !!options?.additive,
+          !!options?.range,
+        ),
+      );
+      if (!options?.range) anchorRef.current = id;
       setTime(entry.start + Math.min(0.6, entry.scene.duration / 2));
     },
     [current],
@@ -166,16 +193,33 @@ export function useEditorController() {
 
   const deleteSelected = useCallback(() => {
     const scene = selectedRef.current;
-    if (scene) edit((project) => removeScene(project, scene.id));
+    if (scene)
+      edit((project) => ({
+        ...project,
+        scenes: project.scenes.filter(
+          (item) =>
+            !(selectionRef.current.size
+              ? selectionRef.current.has(item.id)
+              : item.id === scene.id),
+        ),
+      }));
+    setSelectedIds(new Set());
   }, [edit]);
 
   const duplicateSelected = useCallback(() => {
     const scene = selectedRef.current;
     if (!scene) return;
-    const id = crypto.randomUUID();
-    edit((project) => duplicateScene(project, scene.id, id));
-    selectScene(id);
-  }, [edit, selectScene]);
+    const chosen = current.current.present.scenes.filter((item) =>
+      selectionRef.current.size
+        ? selectionRef.current.has(item.id)
+        : item.id === scene.id,
+    );
+    const copies = cloneScenes(chosen);
+    edit((project) =>
+      insertScenes(project, copies, chosen.at(-1)?.id ?? scene.id),
+    );
+    if (copies[0]) selectScene(copies[0].id);
+  }, [edit, selectScene, current]);
 
   const splitSelected = useCallback(() => {
     const scene = selectedRef.current;
@@ -227,9 +271,15 @@ export function useEditorController() {
   const addTitle = useCallback(
     (caption = "Your title here", style: Scene["captionStyle"] = "classic") => {
       const scene = { ...createScene(null), caption, captionStyle: style };
-      const start = filmDuration(current.current.present.scenes);
-      edit((project) => appendScene(project, scene));
+      edit((project) =>
+        insertScenes(project, [scene], selectedRef.current?.id ?? null),
+      );
+      const start =
+        buildTimeline(current.current.present.scenes).find(
+          (entry) => entry.scene.id === scene.id,
+        )?.start ?? 0;
       setSelectedId(scene.id);
+      setSelectedIds(new Set([scene.id]));
       setTime(start + 0.6);
     },
     [current, edit],
@@ -241,10 +291,26 @@ export function useEditorController() {
         edit((project) => addMusic(project, asset));
         return;
       }
-      const scene = createScene(asset);
-      const start = filmDuration(current.current.present.scenes);
-      edit((project) => appendScene(project, scene));
+      if (asset.kind === "lut") return;
+      const defaults = current.current.present.defaults;
+      const scene = {
+        ...createScene(asset),
+        fit: defaults.fit,
+        transition: defaults.transition,
+        transitionSeconds: defaults.transitionSeconds,
+        background: defaults.background,
+        captionStyle: defaults.titleStyle,
+        ...(asset.kind === "image" ? { duration: defaults.photoSeconds } : {}),
+      };
+      edit((project) =>
+        insertScenes(project, [scene], selectedRef.current?.id ?? null),
+      );
+      const start =
+        buildTimeline(current.current.present.scenes).find(
+          (entry) => entry.scene.id === scene.id,
+        )?.start ?? 0;
       setSelectedId(scene.id);
+      setSelectedIds(new Set([scene.id]));
       setTime(start + Math.min(0.6, scene.duration / 2));
     },
     [current, edit, changeMusic],
@@ -274,6 +340,7 @@ export function useEditorController() {
         let next = current.current.present;
         let first: string | null = null;
         const failures: string[] = [];
+        let insertionAnchor = selectedRef.current?.id ?? null;
         for (const file of files) {
           try {
             setBusy(`Preparing ${file.name}`);
@@ -283,9 +350,23 @@ export function useEditorController() {
               asset,
             );
             if (asset.kind === "audio") candidate = addMusic(candidate, asset);
-            else {
-              const scene = createScene(asset);
-              candidate = appendScene(candidate, scene);
+            else if (asset.kind === "lut") {
+              /* Imported looks are selected in Picture tools. */
+            } else {
+              const defaults = next.defaults;
+              const scene = {
+                ...createScene(asset),
+                fit: defaults.fit,
+                transition: defaults.transition,
+                transitionSeconds: defaults.transitionSeconds,
+                background: defaults.background,
+                captionStyle: defaults.titleStyle,
+                ...(asset.kind === "image"
+                  ? { duration: defaults.photoSeconds }
+                  : {}),
+              };
+              candidate = insertScenes(candidate, [scene], insertionAnchor);
+              insertionAnchor = scene.id;
               first ??= scene.id;
             }
             next = candidate;
@@ -299,6 +380,7 @@ export function useEditorController() {
             (entry) => entry.scene.id === first,
           )!;
           setSelectedId(first);
+          setSelectedIds(new Set([first]));
           setTime(location.start + Math.min(0.6, location.scene.duration / 2));
         }
         if (failures.length)
@@ -317,7 +399,12 @@ export function useEditorController() {
 
   const showExample = useCallback(() => {
     void task("Opening the example", async () => {
-      await platform.saveProject(current.current.present);
+      if (
+        current.current.present.scenes.length ||
+        Object.keys(current.current.present.assets).length ||
+        current.current.present.name !== "Untitled film"
+      )
+        await platform.saveProject(current.current.present);
       const example = await createExampleProject(platform);
       clearResources();
       replace(example);
@@ -330,6 +417,26 @@ export function useEditorController() {
   const chooseMedia = useCallback(
     (music = false) => (music ? musicInput : mediaInput).current?.click(),
     [],
+  );
+  const replaceAsset = useCallback(
+    (id: string, file: File) => {
+      void task("Replacing media", async () => {
+        const imported = await importMedia(file, platform);
+        commit((project) =>
+          replaceMedia(
+            addAsset(
+              imported.original
+                ? addAsset(project, imported.original)
+                : project,
+              imported.asset,
+            ),
+            id,
+            imported.asset.id,
+          ),
+        );
+      });
+    },
+    [task, platform, commit],
   );
 
   const savePortable = useCallback(() => {
@@ -386,7 +493,16 @@ export function useEditorController() {
       void task("Saving your film", async () => {
         await platform.saveProject(current.current.present);
         clearResources();
-        replace(createProject());
+        const preferences = await platform.loadPreferences?.();
+        replace(
+          preferences
+            ? {
+                ...createProject(),
+                defaults: preferences.defaults,
+                output: preferences.output,
+              }
+            : createProject(),
+        );
         setSelectedId(null);
         setTime(0);
         setError(null);
@@ -420,6 +536,22 @@ export function useEditorController() {
     },
     [task, platform, acceptProject],
   );
+  useEffect(
+    () =>
+      platform.onProjectOpened?.((opened) => {
+        void task("Opening the selected Corto file", async () => {
+          if (
+            current.current.present.scenes.length ||
+            Object.keys(current.current.present.assets).length
+          )
+            await platform.saveProject(current.current.present);
+          await platform.saveProject(opened);
+          acceptProject(opened);
+          setDialog(null);
+        });
+      }),
+    [platform, task, current, acceptProject],
+  );
 
   const undoEdit = useCallback(() => {
     setPlaying(false);
@@ -450,6 +582,71 @@ export function useEditorController() {
     if (entry) selectScene(entry.scene.id);
   };
 
+  const sceneAction = useCallback(
+    (action: string) => {
+      const present = current.current.present;
+      const ids = selectionRef.current.size
+        ? selectionRef.current
+        : new Set(selectedRef.current ? [selectedRef.current.id] : []);
+      const chosen = present.scenes.filter((scene) => ids.has(scene.id));
+      if (action === "copy" || action === "cut") {
+        clipboard.current = { scenes: chosen, assets: present.assets };
+        if (action === "cut") deleteSelected();
+      }
+      if (action === "paste" && clipboard.current) {
+        const copied = clipboard.current;
+        edit((project) =>
+          insertScenes(
+            { ...project, assets: { ...copied.assets, ...project.assets } },
+            cloneScenes(copied.scenes),
+            selectedRef.current?.id ?? null,
+          ),
+        );
+      }
+      if (action === "duplicate") duplicateSelected();
+      if (action === "delete") deleteSelected();
+      if (action === "split") splitSelected();
+      if (action === "select-all")
+        setSelectedIds(new Set(present.scenes.map((scene) => scene.id)));
+      if (action === "copy-effects" && chosen[0])
+        effectsClipboard.current = sceneEffects(chosen[0]);
+      if (action === "paste-effects" && effectsClipboard.current)
+        edit((project) =>
+          changeScenes(project, ids, (scene) => ({
+            ...scene,
+            ...effectsClipboard.current,
+          })),
+        );
+    },
+    [current, edit, deleteSelected, duplicateSelected, splitSelected],
+  );
+
+  const seekByKey = useCallback(
+    (key: string) => {
+      setPlaying(false);
+      const present = current.current.present;
+      const total = filmDuration(present.scenes);
+      setTime((value) =>
+        key === "Home"
+          ? 0
+          : key === "End"
+            ? total
+            : Math.max(
+                0,
+                Math.min(
+                  total,
+                  value +
+                    (key === "ArrowRight" ? 1 : -1) /
+                      (typeof present.output.fps === "number"
+                        ? present.output.fps
+                        : 30),
+                ),
+              ),
+      );
+    },
+    [current],
+  );
+
   useEditorShortcuts({
     state: ui,
     savePortable,
@@ -459,6 +656,8 @@ export function useEditorController() {
     togglePlayback,
     deleteSelected,
     moveSelected,
+    sceneAction,
+    seekByKey,
   });
 
   const modalClose = () => setDialog(null);
@@ -485,11 +684,17 @@ export function useEditorController() {
     dialog,
     setDialog,
     mediaInput,
+    folderInput,
+    replaceAsset,
     musicInput,
     projectInput,
     total,
     selected,
     selectedIndex,
+    selectedIds: selectedIds.size
+      ? selectedIds
+      : new Set(selected ? [selected.id] : []),
+    sceneAction,
     selectScene,
     edit,
     editScene,

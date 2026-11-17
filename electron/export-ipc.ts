@@ -9,6 +9,9 @@ import type { FileProjectRepository } from "./storage";
 import { MovieRenderer } from "./movie-renderer";
 import { assertMainSender, testPreset } from "./project-ipc";
 import { appendScene, createProject, createScene } from "../src/domain/project";
+import { RenderAssets } from "./render-assets";
+import type { RenderRaster } from "../contracts/services";
+import { resolutionSchema } from "../contracts/values";
 
 /** Own one export job and keep native save/reveal paths out of renderer-controlled data. */
 export function registerExportCommands(
@@ -27,7 +30,34 @@ export function registerExportCommands(
       )
     : (createRequire(import.meta.url)("ffmpeg-static") as string);
   if (!binary) throw new Error("FFmpeg is not available for this platform");
-  const renderer = new MovieRenderer(binary, repository);
+  const rasters = new RenderAssets();
+  const renderer = new MovieRenderer(binary, repository, rasters);
+  ipcMain.handle(
+    nativeChannels.beginRenderAssets,
+    (event, project, resolution) => {
+      assertMainSender(event, getWindow());
+      return rasters.begin(
+        parseProject(project),
+        resolutionSchema.parse(resolution),
+      );
+    },
+  );
+  ipcMain.handle(
+    nativeChannels.stageRenderAsset,
+    (event, token: unknown, raster: RenderRaster) => {
+      assertMainSender(event, getWindow());
+      if (typeof token !== "string") throw new Error("Invalid export token");
+      return rasters.stage(token, raster);
+    },
+  );
+  ipcMain.handle(
+    nativeChannels.releaseRenderAssets,
+    (event, token: unknown) => {
+      assertMainSender(event, getWindow());
+      if (typeof token !== "string") throw new Error("Invalid export token");
+      return rasters.release(token);
+    },
+  );
   let job: { controller: AbortController; finished: Promise<void> } | null =
     null;
   let lastExport: string | null = null;
@@ -45,6 +75,7 @@ export function registerExportCommands(
     )
       throw new Error("The movie request is incomplete");
     const project = parseProject(input.project);
+    const extension = project.output.format;
     const name =
       project.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() ||
       "Corto film";
@@ -55,9 +86,14 @@ export function registerExportCommands(
           title: "Export your movie",
           defaultPath: join(
             app.getPath("videos"),
-            `${name}${"sample" in input && input.sample === true ? "-sample" : ""}.mp4`,
+            `${name}${"sample" in input && input.sample === true ? "-sample" : ""}.${extension}`,
           ),
-          filters: [{ name: "MP4 movie", extensions: ["mp4"] }],
+          filters: [
+            {
+              name: `${extension.toUpperCase()} export`,
+              extensions: [extension],
+            },
+          ],
         })
       ).filePath;
     if (!destination) return null;
@@ -71,6 +107,9 @@ export function registerExportCommands(
           "subtitleOverlays" in input ? input.subtitleOverlays : undefined,
         preset: "preset" in input ? input.preset : undefined,
         sample: "sample" in input ? input.sample : undefined,
+        range: "range" in input ? input.range : undefined,
+        renderAssetsToken:
+          "renderAssetsToken" in input ? input.renderAssetsToken : undefined,
       } as MovieRequest,
       destination,
       controller.signal,
@@ -85,7 +124,7 @@ export function registerExportCommands(
       lastExport = destination;
       return {
         fileName: basename(destination),
-        format: "MP4",
+        format: extension.toUpperCase(),
         location: "file",
       };
     } catch (error) {
@@ -135,6 +174,7 @@ export function registerExportCommands(
       const current = job;
       current?.controller.abort();
       await current?.finished.catch(() => undefined);
+      await rasters.dispose();
     },
   };
 }

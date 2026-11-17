@@ -5,7 +5,7 @@ import {
   type MediaAsset,
   type Project,
 } from "../../contracts/project";
-import { filmDuration } from "./timeline";
+import { buildTimeline, filmDuration } from "./timeline";
 
 export const MUSIC_DUCK_GAIN = 0.25;
 const LEGACY_MUSIC_FADE_SECONDS = 0.3;
@@ -100,15 +100,13 @@ export function createAudioClip(
 /** Merge audible clip/narration intervals so music is reduced once even during overlaps. */
 export function duckingWindows(project: Project): SoundWindow[] {
   const windows: SoundWindow[] = [];
-  let start = 0;
-  for (const scene of project.scenes) {
+  for (const { scene, start } of buildTimeline(project.scenes)) {
     if (
       scene.assetId &&
       project.assets[scene.assetId].kind === "video" &&
       scene.volume > 0
     )
       windows.push({ start, end: start + scene.duration });
-    start += scene.duration;
   }
   for (const clip of project.audioClips)
     if (clip.role === "voiceover" && clip.volume > 0)
@@ -122,6 +120,13 @@ export function duckingWindows(project: Project): SoundWindow[] {
     else merged.push({ ...window });
   }
   return merged;
+}
+
+/** Editing a placed duration opts out of film-following; disabling a loop returns to the available source. */
+export function editSound(project: Project, clip: AudioClip, changes: Partial<AudioClip>): AudioClip {
+  const updated = { ...clip, ...changes, ...(changes.duration !== undefined ? { followFilm: false } : {}) };
+  if (changes.loop === false) { updated.duration = Math.min(updated.duration, project.assets[updated.assetId].duration - updated.offset); updated.fadeIn = Math.min(updated.fadeIn, updated.duration / 2); updated.fadeOut = Math.min(updated.fadeOut, updated.duration / 2); }
+  return updated;
 }
 
 /** Gain is shared by preview and browser export; native builds the same bounded envelope. */

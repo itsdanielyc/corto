@@ -46,8 +46,8 @@ Scope: all numbered software capabilities and six findings in the user's Downloa
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 13 | Versioned creator contracts | Known v1/v2 projects migrate without losing scenes/media/audio; future schemas and malformed effects rejected; canonical sound model | L1/L2 | active |
-| 14 | Shared composition/export foundation | Photo geometry, colour, layered text and overlapping transitions agree in browser canvas and independently decoded native frames; raster staging is bounded | L1/L3/L6 | planned |
+| 13 | Versioned creator contracts | Known v1/v2 projects migrate without losing scenes/media/audio; future schemas and malformed effects rejected; canonical sound model | L1/L2 | done; CI 43996516140, PR 13 |
+| 14 | Shared composition/export foundation | Photo geometry, colour, layered text and overlapping transitions agree in browser canvas and independently decoded native frames; raster staging is bounded | L1/L3/L6 | active |
 | 15 | Photo life and transitions | Motion, rotation/flips, focal crop, blur fill, adjustments, defaults/bulk edits and transition presets work in preview and movies | L1/L3-L6 | planned |
 | 16 | Workflow, library and project tools | Multi-select/clipboard/shortcuts, visual trim/timeline, insertion, media replace/remove/relink, folders, project actions/history and file-open paths pass journeys | L1-L6 | planned |
 | 17 | Text and credits | Multiple timed styled/animated items, long text/credits, backgrounds/templates and subtitle styling survive save/export | L1/L3-L6 | planned |

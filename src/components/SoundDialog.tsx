@@ -6,6 +6,7 @@ import {
   createAudioClip,
   placeNextSong,
   projectAudioClips,
+  editSound,
 } from "../domain/audio";
 import { importMedia } from "../media/phone";
 import type { CortoPlatform } from "../platform/types";
@@ -54,7 +55,7 @@ export function SoundDialog({
       commit({
         ...current.current,
         audioClips: projectAudioClips(current.current).map((clip) =>
-          clip.id === id ? { ...clip, ...changes } : clip,
+          clip.id === id ? editSound(current.current, clip, changes) : clip,
         ),
       });
     } catch (failure) {
@@ -195,7 +196,7 @@ export function SoundDialog({
               <TimingField
                 label={`Sound ${index + 1} volume %`}
                 value={clip.volume * 100}
-                max={100}
+                max={400}
                 step={1}
                 onCommit={(volume) =>
                   changeSound(clip.id, { volume: volume / 100 })

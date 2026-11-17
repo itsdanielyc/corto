@@ -10,6 +10,11 @@ files:
   - "!out/renderer/codecs/**"
   - package.json
 asar: true
+fileAssociations:
+  - ext: corto
+    name: Corto project
+    role: Editor
+    mimeType: application/x-corto
 extraResources:
   - from: node_modules/ffmpeg-static
     to: ffmpeg
@@ -38,6 +43,7 @@ mac:
   category: public.app-category.video
   extendInfo:
     NSMicrophoneUsageDescription: Record narration for your films on this device.
+    NSCameraUsageDescription: Record camera clips for your films on this device.
 dmg:
   writeUpdateInfo: false
 linux:

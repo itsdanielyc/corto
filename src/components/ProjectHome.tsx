@@ -5,6 +5,8 @@ import type { CortoPlatform } from "../platform/types";
 import { formatTime } from "../domain/timeline";
 import { Modal } from "./primitives";
 import { posterFromUrl } from "../media/import";
+import type { Project } from "../../contracts/project";
+import { ProjectManagement } from "./ProjectManagement";
 
 function ProjectThumbnail({ poster }: { poster?: string }) {
   if (!poster)
@@ -27,16 +29,23 @@ export function ProjectHome({
   onClose,
   onNew,
   onPortable,
+  onChanged,
+  onDeleted,
+  onRestored,
 }: {
   platform: CortoPlatform;
   onOpen: (id: string, recover: boolean) => void;
   onClose: () => void;
   onNew: () => void;
   onPortable: () => void;
+  onChanged: (project: Project) => void;
+  onDeleted: (id: string) => void;
+  onRestored: (project: Project) => void;
 }) {
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [error, setError] = useState("");
   const [posters, setPosters] = useState<Record<string, string>>({});
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     let cancelled = false;
     void platform
@@ -64,7 +73,7 @@ export function ProjectHome({
     return () => {
       cancelled = true;
     };
-  }, [platform]);
+  }, [platform, refresh]);
   return (
     <Modal title="Your films" onClose={onClose} className="project-home">
       <p className="modal-introduction">
@@ -92,6 +101,14 @@ export function ProjectHome({
       <div className="project-grid">
         {projects?.map((project) => (
           <article className="saved-film" key={project.id}>
+            <ProjectManagement
+              project={project}
+              platform={platform}
+              onChanged={onChanged}
+              onDeleted={onDeleted}
+              onRestored={onRestored}
+              onRefresh={() => setRefresh((value) => value + 1)}
+            />
             <button
               className="saved-film-open"
               disabled={!!project.unavailableReason}

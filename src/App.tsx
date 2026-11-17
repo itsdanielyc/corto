@@ -1,4 +1,4 @@
-import { type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   Check,
   CircleAlert,
@@ -24,8 +24,16 @@ import { EditorDialogs } from "./components/EditorDialogs";
 import { ProjectHome } from "./components/ProjectHome";
 import { SoundDialog } from "./components/SoundDialog";
 import { SubtitlesDialog } from "./components/SubtitlesDialog";
+import { SceneTools } from "./components/SceneTools";
+import { SlideshowDialog } from "./components/SlideshowDialog";
+import { FilmTools } from "./components/FilmTools";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { CaptureDialog } from "./components/CaptureDialog";
+import { createProject } from "./domain/project";
 
 export function App() {
+  const [timelineMode, setTimelineMode] = useState(false);
+  const [timelineZoom, setTimelineZoom] = useState(24);
   const {
     platform,
     error,
@@ -49,11 +57,15 @@ export function App() {
     dialog,
     setDialog,
     mediaInput,
+    folderInput,
+    replaceAsset,
     musicInput,
     projectInput,
     total,
     selected,
     selectedIndex,
+    selectedIds,
+    sceneAction,
     selectScene,
     edit,
     editScene,
@@ -80,6 +92,25 @@ export function App() {
     showProjects,
     openSavedProject,
   } = useEditorController();
+  useEffect(() => {
+    void platform
+      .loadPreferences?.()
+      .then((preferences) => {
+        setTimelineMode(preferences.timeline);
+        setTimelineZoom(preferences.timelineZoom);
+        if (preferences.checkUpdates)
+          void platform
+            .checkForUpdate?.()
+            .then((update) => {
+              if (update)
+                setMessage(
+                  `Corto ${update.version} is available in Settings → Updates.`,
+                );
+            })
+            .catch(report);
+      })
+      .catch(report);
+  }, [platform, report, setMessage]);
 
   return (
     <div
@@ -138,6 +169,13 @@ export function App() {
           setPlaying(false);
           setDialog("subtitles");
         }}
+        onSlideshow={() => {
+          setPlaying(false);
+          setDialog("slideshow");
+        }}
+        onFilmTools={() => setDialog("film-tools")}
+        onCapture={() => setDialog("capture")}
+        onSettings={() => setDialog("settings")}
       />
       <div className="app-body" inert={!!busy || !editor.loaded}>
         <NavigationRail
@@ -153,6 +191,9 @@ export function App() {
           busy={!!busy || !editor.loaded}
           backend={platform.kind}
           onImport={chooseMedia}
+          onFolder={() => folderInput.current?.click()}
+          onSlideshow={() => setDialog("slideshow")}
+          onReplace={replaceAsset}
           onAdd={addMedia}
           onTitle={addTitle}
           onExample={showExample}
@@ -192,6 +233,9 @@ export function App() {
                 <option value="landscape">16:9 · Landscape</option>
                 <option value="portrait">9:16 · Portrait</option>
                 <option value="square">1:1 · Square</option>
+                <option value="classic">4:3 · Classic</option>
+                <option value="feed">4:5 · Social feed</option>
+                <option value="cinema">2.35:1 · Cinema</option>
               </select>
             </label>
           </div>
@@ -276,6 +320,10 @@ export function App() {
           onSplit={splitSelected}
           onMove={moveSelected}
           busy={!!busy}
+          onTools={() => {
+            setPlaying(false);
+            setDialog("scene-tools");
+          }}
         />
         <Storyboard
           project={project}
@@ -284,6 +332,15 @@ export function App() {
           time={time}
           playing={playing}
           onSelect={selectScene}
+          selectedIds={selectedIds}
+          onAction={sceneAction}
+          timelineMode={timelineMode}
+          zoom={timelineZoom}
+          onAddAsset={(id, afterId) => {
+            selectScene(afterId);
+            const asset = project.assets[id];
+            if (asset) addMedia(asset);
+          }}
           onReorder={reorder}
           onTitle={() => addTitle()}
           onMusic={() => {
@@ -309,7 +366,22 @@ export function App() {
         ref={mediaInput}
         type="file"
         multiple
-        accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.mp4,.mov,.m4v,.webm,.mp3,.wav,.m4a,.aac,.flac,.ogg"
+        accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.gif,.tif,.tiff,.svg,.mp4,.mov,.m4v,.webm,.wmv,.avi,.mkv,.mts,.m2ts,.3gp,.vob,.mpg,.mpeg,.mp3,.wav,.m4a,.aac,.flac,.ogg,.cube"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = "";
+          if (files.length) importFiles(files);
+        }}
+      />
+      <input
+        hidden
+        data-testid="folder-input"
+        ref={(element) => {
+          folderInput.current = element;
+          element?.setAttribute("webkitdirectory", "");
+        }}
+        type="file"
+        multiple
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
@@ -388,6 +460,57 @@ export function App() {
         onSave={savePortable}
         onTransition={performTransition}
       />
+      {dialog === "scene-tools" && selected && (
+        <SceneTools
+          project={project}
+          scene={selected}
+          platform={platform}
+          onChange={editScene}
+          onProject={edit}
+          onClose={modalClose}
+          report={report}
+        />
+      )}
+      {dialog === "slideshow" && (
+        <SlideshowDialog
+          project={project}
+          platform={platform}
+          onCreate={(draft) => {
+            editor.replace(draft);
+            setTime(0.6);
+          }}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "film-tools" && (
+        <FilmTools
+          project={project}
+          selectedIds={selectedIds}
+          time={time}
+          timelineMode={timelineMode}
+          zoom={timelineZoom}
+          onTimeline={setTimelineMode}
+          onZoom={setTimelineZoom}
+          onChange={edit}
+          onSeek={setTime}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "settings" && (
+        <SettingsDialog
+          project={project}
+          platform={platform}
+          onSave={(preferences) => {
+            setTimelineMode(preferences.timeline);
+            setTimelineZoom(preferences.timelineZoom);
+            edit((current) => ({ ...current, defaults: preferences.defaults }));
+          }}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "capture" && (
+        <CaptureDialog onImport={importFiles} onClose={modalClose} />
+      )}
       {dialog === "projects" && (
         <ProjectHome
           platform={platform}
@@ -397,6 +520,20 @@ export function App() {
           onPortable={() => {
             setDialog(null);
             requestOpen();
+          }}
+          onChanged={(changed) => {
+            if (changed.id === project.id) edit(() => changed);
+          }}
+          onDeleted={(id) => {
+            if (id === project.id) {
+              editor.replace(createProject());
+              setTime(0);
+            }
+          }}
+          onRestored={(restored) => {
+            editor.replace(restored);
+            setTime(0.6);
+            modalClose();
           }}
         />
       )}

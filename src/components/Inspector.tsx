@@ -23,6 +23,7 @@ interface InspectorProperties {
   onSplit: () => void;
   onMove: (direction: number) => void;
   busy: boolean;
+  onTools: () => void;
 }
 
 function NumberField({
@@ -77,6 +78,7 @@ export const Inspector = memo(function Inspector({
   onSplit,
   onMove,
   busy,
+  onTools,
 }: InspectorProperties) {
   return (
     <aside
@@ -128,6 +130,13 @@ export const Inspector = memo(function Inspector({
               onClick={onDelete}
             />
           </div>
+          <button
+            className="button secondary scene-tools-button"
+            onClick={onTools}
+            disabled={busy}
+          >
+            More scene tools
+          </button>
           <section className="inspector-section">
             <h3>Timing</h3>
             {asset?.kind === "video" && (

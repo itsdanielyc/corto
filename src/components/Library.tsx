@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import {
   CircleHelp,
   ImagePlus,
@@ -16,6 +16,8 @@ import type { MediaAsset, Project, Scene } from "../../contracts/project";
 import type { MediaResources } from "../hooks/use-resources";
 import { formatTime } from "../domain/timeline";
 import { IconButton } from "./primitives";
+import { sortMedia } from "../domain/slideshow";
+import { usedAssetIds } from "../domain/editing";
 
 export type LibraryMode = "media" | "titles" | "music";
 interface LibraryProperties {
@@ -33,6 +35,9 @@ interface LibraryProperties {
   onMusic: (clips: Project["audioClips"]) => void;
   onSound: () => void;
   onSubtitles: () => void;
+  onFolder: () => void;
+  onSlideshow: () => void;
+  onReplace: (id: string, file: File) => void;
 }
 
 export function NavigationRail({
@@ -86,19 +91,33 @@ export const Library = memo(function Library({
   onMusic,
   onSound,
   onSubtitles,
+  onFolder,
+  onSlideshow,
+  onReplace,
 }: LibraryProperties) {
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"name" | "date" | "used">("name");
+  const [context, setContext] = useState<string | null>(null);
+  const replacement = useRef<HTMLInputElement>(null);
+  const used = useMemo(() => usedAssetIds(project), [project]);
   const assets = useMemo(
     () =>
-      Object.values(project.assets).filter(
-        (asset) =>
-          !asset.isOriginalOnly &&
-          (mode === "music"
-            ? asset.kind === "audio"
-            : asset.kind !== "audio") &&
-          asset.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+      sortMedia(
+        Object.values(project.assets).filter(
+          (asset) =>
+            !asset.isOriginalOnly &&
+            !asset.isProxy &&
+            asset.kind !== "lut" &&
+            (mode === "music"
+              ? asset.kind === "audio"
+              : asset.kind !== "audio") &&
+            asset.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+        ),
+        sort === "date" ? "date" : "name",
+      ).sort((a, b) =>
+        sort === "used" ? Number(used.has(b.id)) - Number(used.has(a.id)) : 0,
       ),
-    [project.assets, mode, query],
+    [project.assets, mode, query, sort, used],
   );
   const musicClip = project.audioClips.find((clip) => clip.role === "music");
   const soundtrack = musicClip ? project.assets[musicClip.assetId] : null;
@@ -155,6 +174,16 @@ export const Library = memo(function Library({
         <button className="button secondary" onClick={onSound}>
           Sound &amp; narration
         </button>
+      )}
+      {mode === "media" && (
+        <div className="library-secondary-actions">
+          <button className="text-button" onClick={onFolder}>
+            Import folder
+          </button>
+          <button className="text-button" onClick={onSlideshow}>
+            Make a slideshow
+          </button>
+        </div>
       )}
       {mode === "titles" && (
         <button className="button secondary" onClick={onSubtitles}>
@@ -221,12 +250,40 @@ export const Library = memo(function Library({
             </label>
           )}
           <div className={`asset-grid ${mode === "music" ? "audio-grid" : ""}`}>
+            {!!assets.length && (
+              <label className="library-sort">
+                Sort
+                <select
+                  aria-label="Library sort"
+                  value={sort}
+                  onChange={(event) =>
+                    setSort(event.target.value as typeof sort)
+                  }
+                >
+                  <option value="name">Filename</option>
+                  <option value="date">Date taken</option>
+                  <option value="used">Used first</option>
+                </select>
+              </label>
+            )}
             {assets.map((asset) => {
               const resource = resources[asset.id];
               return (
                 <button
                   className={`media-tile ${usedAudio.has(asset.id) ? "chosen" : ""}`}
                   key={asset.id}
+                  draggable={!busy}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(
+                      "application/x-corto-asset",
+                      asset.id,
+                    );
+                    event.dataTransfer.effectAllowed = "copy";
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setContext(asset.id);
+                  }}
                   disabled={busy || !!resource?.error}
                   onClick={() => onAdd(asset)}
                   aria-label={`${asset.kind === "audio" ? "Use" : "Add"} ${asset.name}`}
@@ -259,6 +316,9 @@ export const Library = memo(function Library({
                     {asset.name.replace(/\.[^.]+$/, "")}
                   </span>
                   <small>
+                    {used.has(asset.id) && (
+                      <span className="used-indicator">Used · </span>
+                    )}
                     {asset.kind === "audio"
                       ? formatTime(asset.duration)
                       : asset.kind === "image"
@@ -372,6 +432,32 @@ export const Library = memo(function Library({
         </span>
         {backend === "mock" && <span className="mock-badge">mock</span>}
       </div>
+      <input
+        hidden
+        ref={replacement}
+        type="file"
+        aria-label="Replace library media"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = "";
+          if (file && context) onReplace(context, file);
+          setContext(null);
+        }}
+      />
+      {context && (
+        <div
+          className="library-replace-menu"
+          role="menu"
+          aria-label="Media actions"
+        >
+          <button role="menuitem" onClick={() => replacement.current?.click()}>
+            Replace / relink {project.assets[context]?.name}
+          </button>
+          <button role="menuitem" onClick={() => setContext(null)}>
+            Close menu
+          </button>
+        </div>
+      )}
     </aside>
   );
 });
