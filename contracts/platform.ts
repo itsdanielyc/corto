@@ -1,4 +1,5 @@
 import type { ExportResolution, MediaAsset, Project } from "./project";
+import type { CreatorServices, RenderRaster } from "./services";
 
 /** The persistence seam exercised by both the labelled mock and real file storage. */
 export interface ProjectRepository {
@@ -46,6 +47,8 @@ export interface MovieRequest {
   subtitleOverlays?: { cueId: string; png: Uint8Array }[];
   preset?: "tv" | "phone" | "small";
   sample?: boolean;
+  range?: { start: number; end: number };
+  renderAssetsToken?: string;
 }
 export interface ExportProgress {
   fraction: number;
@@ -53,12 +56,12 @@ export interface ExportProgress {
 }
 export interface MovieResult {
   fileName: string;
-  format: "MP4" | "WebM";
+  format: "MP4" | "WebM" | "GIF" | "M4A" | "WAV";
   location: "file" | "download";
 }
 
 /** Narrow, typed preload API. The renderer never receives raw IPC or filesystem primitives. */
-export interface NativeBridge extends ProjectRepository {
+export interface NativeBridge extends ProjectRepository, CreatorServices {
   platformInfo(): Promise<PlatformDetails>;
   putAsset(asset: MediaAsset, file: File): Promise<void>;
   importPhoneVideo(file: File): Promise<ImportedMedia>;
@@ -69,6 +72,9 @@ export interface NativeBridge extends ProjectRepository {
   cancelExport(): Promise<void>;
   onExportProgress(listener: (progress: ExportProgress) => void): () => void;
   revealExport(): Promise<void>;
+  beginRenderAssets?(project: Project, resolution: ExportResolution): Promise<string>;
+  stageRenderAsset?(token: string, raster: RenderRaster): Promise<void>;
+  releaseRenderAssets?(token: string): Promise<void>;
 }
 
 export const nativeChannels = {
@@ -84,4 +90,16 @@ export const nativeChannels = {
   cancelExport: "corto:cancel-export",
   exportProgress: "corto:export-progress",
   revealExport: "corto:reveal-export",
+  beginRenderAssets: "corto:begin-render-assets",
+  stageRenderAsset: "corto:stage-render-asset",
+  releaseRenderAssets: "corto:release-render-assets",
+  importMedia: "corto:import-media",
+  processMedia: "corto:process-media",
+  cancelMedia: "corto:cancel-media",
+  projectAction: "corto:project-action",
+  listVersions: "corto:list-versions",
+  restoreVersion: "corto:restore-version",
+  loadPreferences: "corto:load-preferences",
+  savePreferences: "corto:save-preferences",
+  checkForUpdate: "corto:check-for-update",
 } as const;

@@ -6,9 +6,10 @@ import type {
   ImportedMedia,
 } from "../../contracts/platform";
 import type { MediaAsset, Project } from "../../contracts/project";
+import type { CreatorServices } from "../../contracts/services";
 
 /** Account-free platform effects used by the editor; native paths and raw IPC stay private. */
-export interface CortoPlatform extends ProjectRepository {
+export interface CortoPlatform extends ProjectRepository, CreatorServices {
   readonly kind: "native" | "web" | "mock";
   putAsset(asset: MediaAsset, file: File): Promise<void>;
   importPhoneVideo?(file: File): Promise<ImportedMedia>;
