@@ -275,6 +275,12 @@
   gap: 28px;
   margin-top: 20px;
 }
+fieldset.settings-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
 .slideshow-media {
   display: grid;
   gap: 6px;

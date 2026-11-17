@@ -14,7 +14,7 @@ Corto is a home video and slideshow maker for **Windows, macOS, Linux and the we
 1. Import photos, clips or music. Visual media goes straight into the storyboard.
 2. Reorder scenes, trim clips, split or duplicate moments, and undo freely.
 3. Add titles and timed subtitles. Place songs, record narration and choose fades or reduced music under clip sound.
-4. Export in landscape, portrait or square with TV, phone or small-file presets; try a five-second sample first.
+4. Export in six aspect ratios with sharing presets or custom settings; try a five-second sample at the playhead first.
 
 Create an editable slideshow from a folder or selection, fit it to music, or start with a birthday, holiday, wedding or memorial template. Photo motion, focal crop, colour, transitions, timed text, credits, overlays and a proportional timeline remain individually editable.
 

@@ -7,7 +7,7 @@ import {
   type Project,
   type Scene,
 } from "../../contracts/project";
-import { addAsset, createScene } from "../domain/project";
+import { addAsset, createScene, splitScene } from "../domain/project";
 import { insertScenes } from "../domain/editing";
 import { buildTimeline, frameDimensions } from "../domain/timeline";
 import type { CortoPlatform } from "../platform/types";
@@ -139,6 +139,14 @@ export function SceneTools({
         controller.signal,
       );
       controller.signal.throwIfAborted();
+      if (result.boundaries?.length) {
+        // Only the first/last cut can clamp neighbouring overlaps; reuse the manual split's timing guards.
+        for (const boundary of new Set([
+          result.boundaries[0],
+          result.boundaries.at(-1)!,
+        ]))
+          splitScene(project, scene.id, (boundary - scene.start) / scene.speed);
+      }
       onProject((current) => {
         const currentScene = current.scenes.find(
           (item) => item.id === scene.id,

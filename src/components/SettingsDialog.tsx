@@ -28,11 +28,22 @@ export function SettingsDialog({
   const [error, setError] = useState("");
   const [update, setUpdate] = useState<UpdateInformation | null>(null);
   const [checked, setChecked] = useState(false);
+  const [ready, setReady] = useState(!platform.loadPreferences);
   useEffect(() => {
+    let cancelled = false;
     void platform
       .loadPreferences?.()
-      .then(setPreferences)
-      .catch((error) => setError(String(error)));
+      .then((saved) => {
+        if (cancelled) return;
+        setPreferences(saved);
+        setReady(true);
+      })
+      .catch((error) => {
+        if (!cancelled) setError(String(error));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [platform]);
   const defaults = (changes: Partial<Preferences["defaults"]>) =>
     setPreferences((current) => ({
@@ -40,6 +51,7 @@ export function SettingsDialog({
       defaults: { ...current.defaults, ...changes },
     }));
   const save = async () => {
+    if (!ready) return;
     try {
       const parsed = preferencesSchema.parse(preferences);
       await platform.savePreferences?.(parsed);
@@ -59,7 +71,8 @@ export function SettingsDialog({
       onClose={onClose}
       className="slideshow-dialog"
     >
-      <div className="slideshow-layout">
+      {!ready && !error && <p role="status">{t("Loading saved settings…")}</p>}
+      <fieldset className="slideshow-layout settings-fields" disabled={!ready}>
         <ToolSection title={t("New scenes")}>
           <Numeric
             label={t("Default photo duration")}
@@ -222,7 +235,7 @@ export function SettingsDialog({
               ))}
           </ToolSection>
         </div>
-      </div>
+      </fieldset>
       {error && (
         <p role="alert" className="inline-error">
           {error}
@@ -234,6 +247,7 @@ export function SettingsDialog({
         </button>
         <button
           className="button primary"
+          disabled={!ready}
           onClick={() => {
             void save();
           }}
