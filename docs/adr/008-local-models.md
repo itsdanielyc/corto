@@ -1,6 +1,6 @@
 # ADR 008: optional bounded local models
 
-Status: accepted, cross-platform verification in progress.
+Status: accepted; real speech/matte/offline model journeys verified on all four declared desktop targets (44024156161).
 
 Automatic captions use quantised Whisper Tiny, pinned to
 `ff4177021cc41f7db950912b73ea4fdf7d01d8e7`. Speech comes from small local windows,

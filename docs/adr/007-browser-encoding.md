@@ -1,6 +1,6 @@
 # ADR 007: deterministic local browser encoding
 
-Status: accepted, implementation verification in progress.
+Status: accepted; actual native/browser output and 20 clean macOS repeats verified (VERIFICATION.md).
 
 The v0.1.1 browser path recorded a real-time canvas/audio stream. Hosted macOS
 produced a short MP4 without audio once in 30 repeated runs. Switching to the
