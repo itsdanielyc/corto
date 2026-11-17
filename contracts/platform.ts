@@ -49,6 +49,7 @@ export interface MovieRequest {
   sample?: boolean;
   range?: { start: number; end: number };
   renderAssetsToken?: string;
+  destinationToken?: string;
 }
 export interface ExportProgress {
   fraction: number;
@@ -76,6 +77,8 @@ export interface NativeBridge extends ProjectRepository, CreatorServices {
   beginRenderAssets?(project: Project, resolution: ExportResolution): Promise<string>;
   stageRenderAsset?(token: string, raster: RenderRaster): Promise<void>;
   releaseRenderAssets?(token: string): Promise<void>;
+  chooseExportDestination?(project: Project, sample?: boolean): Promise<string | null>;
+  releaseExportDestination?(token: string): Promise<void>;
 }
 
 export const nativeChannels = {
@@ -105,4 +108,6 @@ export const nativeChannels = {
   checkForUpdate: "corto:check-for-update",
   projectOpened: "corto:project-opened",
   audioSamples: "corto:audio-samples",
+  chooseExportDestination: "corto:choose-export-destination",
+  releaseExportDestination: "corto:release-export-destination",
 } as const;
