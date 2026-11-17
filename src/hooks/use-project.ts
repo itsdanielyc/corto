@@ -32,6 +32,7 @@ export function useProject(
     historyRef.current = next;
     setHistory(next);
     setCanAutosave(true);
+    setSaveStatus("pending");
   }, []);
 
   useEffect(() => {
@@ -97,6 +98,7 @@ export function useProject(
         const previous = historyRef.current;
         const next = commitHistory(previous, edit(previous.present));
         historyRef.current = next;
+        if (next !== previous) setSaveStatus("pending");
         setHistory(next);
       } catch (error) {
         report(error);
@@ -108,11 +110,13 @@ export function useProject(
   const undo = useCallback(() => {
     const next = undoHistory(historyRef.current);
     historyRef.current = next;
+    setSaveStatus("pending");
     setHistory(next);
   }, []);
   const redo = useCallback(() => {
     const next = redoHistory(historyRef.current);
     historyRef.current = next;
+    setSaveStatus("pending");
     setHistory(next);
   }, []);
 

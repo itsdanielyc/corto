@@ -22,6 +22,10 @@ concurrency:
 permissions:
   contents: read
 
+# Model inference uses the browser runtime; do not download optional Node CUDA libraries.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   installers:
     name: installers (${{ matrix.os }})

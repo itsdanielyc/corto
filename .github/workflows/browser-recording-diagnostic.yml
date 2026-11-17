@@ -16,6 +16,10 @@ on:
         default: "recording"
 permissions:
   contents: read
+# Model inference uses the browser runtime; do not download optional Node CUDA libraries.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   diagnose:
     env:
@@ -36,6 +40,7 @@ jobs:
         env:
           CI: "1"
           CORTO_RECORDING_DIAGNOSTIC: "1"
+          CORTO_RECOVERY_DIAGNOSTIC: "1"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

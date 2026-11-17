@@ -11,6 +11,10 @@ permissions:
   contents: write
   pull-requests: write
 
+# Model inference uses the browser runtime; do not download optional Node CUDA libraries.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   capture:
     name: capture (${{ matrix.os }})

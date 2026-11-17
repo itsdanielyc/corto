@@ -234,7 +234,7 @@ export async function renderCreatorMovie(
             "-filter_complex_threads",
             "1",
             "-filter_complex",
-            `[0:v]settb=AVTB,setpts=PTS-STARTPTS[a];[1:v]settb=AVTB,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=${TRANSITIONS[segment.from.scene.transition] ?? "fade"}:duration=${segment.fullDuration}:offset=0,trim=start=${segment.trimStart}:duration=${segment.frames / fps},setpts=PTS-STARTPTS[v];[0:a][1:a]acrossfade=d=${segment.fullDuration}:c1=tri:c2=tri,atrim=start=${segment.trimStart}:duration=${segment.frames / fps},asetpts=PTS-STARTPTS[audio]`,
+            `[0:v]setpts=PTS-STARTPTS,fps=${fps}[a];[1:v]setpts=PTS-STARTPTS,fps=${fps}[b];[a][b]xfade=transition=${TRANSITIONS[segment.from.scene.transition] ?? "fade"}:duration=${segment.fullDuration}:offset=0,trim=start=${segment.trimStart}:duration=${segment.frames / fps},setpts=PTS-STARTPTS[v];[0:a][1:a]acrossfade=d=${segment.fullDuration}:c1=tri:c2=tri,atrim=start=${segment.trimStart}:duration=${segment.frames / fps},asetpts=PTS-STARTPTS[audio]`,
             "-map",
             "[v]",
             "-map",

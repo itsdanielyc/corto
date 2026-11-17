@@ -20,6 +20,10 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Model inference uses the browser runtime; do not download optional Node CUDA libraries.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'

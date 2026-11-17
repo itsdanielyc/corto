@@ -39,6 +39,10 @@ concurrency:
 permissions:
   contents: read
 
+# Model inference uses the browser runtime; do not download optional Node CUDA libraries.
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   browser-recording-diagnostic:
     if: ${{ inputs.browser_recording_repetitions && inputs.browser_recording_repetitions != '0' }}
