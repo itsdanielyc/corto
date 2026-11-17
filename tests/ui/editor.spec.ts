@@ -73,7 +73,7 @@ test("local imports persist after reload and title cards are editable by keyboar
   );
   await page.reload();
   await expect(page.getByTestId("scene-card")).toHaveCount(3);
-  await page.getByTestId("scene-card").last().click();
+  await page.getByRole("button", { name: /Scene \d+: Hello, family$/ }).click();
   await expect(page.getByLabel("On-screen title")).toHaveValue("Hello, family");
   await page.getByRole("button", { name: "Delete scene", exact: true }).click();
   await expect(page.getByTestId("scene-card")).toHaveCount(2);

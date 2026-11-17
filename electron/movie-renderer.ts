@@ -16,6 +16,8 @@ import {
 import { soundMixArguments } from "./movie-sound";
 import { burnSubtitles } from "./movie-subtitles";
 import { projectAudioClips } from "../src/domain/audio";
+import { renderCreatorMovie, usesCreatorRenderer } from "./creator-renderer";
+import type { RenderAssets } from "./render-assets";
 
 const MAX_OVERLAY_BYTES = 4 * 1024 ** 2;
 const MAX_TOTAL_OVERLAY_BYTES = 32 * 1024 ** 2;
@@ -41,6 +43,7 @@ export class MovieRenderer {
   constructor(
     private readonly binary: string,
     private readonly repository: FileProjectRepository,
+    private readonly renderAssets?: RenderAssets,
   ) {}
 
   // Time O(encoded pixels + media bytes), space O(one scene's decoder/encoder buffers); scenes run sequentially.
@@ -51,6 +54,16 @@ export class MovieRenderer {
     progress: (value: ExportProgress) => void,
   ): Promise<void> {
     signal.throwIfAborted();
+    if (usesCreatorRenderer(request))
+      return renderCreatorMovie(
+        this.binary,
+        this.repository,
+        request,
+        destination,
+        signal,
+        progress,
+        this.renderAssets,
+      );
     if (
       request.preset !== undefined &&
       !Object.hasOwn(EXPORT_PRESETS, request.preset)

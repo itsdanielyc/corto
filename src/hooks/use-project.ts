@@ -32,16 +32,26 @@ export function useProject(
     historyRef.current = next;
     setHistory(next);
     setCanAutosave(true);
+    setSaveStatus("pending");
   }, []);
 
   useEffect(() => {
     let cancelled = false;
     void platform
       .loadProject()
-      .then((project) => {
+      .then(async (project) => {
         if (cancelled) return;
         if (project) replace(project);
-        setLoaded(true);
+        else if (platform.loadPreferences) {
+          const preferences = await platform.loadPreferences();
+          if (!cancelled)
+            replace({
+              ...createProject(),
+              defaults: preferences.defaults,
+              output: preferences.output,
+            });
+        }
+        if (!cancelled) setLoaded(true);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -58,6 +68,14 @@ export function useProject(
   useEffect(() => {
     if (!loaded || !canAutosave || paused) return;
     const snapshot = history.present;
+    if (
+      !snapshot.scenes.length &&
+      !Object.keys(snapshot.assets).length &&
+      snapshot.name === "Untitled film"
+    ) {
+      setSaveStatus("saved");
+      return;
+    }
     setSaveStatus("pending");
     const timer = window.setTimeout(() => {
       setSaveStatus("saving");
@@ -80,6 +98,7 @@ export function useProject(
         const previous = historyRef.current;
         const next = commitHistory(previous, edit(previous.present));
         historyRef.current = next;
+        if (next !== previous) setSaveStatus("pending");
         setHistory(next);
       } catch (error) {
         report(error);
@@ -91,11 +110,13 @@ export function useProject(
   const undo = useCallback(() => {
     const next = undoHistory(historyRef.current);
     historyRef.current = next;
+    setSaveStatus("pending");
     setHistory(next);
   }, []);
   const redo = useCallback(() => {
     const next = redoHistory(historyRef.current);
     historyRef.current = next;
+    setSaveStatus("pending");
     setHistory(next);
   }, []);
 

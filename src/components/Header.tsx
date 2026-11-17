@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -15,8 +16,8 @@ import {
 } from "lucide-react";
 import type { SaveStatus } from "../hooks/use-project";
 import { IconButton } from "./primitives";
-
 interface HeaderProperties {
+  projectId: string;
   name: string;
   onName: (name: string) => void;
   status: SaveStatus;
@@ -35,6 +36,10 @@ interface HeaderProperties {
   onProjects: () => void;
   onSound: () => void;
   onSubtitles: () => void;
+  onSlideshow: () => void;
+  onFilmTools: () => void;
+  onSettings: () => void;
+  onCapture: () => void;
 }
 const statusLabels: Record<SaveStatus, string> = {
   loading: "Opening local project",
@@ -43,18 +48,20 @@ const statusLabels: Record<SaveStatus, string> = {
   saved: "Saved on this device",
   error: "Local save unavailable",
 };
-
 function ProjectName({
   name,
   onName,
   disabled,
-}: Pick<HeaderProperties, "name" | "onName"> & { disabled: boolean }) {
+}: Pick<HeaderProperties, "name" | "onName"> & {
+  disabled: boolean;
+}) {
+  const t = useT();
   const [draft, setDraft] = useState(name);
   useEffect(() => setDraft(name), [name]);
   return (
     <input
       className="project-name"
-      aria-label="Project name"
+      aria-label={t("Project name")}
       disabled={disabled}
       maxLength={80}
       value={draft}
@@ -70,8 +77,8 @@ function ProjectName({
     />
   );
 }
-
 export function Header(properties: HeaderProperties) {
+  const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -103,7 +110,7 @@ export function Header(properties: HeaderProperties) {
       <a
         className="brand"
         href="#"
-        aria-label="Corto home"
+        aria-label={t("Corto home")}
         onClick={(event) => {
           event.preventDefault();
           properties.onProjects();
@@ -117,6 +124,7 @@ export function Header(properties: HeaderProperties) {
       <div className="header-divider" />
       <div className="project-heading">
         <ProjectName
+          key={properties.projectId}
           name={properties.name}
           onName={properties.onName}
           disabled={properties.busy}
@@ -134,7 +142,7 @@ export function Header(properties: HeaderProperties) {
           ) : (
             <span className="status-dot" />
           )}
-          {statusLabels[properties.status]}
+          {t(statusLabels[properties.status])}
         </span>
       </div>
       <div className="header-spacer" />
@@ -144,18 +152,18 @@ export function Header(properties: HeaderProperties) {
         onClick={properties.onProjects}
       >
         <FolderOpen size={16} />
-        My films
+        {t("My films")}
       </button>
       <div className="history-actions">
         <IconButton
           icon={Undo2}
-          label="Undo"
+          label={t("Undo")}
           disabled={!properties.canUndo || properties.busy}
           onClick={properties.onUndo}
         />
         <IconButton
           icon={Redo2}
-          label="Redo"
+          label={t("Redo")}
           disabled={!properties.canRedo || properties.busy}
           onClick={properties.onRedo}
         />
@@ -165,7 +173,7 @@ export function Header(properties: HeaderProperties) {
         <button
           ref={trigger}
           className="icon-button"
-          aria-label="Project actions"
+          aria-label={t("Project actions")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={properties.busy}
@@ -177,38 +185,52 @@ export function Header(properties: HeaderProperties) {
           <div
             className="project-menu"
             role="menu"
-            aria-label="Project actions"
+            aria-label={t("Project actions")}
           >
             <button role="menuitem" onClick={action(properties.onProjects)}>
               <FolderOpen />
-              My films
+              {t("My films")}
             </button>
             <button role="menuitem" onClick={action(properties.onNew)}>
               <FilePlus2 />
-              New film
+              {t("New film")}
             </button>
             <button role="menuitem" onClick={action(properties.onOpen)}>
               <FolderOpen />
-              Open project<span>⌘ / Ctrl O</span>
+              {t("Open project")}
+              <span>{t("\u2318 / Ctrl O")}</span>
             </button>
             <button role="menuitem" onClick={action(properties.onSave)}>
               <Save />
-              Save portable copy<span>⌘ / Ctrl S</span>
+              {t("Save portable copy")}
+              <span>{t("\u2318 / Ctrl S")}</span>
             </button>
             <button role="menuitem" onClick={action(properties.onSound)}>
-              Sound &amp; narration
+              {t("Sound & narration")}
+            </button>
+            <button role="menuitem" onClick={action(properties.onSlideshow)}>
+              {t("Make a slideshow")}
+            </button>
+            <button role="menuitem" onClick={action(properties.onFilmTools)}>
+              {t("Film tools & bulk edits")}
+            </button>
+            <button role="menuitem" onClick={action(properties.onCapture)}>
+              {t("Record camera or screen")}
+            </button>
+            <button role="menuitem" onClick={action(properties.onSettings)}>
+              {t("Settings & defaults")}
             </button>
             <button role="menuitem" onClick={action(properties.onSubtitles)}>
-              Timed subtitles
+              {t("Timed subtitles")}
             </button>
             <hr />
             <button role="menuitem" onClick={action(properties.onHelp)}>
               <Keyboard />
-              Keyboard shortcuts
+              {t("Keyboard shortcuts")}
             </button>
             <button role="menuitem" onClick={action(properties.onAbout)}>
               <CircleHelp />
-              About Corto
+              {t("About Corto")}
             </button>
           </div>
         )}
@@ -219,7 +241,7 @@ export function Header(properties: HeaderProperties) {
         onClick={properties.onExport}
       >
         <Download size={16} />
-        Export movie
+        {t("Export movie")}
         <ChevronDown size={14} />
       </button>
     </header>

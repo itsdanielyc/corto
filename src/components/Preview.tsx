@@ -1,24 +1,17 @@
+import { useT } from "../i18n/locale";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Film, Maximize2 } from "lucide-react";
-import { type Project } from "../../contracts/project";
-import {
-  buildTimeline,
-  fadeOpacity,
-  frameDimensions,
-  locateScene,
-} from "../domain/timeline";
+import type { Project } from "../../contracts/project";
+import { filmDuration, frameDimensions } from "../domain/timeline";
 import type { MediaResources } from "../hooks/use-resources";
 import { AudioTimelinePlayer } from "../preview/audio-timeline";
 import type { CortoPlatform } from "../platform/types";
-import { drawSubtitle } from "../preview/subtitles";
-import { subtitleAt } from "../domain/subtitles";
 import { loadCaptionFonts } from "../preview/captions";
-import { MediaPool } from "../preview/media-pool";
-import { renderFrame } from "../preview/render-frame";
-import { seekVideo } from "../preview/seek";
+import { CompositionPlayer } from "../preview/composition-player";
+import { renderProjectFrame } from "../preview/composite";
 import { IconButton } from "./primitives";
-
 interface PreviewProperties {
+  preferProxies?: boolean;
   project: Project;
   platform: CortoPlatform;
   resources: MediaResources;
@@ -28,241 +21,128 @@ interface PreviewProperties {
   onPlaying: (playing: boolean) => void;
   report: (error: unknown) => void;
 }
-
-const UI_UPDATE_INTERVAL_MS = 100;
-const VIDEO_DRIFT_SECONDS = 0.25;
-
-/** A bounded decoder pool paints one composition; UI time updates are throttled independently. */
+/** A single composition surface serves still preview, playback and browser/native export assets. */
 export function Preview({
   project,
   platform,
-  resources,
   time,
   playing,
   onTime,
   onPlaying,
   report,
+  preferProxies = false,
 }: PreviewProperties) {
+  const t = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const pool = useRef(new MediaPool());
   const clock = useRef(time);
-  const sound = useRef<AudioTimelinePlayer | null>(null);
   const [status, setStatus] = useState("Ready");
-  const timeline = useMemo(
-    () => buildTimeline(project.scenes),
-    [project.scenes],
+  const player = useMemo(
+    () =>
+      new CompositionPlayer(
+        project,
+        (id) => platform.assetUrl(id),
+        undefined,
+        preferProxies,
+      ),
+    [project, platform, preferProxies],
+  );
+  const sound = useMemo(
+    () =>
+      new AudioTimelinePlayer(project, (id) => platform.assetUrl(id), report),
+    [project, platform, report],
   );
   const dimensions = frameDimensions(project.ratio, "720p");
-  const total = timeline.at(-1)?.end ?? 0;
-
-  useEffect(() => () => pool.current.dispose(), []);
+  const total = filmDuration(project.scenes);
+  useEffect(() => () => player.dispose(), [player]);
+  useEffect(() => {
+    void sound.prepare().catch(report);
+    return () => sound.dispose();
+  }, [sound, report]);
   useEffect(() => {
     if (!playing) clock.current = time;
   }, [time, playing]);
-
   useEffect(() => {
-    const player = new AudioTimelinePlayer(
-      project,
-      (id) => platform.assetUrl(id),
-      report,
-    );
-    sound.current = player;
-    let cancelled = false;
-    void player.prepare().catch((error) => {
-      if (!cancelled) report(error);
-    });
-    return () => {
-      cancelled = true;
-      player.dispose();
-      if (sound.current === player) sound.current = null;
-    };
-  }, [project.audioClips, project.duckMusic, project.scenes, platform, report]);
-
-  useEffect(() => {
-    if (playing) return;
-    pool.current.pauseExcept(null);
-    sound.current?.pause();
-    const located = locateScene(timeline, time);
-    if (!located) return;
-    let cancelled = false;
     const controller = new AbortController();
-    void (async () => {
-      await loadCaptionFonts();
-      const asset = located.scene.assetId
-        ? project.assets[located.scene.assetId]
-        : null;
-      const resource = asset ? resources[asset.id] : null;
-      if (asset && !resource) {
-        setStatus("Loading preview");
-        return;
-      }
-      if (resource?.error) throw new Error(resource.error);
-      const media =
-        asset && resource ? await pool.current.get(asset, resource.url) : null;
-      if (media instanceof HTMLVideoElement)
-        await seekVideo(
-          media,
-          located.scene.start + located.localTime,
-          controller.signal,
-        );
-      if (cancelled) return;
-      const context = canvas.current?.getContext("2d");
-      if (context) {
-        renderFrame(context, located.scene, media, located.localTime, time > 0);
-        drawSubtitle(context, subtitleAt(project.subtitles, time));
-      }
-      setStatus("Ready");
-      const next = timeline[located.index + 1]?.scene.assetId;
-      const kept = new Set(
-        [located.scene.assetId, next].filter((id): id is string => !!id),
-      );
-      pool.current.retain(kept);
-      if (next && resources[next]?.url)
-        void pool.current
-          .get(project.assets[next], resources[next].url)
-          .catch(() => undefined);
-    })().catch((error) => {
-      if (!cancelled) {
-        setStatus("Media missing");
-        report(error);
-      }
-    });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [
-    playing,
-    timeline,
-    time,
-    resources,
-    project.assets,
-    project.subtitles,
-    dimensions.width,
-    dimensions.height,
-    report,
-  ]);
-
-  useEffect(() => {
-    if (!playing || !total) return;
-    let cancelled = false;
     let animation = 0;
-    let last = performance.now();
-    let notified = last;
-    let preparedScene: string | null = null;
-    let preparingScene: string | null = null;
-    const controller = new AbortController();
-    const stopWithError = (error: unknown) => {
-      if (!cancelled) {
-        report(error);
-        onPlaying(false);
-      }
-    };
-    const tick = (now: number) => {
-      if (cancelled) return;
-      const delta = Math.min((now - last) / 1000, 0.1);
-      last = now;
-      const located = locateScene(timeline, clock.current);
-      if (!located) {
-        onPlaying(false);
-        return;
-      }
-      const { scene, localTime } = located;
-      const asset = scene.assetId ? project.assets[scene.assetId] : null;
-      const resource = asset ? resources[asset.id] : null;
-      const media = asset ? pool.current.ready(asset.id) : null;
-      let ready = (!asset || !!media) && (sound.current?.ready ?? false);
-      pool.current.pauseExcept(scene.assetId);
-      if (asset && !media && resource?.url)
-        void pool.current.get(asset, resource.url).catch(stopWithError);
-      if (resource?.error) {
-        stopWithError(new Error(resource.error));
-        return;
-      }
-      if (media instanceof HTMLVideoElement) {
-        media.volume = scene.volume * fadeOpacity(scene, localTime);
-        if (preparedScene !== scene.id) {
-          ready = false;
-          if (preparingScene !== scene.id) {
-            preparingScene = scene.id;
-            media.pause();
-            void seekVideo(media, scene.start + localTime, controller.signal)
-              .then(() => media.play())
-              .then(() => {
-                if (!cancelled) preparedScene = scene.id;
-                else media.pause();
-              })
-              .catch(stopWithError);
-          }
-        } else if (
-          Math.abs(media.currentTime - (scene.start + localTime)) >
-          VIDEO_DRIFT_SECONDS
-        )
-          media.currentTime = scene.start + localTime;
-      }
-      sound.current?.sync(clock.current, ready);
-      if (ready) {
-        const context = canvas.current?.getContext("2d");
-        if (context) {
-          renderFrame(context, scene, media, localTime);
-          drawSubtitle(context, subtitleAt(project.subtitles, clock.current));
-        }
-        clock.current = Math.min(total, clock.current + delta);
-        setStatus((previous) => (previous === "Ready" ? previous : "Ready"));
-        if (now - notified >= UI_UPDATE_INTERVAL_MS) {
-          onTime(clock.current);
-          notified = now;
-        }
-        const next = timeline[located.index + 1]?.scene.assetId;
-        pool.current.retain(
-          new Set([scene.assetId, next].filter((id): id is string => !!id)),
+    let previous = performance.now();
+    let notified = previous;
+    const paint = async () => {
+      const media = await player.prepare(
+        playing ? clock.current : time,
+        controller.signal,
+      );
+      controller.signal.throwIfAborted();
+      if (playing) await player.play(media, clock.current);
+      const context = canvas.current?.getContext("2d");
+      if (context)
+        renderProjectFrame(
+          context,
+          project,
+          playing ? clock.current : time,
+          media,
+          playing || time > 0,
         );
-        if (next && resources[next]?.url)
-          void pool.current
-            .get(project.assets[next], resources[next].url)
-            .catch(() => undefined);
+      setStatus("Ready");
+      if (!playing) return;
+      sound.sync(clock.current, true);
+      const now = performance.now();
+      clock.current = Math.min(
+        total,
+        clock.current + Math.min(0.1, (now - previous) / 1000),
+      );
+      previous = now;
+      if (now - notified >= 100) {
+        onTime(clock.current);
+        notified = now;
       }
       if (clock.current >= total) {
         onTime(total);
         onPlaying(false);
         return;
       }
-      animation = requestAnimationFrame(tick);
+      animation = requestAnimationFrame(() => {
+        void paint().catch(failed);
+      });
     };
-    void loadCaptionFonts()
-      .then(() => {
-        if (!cancelled) animation = requestAnimationFrame(tick);
-      })
-      .catch(stopWithError);
+    const failed = (error: unknown) => {
+      if (!controller.signal.aborted) {
+        setStatus("Media missing");
+        report(error);
+        onPlaying(false);
+      }
+    };
     const hidden = () => {
-      if (document.hidden) {
+      if (document.hidden && playing) {
         onTime(clock.current);
         onPlaying(false);
       }
     };
+    if (!playing) {
+      player.pause();
+      sound.pause();
+    }
+    if (project.scenes.length)
+      void loadCaptionFonts().then(paint).catch(failed);
     document.addEventListener("visibilitychange", hidden);
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(animation);
       controller.abort();
-      pool.current.pauseExcept(null);
-      sound.current?.pause();
+      cancelAnimationFrame(animation);
+      player.pause();
+      sound.pause();
       document.removeEventListener("visibilitychange", hidden);
     };
   }, [
     playing,
-    timeline,
-    project.assets,
-    project.audioClips,
-    project.subtitles,
-    resources,
+    playing ? null : time,
+    project,
+    player,
+    sound,
     total,
-    onPlaying,
     onTime,
+    onPlaying,
     report,
   ]);
-
   return (
     <div
       className={`preview-stage ${project.scenes.length ? "has-film" : ""}`}
@@ -277,11 +157,11 @@ export function Preview({
             height={dimensions.height}
             data-ratio={project.ratio}
             data-testid="preview-canvas"
-            aria-label="Film preview"
+            aria-label={t("Film preview")}
           />
           <IconButton
             icon={Maximize2}
-            label="Full screen preview"
+            label={t("Full screen preview")}
             className="fullscreen-button"
             onClick={() => {
               void stage.current?.requestFullscreen().catch(report);
@@ -295,11 +175,11 @@ export function Preview({
             alt=""
           />
           <p>
-            A little life.
+            {t("A little life.")}
             <br />
-            <em>A little film.</em>
+            <em>{t("A little film.")}</em>
           </p>
-          <span>Your photos, clips and stories go here.</span>
+          <span>{t("Your photos, clips and stories go here.")}</span>
           <Film size={18} aria-hidden="true" />
         </div>
       )}

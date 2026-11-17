@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import { memo, useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -11,7 +12,6 @@ import {
 } from "lucide-react";
 import { LIMITS, type MediaAsset, type Scene } from "../../contracts/project";
 import { IconButton } from "./primitives";
-
 interface InspectorProperties {
   scene: Scene | null;
   asset: MediaAsset | null;
@@ -23,8 +23,8 @@ interface InspectorProperties {
   onSplit: () => void;
   onMove: (direction: number) => void;
   busy: boolean;
+  onTools: () => void;
 }
-
 function NumberField({
   value,
   label,
@@ -38,6 +38,7 @@ function NumberField({
   maximum: number;
   onCommit: (value: number) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState(String(Number(value.toFixed(3))));
   useEffect(() => setDraft(String(Number(value.toFixed(3)))), [value]);
   return (
@@ -45,7 +46,7 @@ function NumberField({
       {label}
       <div className="number-wrap">
         <input
-          aria-label={label}
+          aria-label={t(label)}
           type="number"
           min={minimum}
           max={maximum}
@@ -60,12 +61,11 @@ function NumberField({
             if (event.key === "Enter") event.currentTarget.blur();
           }}
         />
-        <span>sec</span>
+        <span>{t("sec")}</span>
       </div>
     </label>
   );
 }
-
 export const Inspector = memo(function Inspector({
   scene,
   asset,
@@ -77,11 +77,13 @@ export const Inspector = memo(function Inspector({
   onSplit,
   onMove,
   busy,
+  onTools,
 }: InspectorProperties) {
+  const t = useT();
   return (
     <aside
       className="inspector"
-      aria-label="Scene settings"
+      aria-label={t("Scene settings")}
       data-geo="inspector"
     >
       {scene ? (
@@ -89,14 +91,15 @@ export const Inspector = memo(function Inspector({
           <div className="inspector-heading">
             <div>
               <span className="eyebrow">
-                SCENE {String(index + 1).padStart(2, "0")}
+                {t("SCENE ")}
+                {String(index + 1).padStart(2, "0")}
               </span>
               <h2>
                 {asset?.kind === "video"
-                  ? "A little motion."
+                  ? t("A little motion.")
                   : asset
-                    ? "The moment."
-                    : "The words."}
+                    ? t("The moment.")
+                    : t("The words.")}
               </h2>
             </div>
             <SlidersHorizontal size={17} />
@@ -104,56 +107,69 @@ export const Inspector = memo(function Inspector({
           <div className="scene-actions">
             <IconButton
               icon={ArrowLeft}
-              label="Move scene left"
+              label={t("Move scene left")}
               disabled={busy || index === 0}
               onClick={() => onMove(-1)}
             />
             <IconButton
               icon={ArrowRight}
-              label="Move scene right"
+              label={t("Move scene right")}
               disabled={busy || index === count - 1}
               onClick={() => onMove(1)}
             />
             <span />
             <IconButton
               icon={Copy}
-              label="Duplicate scene"
+              label={t("Duplicate scene")}
               disabled={busy}
               onClick={onDuplicate}
             />
             <IconButton
               icon={Trash2}
-              label="Delete scene"
+              label={t("Delete scene")}
               disabled={busy}
               onClick={onDelete}
             />
           </div>
+          <button
+            className="button secondary scene-tools-button"
+            onClick={onTools}
+            disabled={busy}
+          >
+            {t("More scene tools")}
+          </button>
           <section className="inspector-section">
-            <h3>Timing</h3>
+            <h3>{t("Timing")}</h3>
             {asset?.kind === "video" && (
               <NumberField
                 value={scene.start}
-                label="Start in source (seconds)"
+                label={t("Start in source (seconds)")}
                 minimum={0}
                 maximum={Math.max(
                   0,
-                  asset.duration - LIMITS.minimumSceneSeconds,
+                  asset.duration - LIMITS.minimumSceneSeconds * scene.speed,
                 )}
                 onCommit={(start) =>
                   onChange({
                     start,
-                    duration: Math.min(scene.duration, asset.duration - start),
+                    duration: Math.min(
+                      scene.duration,
+                      (asset.duration - start) / scene.speed,
+                    ),
                   })
                 }
               />
             )}
             <NumberField
               value={scene.duration}
-              label="Duration (seconds)"
+              label={t("Duration (seconds)")}
               minimum={LIMITS.minimumSceneSeconds}
               maximum={
-                asset?.kind === "video"
-                  ? Math.min(LIMITS.sceneSeconds, asset.duration - scene.start)
+                asset?.kind === "video" && !scene.loop
+                  ? Math.min(
+                      LIMITS.sceneSeconds,
+                      (asset.duration - scene.start) / scene.speed,
+                    )
                   : LIMITS.sceneSeconds
               }
               onCommit={(duration) => onChange({ duration })}
@@ -162,46 +178,54 @@ export const Inspector = memo(function Inspector({
               className="text-button split-button"
               onClick={onSplit}
               disabled={busy || scene.duration < LIMITS.minimumSceneSeconds * 2}
-              title="Split at the playhead, or in the middle when the playhead is outside this scene"
+              title={t(
+                "Split at the playhead, or in the middle when the playhead is outside this scene",
+              )}
             >
               <Scissors size={14} />
-              Split scene
+              {t("Split scene")}
             </button>
           </section>
           <section className="inspector-section">
             <h3>
               <Type size={14} />
-              Say something
+              {t("Say something")}
             </h3>
             <label className="field-label">
-              On-screen title
+              {t("On-screen title")}
               <textarea
-                aria-label="On-screen title"
-                placeholder="A place. A feeling. A few words."
+                aria-label={t("On-screen title")}
+                placeholder={t("A place. A feeling. A few words.")}
                 maxLength={LIMITS.captionCharacters}
                 value={scene.caption}
                 onChange={(event) => onChange({ caption: event.target.value })}
                 rows={3}
               />
             </label>
-            <div className="type-styles" role="group" aria-label="Title style">
+            <div
+              className="type-styles"
+              role="group"
+              aria-label={t("Title style")}
+            >
               {(["classic", "modern", "minimal"] as const).map((style) => (
                 <button
-                  key={style}
-                  aria-label={`${style[0].toUpperCase()}${style.slice(1)} title style`}
+                  key={t(style)}
+                  aria-label={t(
+                    `${style[0].toUpperCase()}${style.slice(1)} title style`,
+                  )}
                   aria-pressed={scene.captionStyle === style}
-                  className={`type-style ${style}`}
+                  className={`type-style ${t(style)}`}
                   onClick={() => onChange({ captionStyle: style })}
                 >
-                  <span>Aa</span>
-                  <small>{style}</small>
+                  <span>{t("Aa")}</span>
+                  <small>{t(style)}</small>
                 </button>
               ))}
             </div>
             <label className="field-label inline-field">
-              Position
+              {t("Position")}
               <select
-                aria-label="Title position"
+                aria-label={t("Title position")}
                 value={scene.captionPosition}
                 onChange={(event) =>
                   onChange({
@@ -210,33 +234,33 @@ export const Inspector = memo(function Inspector({
                   })
                 }
               >
-                <option value="center">Centre</option>
-                <option value="bottom">Lower third</option>
+                <option value="center">{t("Centre")}</option>
+                <option value="bottom">{t("Lower third")}</option>
               </select>
             </label>
           </section>
           <section className="inspector-section">
             <h3>
               <Crop size={14} />
-              Picture & pace
+              {t("Picture & pace")}
             </h3>
             {asset && (
               <div
                 className="segmented"
                 role="group"
-                aria-label="Picture framing"
+                aria-label={t("Picture framing")}
               >
                 <button
                   aria-pressed={scene.fit === "cover"}
                   onClick={() => onChange({ fit: "cover" })}
                 >
-                  Fill frame
+                  {t("Fill frame")}
                 </button>
                 <button
                   aria-pressed={scene.fit === "contain"}
                   onClick={() => onChange({ fit: "contain" })}
                 >
-                  Fit whole image
+                  {t("Fit whole image")}
                 </button>
               </div>
             )}
@@ -244,7 +268,7 @@ export const Inspector = memo(function Inspector({
               <div
                 className="background-swatches"
                 role="group"
-                aria-label="Title background"
+                aria-label={t("Title background")}
               >
                 {[
                   { value: "#151517", name: "Graphite" },
@@ -254,7 +278,7 @@ export const Inspector = memo(function Inspector({
                   <button
                     key={colour.value}
                     style={{ background: colour.value }}
-                    aria-label={`${colour.name} background`}
+                    aria-label={t(`${colour.name} background`)}
                     aria-pressed={scene.background === colour.value}
                     onClick={() => onChange({ background: colour.value })}
                   />
@@ -262,9 +286,9 @@ export const Inspector = memo(function Inspector({
               </div>
             )}
             <label className="field-label inline-field">
-              Transition
+              {t("Transition")}
               <select
-                aria-label="Scene transition"
+                aria-label={t("Scene transition")}
                 value={scene.transition}
                 onChange={(event) =>
                   onChange({
@@ -272,18 +296,22 @@ export const Inspector = memo(function Inspector({
                   })
                 }
               >
-                <option value="cut">Straight cut</option>
-                <option value="fade">Fade through black</option>
+                <option value="cut">{t("Straight cut")}</option>
+                <option value="fade">{t("Fade through black")}</option>
               </select>
             </label>
           </section>
           {asset?.kind === "video" && (
             <section className="inspector-section">
-              <h3>Original sound</h3>
+              <h3>{t("Original sound")}</h3>
               <label className="range-label">
-                Clip volume<span>{Math.round(scene.volume * 100)}%</span>
+                {t("Clip volume")}
+                <span>
+                  {Math.round(scene.volume * 100)}
+                  {t("%")}
+                </span>
                 <input
-                  aria-label="Clip volume"
+                  aria-label={t("Clip volume")}
                   type="range"
                   min="0"
                   max="100"
@@ -296,18 +324,19 @@ export const Inspector = memo(function Inspector({
             </section>
           )}
           <div className="inspector-note">
-            Your originals stay just as they are.
+            {t("Your originals stay just as they are.")}
           </div>
         </>
       ) : (
         <div className="inspector-empty">
           <SlidersHorizontal size={28} strokeWidth={1.3} />
-          <h2>Make it your own.</h2>
+          <h2>{t("Make it your own.")}</h2>
           <p>
-            Select a scene to change its timing, add a title, or find the right
-            frame.
+            {t(
+              "Select a scene to change its timing, add a title, or find the right frame.",
+            )}
           </p>
-          <span>A small edit can say a lot.</span>
+          <span>{t("A small edit can say a lot.")}</span>
         </div>
       )}
     </aside>

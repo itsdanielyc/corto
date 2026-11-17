@@ -21,14 +21,17 @@ export function useResources(
     let cancelled = false;
     void (async () => {
       for (const asset of Object.values(assets)) {
-        if (asset.isOriginalOnly) continue;
+        if (asset.isOriginalOnly || asset.isProxy || asset.kind === "lut")
+          continue;
         if (cancelled) break;
         if (cache.current[asset.id]) continue;
         try {
           const url = await platform.assetUrl(asset.id);
           const poster = await posterFromUrl(asset, url);
+          if (cancelled) return;
           cache.current[asset.id] = { url, poster };
         } catch (error) {
+          if (cancelled) return;
           cache.current[asset.id] = {
             url: "",
             poster: null,

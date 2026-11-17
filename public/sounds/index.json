@@ -1,0 +1,246 @@
+[
+  {
+    "id": "music-01",
+    "title": "Morning light",
+    "category": "music",
+    "description": "soft keys · 72 bpm",
+    "bpm": 72,
+    "file": "music-01.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-02",
+    "title": "Old photographs",
+    "category": "music",
+    "description": "plucked strings · 80 bpm",
+    "bpm": 80,
+    "file": "music-02.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-03",
+    "title": "Home again",
+    "category": "music",
+    "description": "warm bells · 88 bpm",
+    "bpm": 88,
+    "file": "music-03.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-04",
+    "title": "Little adventures",
+    "category": "music",
+    "description": "gentle pad · 96 bpm",
+    "bpm": 96,
+    "file": "music-04.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-05",
+    "title": "Sunday afternoon",
+    "category": "music",
+    "description": "soft keys · 104 bpm",
+    "bpm": 104,
+    "file": "music-05.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-06",
+    "title": "First steps",
+    "category": "music",
+    "description": "plucked strings · 72 bpm",
+    "bpm": 72,
+    "file": "music-06.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-07",
+    "title": "Garden party",
+    "category": "music",
+    "description": "warm bells · 80 bpm",
+    "bpm": 80,
+    "file": "music-07.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-08",
+    "title": "A letter home",
+    "category": "music",
+    "description": "gentle pad · 88 bpm",
+    "bpm": 88,
+    "file": "music-08.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-09",
+    "title": "Seaside postcards",
+    "category": "music",
+    "description": "soft keys · 96 bpm",
+    "bpm": 96,
+    "file": "music-09.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-10",
+    "title": "The long way back",
+    "category": "music",
+    "description": "plucked strings · 104 bpm",
+    "bpm": 104,
+    "file": "music-10.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-11",
+    "title": "Golden hour",
+    "category": "music",
+    "description": "warm bells · 72 bpm",
+    "bpm": 72,
+    "file": "music-11.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-12",
+    "title": "Small celebrations",
+    "category": "music",
+    "description": "gentle pad · 80 bpm",
+    "bpm": 80,
+    "file": "music-12.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-13",
+    "title": "Together always",
+    "category": "music",
+    "description": "soft keys · 88 bpm",
+    "bpm": 88,
+    "file": "music-13.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-14",
+    "title": "Winter window",
+    "category": "music",
+    "description": "plucked strings · 96 bpm",
+    "bpm": 96,
+    "file": "music-14.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-15",
+    "title": "Remembering you",
+    "category": "music",
+    "description": "warm bells · 104 bpm",
+    "bpm": 104,
+    "file": "music-15.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-16",
+    "title": "Paper lanterns",
+    "category": "music",
+    "description": "gentle pad · 72 bpm",
+    "bpm": 72,
+    "file": "music-16.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-17",
+    "title": "New beginnings",
+    "category": "music",
+    "description": "soft keys · 80 bpm",
+    "bpm": 80,
+    "file": "music-17.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-18",
+    "title": "The quiet years",
+    "category": "music",
+    "description": "plucked strings · 88 bpm",
+    "bpm": 88,
+    "file": "music-18.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-19",
+    "title": "Summer kitchen",
+    "category": "music",
+    "description": "warm bells · 96 bpm",
+    "bpm": 96,
+    "file": "music-19.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "music-20",
+    "title": "Until next time",
+    "category": "music",
+    "description": "gentle pad · 104 bpm",
+    "bpm": 104,
+    "file": "music-20.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-01",
+    "title": "Soft chime",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-01.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-02",
+    "title": "Camera click",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-02.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-03",
+    "title": "Gentle whoosh",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-03.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-04",
+    "title": "Small pop",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-04.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-05",
+    "title": "Bell",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-05.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-06",
+    "title": "Sparkle",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-06.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-07",
+    "title": "Page turn",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-07.mp3",
+    "licence": "CC0-1.0"
+  },
+  {
+    "id": "effect-08",
+    "title": "Wood tick",
+    "category": "effect",
+    "description": "Original sound effect",
+    "file": "effect-08.mp3",
+    "licence": "CC0-1.0"
+  }
+]

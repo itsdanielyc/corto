@@ -9,6 +9,8 @@ import {
   type Project,
   type Scene,
 } from "../../contracts/project";
+import { sliceScene } from "./scene-slice";
+import { transitionOverlap } from "./composition";
 
 /** Create an empty, versioned project with a stable opaque identifier. */
 export function createProject(name = "Untitled film"): Project {
@@ -170,20 +172,33 @@ export function splitScene(
     throw new Error("Split at least 0.25 seconds from either end");
   if (project.scenes.some((item) => item.id === newId))
     throw new Error("Scene identifiers must be unique");
-  const isVideo =
-    scene.assetId !== null && project.assets[scene.assetId].kind === "video";
-  const scenes = [...project.scenes];
-  scenes.splice(
-    index,
-    1,
-    { ...scene, duration: offset },
-    {
-      ...scene,
-      id: newId,
-      start: isVideo ? scene.start + offset * scene.speed : 0,
-      duration: scene.duration - offset,
-    },
+  const kind = scene.assetId ? project.assets[scene.assetId].kind : null;
+  const first = {
+    ...sliceScene(scene, kind, 0, offset, scene.id),
+    transition: "cut" as const,
+  };
+  const second = sliceScene(
+    scene,
+    kind,
+    offset,
+    scene.duration - offset,
+    newId,
   );
+  const previous = project.scenes[index - 1];
+  const next = project.scenes[index + 1];
+  if (
+    (previous &&
+      Math.abs(
+        transitionOverlap(previous, scene) - transitionOverlap(previous, first),
+      ) > 0.001) ||
+    Math.abs(transitionOverlap(scene, next) - transitionOverlap(second, next)) >
+      0.001
+  )
+    throw new Error(
+      "Split outside the transition area, or shorten the neighbouring transition first",
+    );
+  const scenes = [...project.scenes];
+  scenes.splice(index, 1, first, second);
   assertDuration(scenes);
   return { ...project, scenes };
 }

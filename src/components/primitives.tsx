@@ -1,3 +1,4 @@
+import { useT } from "../i18n/locale";
 import {
   useEffect,
   useId,
@@ -7,7 +8,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { X, type LucideIcon } from "lucide-react";
-
 export function IconButton({
   icon: Icon,
   label,
@@ -17,19 +17,19 @@ export function IconButton({
   icon: LucideIcon;
   label: string;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       className={`icon-button ${className}`}
-      aria-label={label}
-      title={label}
+      aria-label={t(label)}
+      title={t(label)}
       {...properties}
     >
       <Icon size={18} strokeWidth={1.7} aria-hidden="true" />
     </button>
   );
 }
-
 /** Native dialogs provide focus trapping, Escape handling and focus restoration. */
 export function Modal({
   title,
@@ -42,6 +42,7 @@ export function Modal({
   onClose: () => void;
   className?: string;
 }) {
+  const t = useT();
   const reference = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -69,7 +70,7 @@ export function Modal({
     >
       <div className="modal-heading">
         <h2 id={titleId}>{title}</h2>
-        <IconButton icon={X} label="Close dialog" onClick={onClose} />
+        <IconButton icon={X} label={t("Close dialog")} onClick={onClose} />
       </div>
       {children}
     </dialog>,

@@ -46,18 +46,18 @@ Scope: all numbered software capabilities and six findings in the user's Downloa
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 13 | Versioned creator contracts | Known v1/v2 projects migrate without losing scenes/media/audio; future schemas and malformed effects rejected; canonical sound model | L1/L2 | active |
-| 14 | Shared composition/export foundation | Photo geometry, colour, layered text and overlapping transitions agree in browser canvas and independently decoded native frames; raster staging is bounded | L1/L3/L6 | planned |
-| 15 | Photo life and transitions | Motion, rotation/flips, focal crop, blur fill, adjustments, defaults/bulk edits and transition presets work in preview and movies | L1/L3-L6 | planned |
-| 16 | Workflow, library and project tools | Multi-select/clipboard/shortcuts, visual trim/timeline, insertion, media replace/remove/relink, folders, project actions/history and file-open paths pass journeys | L1-L6 | planned |
-| 17 | Text and credits | Multiple timed styled/animated items, long text/credits, backgrounds/templates and subtitle styling survive save/export | L1/L3-L6 | planned |
-| 18 | Media operations and capture | Legacy formats/images, speed/pitch, audio detach, freeze/frame save, reverse/stabilise/detection, proxies, webcam/screen capture perform real operations | L1/L3/L4/L6 | planned |
-| 19 | Sound tools and pack | Bundled original CC0 tracks/SFX, waveforms, fit/beat tools, clip fades/boost, noise/loudness and audio-only output proven | L1/L3-L6 | planned |
-| 20 | Slideshow/themes/templates | Folder/selection drafts with explicit date fallback, soundtrack fitting and editable themes; no existing film replaced silently | L1/L4/L6 | planned |
-| 21 | Overlays and looks | Shapes/stickers, image/video PiP, collage, chroma, start/end animation, LUTs and local photo cut-out render correctly | L1/L3-L6 | planned |
-| 22 | Export reach and background jobs | 4K/fps/ranges/GIF/audio/destination controls, capability-probed encoders, thread budgets, immutable background jobs and queue | L1/L3/L4/L6 | planned |
-| 23 | Optional local models | Actual local caption/subject models operate on fixtures; downloads explicit, media never uploaded; missing models/cancellation recover | L1/L3/L4/L6 | planned |
-| 24 | Distribution and language | File associations, update check, language choice and credential-gated signing configured; actual signing status reported | L1/L3/L4/L6/L7 | planned |
+| 13 | Versioned creator contracts | Known v1/v2 projects migrate without losing scenes/media/audio; future schemas and malformed effects rejected; canonical sound model | L1/L2 | done; CI 43996516140, PR 13 |
+| 14 | Shared composition/export foundation | Photo geometry, colour, layered text and overlapping transitions agree in browser canvas and independently decoded native frames; raster staging is bounded | L1/L3/L6 | implemented and tested locally; final hosted regression pending |
+| 15 | Photo life and transitions | Motion, rotation/flips, focal crop, blur fill, adjustments, defaults/bulk edits and transition presets work in preview and movies | L1/L3-L6 | implemented and tested locally; final hosted regression pending |
+| 16 | Workflow, library and project tools | Multi-select/clipboard/shortcuts, visual trim/timeline, insertion, media replace/remove/relink, folders, project actions/history and file-open paths pass journeys | L1-L6 | implemented and tested locally; final hosted regression pending |
+| 17 | Text and credits | Multiple timed styled/animated items, long text/credits, backgrounds/templates and subtitle styling survive save/export | L1/L3-L6 | implemented and tested locally; final hosted regression pending |
+| 18 | Media operations and capture | Legacy formats/images, speed/pitch, audio detach, freeze/frame save, reverse/stabilise/detection, proxies, webcam/screen capture perform real operations | L1/L3/L4/L6 | implemented and tested locally; final hosted regression pending |
+| 19 | Sound tools and pack | Bundled original CC0 tracks/SFX, waveforms, fit/beat tools, clip fades/boost, noise/loudness and audio-only output proven | L1/L3-L6 | implemented and tested locally; final hosted regression pending |
+| 20 | Slideshow/themes/templates | Folder/selection drafts with explicit date fallback, soundtrack fitting and editable themes; no existing film replaced silently | L1/L4/L6 | implemented and tested locally; final hosted regression pending |
+| 21 | Overlays and looks | Shapes/stickers, image/video PiP, collage, chroma, start/end animation, LUTs and local photo cut-out render correctly | L1/L3-L6 | implemented and tested locally; final hosted regression pending |
+| 22 | Export reach and background jobs | 4K/fps/ranges/GIF/audio/destination controls, capability-probed encoders, thread budgets, immutable background jobs and queue | L1/L3/L4/L6 | implemented and tested locally; final hosted regression pending |
+| 23 | Optional local models | Actual local caption/subject models operate on fixtures; downloads explicit, media never uploaded; missing models/cancellation recover | L1/L3/L4/L6 | hosted model/500-photo matrix green, 44024156161; final integration pending |
+| 24 | Distribution and language | File associations, update check, language choice and credential-gated signing configured; actual signing status reported | L1/L3/L4/L6/L7 | implemented and tested locally; final hosted regression pending |
 | 25 | Release proof | Feature traceability complete, all declared OS checks/screenshots/installers green before tag; published bundles smoke-tested | L0-L7 | planned |
 
 Rulings: preserve original supplied brand and a simple editor; no unrelated redesign. Treat the audit's competitor claims as supplied research, not validated user demand. External signing identity is not fabricated. Hardware/model-dependent features report actual capabilities and have working software/local paths. Derivative media and queued exports use immutable snapshots and bounded workers/processes. All new tests are observed red; no skipped or placeholder feature may be called implemented.

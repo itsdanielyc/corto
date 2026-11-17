@@ -57,7 +57,10 @@ function film() {
 
 describe("portable project contract", () => {
   it("rejects inherited object keys as media references", () => {
-    const project = { ...createProject(), scenes: [{ ...createScene(null), assetId: "toString" }] };
+    const project = {
+      ...createProject(),
+      scenes: [{ ...createScene(null), assetId: "toString" }],
+    };
     expect(() => parseProject(project)).toThrow(/media|identifier/i);
   });
   it("accepts a complete movie and preserves Unicode names", () => {

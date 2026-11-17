@@ -15,6 +15,12 @@ import {
 } from "../contracts/project";
 import type { FileProjectRepository } from "./storage";
 import { importPhoneVideo } from "./phone-import";
+import { importNativeSelection, processNativeMedia } from "./media-jobs";
+import { mediaOperationSchema } from "../contracts/services";
+import { z } from "zod";
+import { preferencesSchema } from "../contracts/creative";
+import { checkPublishedUpdate } from "../src/platform/updates";
+import { nativeAudioSamples } from "./audio-samples";
 
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
@@ -47,7 +53,7 @@ export function registerProjectCommands(
   repository: FileProjectRepository,
   getWindow: () => BrowserWindow | null,
   onRendererReady: () => void = () => undefined,
-): void {
+): { active: () => boolean; cancelAndWait: () => Promise<void> } {
   const handle = (
     channel: string,
     operation: (...arguments_: unknown[]) => unknown,
@@ -69,6 +75,94 @@ export function registerProjectCommands(
     if (recover !== undefined && typeof recover !== "boolean")
       throw new Error("Invalid recovery request");
     return repository.openProject(identifierSchema.parse(id), recover === true);
+  });
+  const projectActionSchema = z.discriminatedUnion("operation", [
+    z.strictObject({
+      operation: z.literal("rename"),
+      id: identifierSchema,
+      name: z.string().trim().min(1).max(80),
+    }),
+    z.strictObject({
+      operation: z.enum(["duplicate", "delete"]),
+      id: identifierSchema,
+    }),
+  ]);
+  handle(nativeChannels.projectAction, (request) =>
+    repository.projectAction(projectActionSchema.parse(request)),
+  );
+  handle(nativeChannels.listVersions, (id) =>
+    repository.listVersions(identifierSchema.parse(id)),
+  );
+  handle(nativeChannels.restoreVersion, (id, version) =>
+    repository.restoreVersion(
+      identifierSchema.parse(id),
+      identifierSchema.parse(version),
+    ),
+  );
+  handle(nativeChannels.loadPreferences, () => repository.loadPreferences());
+  handle(nativeChannels.savePreferences, (preferences) =>
+    repository.savePreferences(preferencesSchema.parse(preferences)),
+  );
+  handle(nativeChannels.checkForUpdate, () =>
+    checkPublishedUpdate(app.getVersion()),
+  );
+  const binary = app.isPackaged
+    ? join(
+        process.resourcesPath,
+        "ffmpeg",
+        process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+      )
+    : (createRequire(import.meta.url)("ffmpeg-static") as string);
+  handle(nativeChannels.audioSamples, (project, request) =>
+    nativeAudioSamples(binary, repository, parseProject(project), request),
+  );
+  let mediaJob: AbortController | null = null;
+  let mediaFinished: Promise<unknown> | null = null;
+  handle(nativeChannels.cancelMedia, () => mediaJob?.abort());
+  handle(nativeChannels.importMedia, async (source, name) => {
+    if (
+      !(
+        (typeof source === "string" && source.length < 32768) ||
+        (source instanceof Uint8Array && source.length <= MAX_FALLBACK_BYTES)
+      ) ||
+      typeof name !== "string" ||
+      name.length > 255
+    )
+      throw new Error("Invalid media selection");
+    if (mediaJob) throw new Error("Finish the current media operation first");
+    const controller = new AbortController();
+    mediaJob = controller;
+    try {
+      mediaFinished = importNativeSelection(
+        binary,
+        repository,
+        source as string | Uint8Array,
+        name,
+        controller.signal,
+      );
+      return await mediaFinished;
+    } finally {
+      mediaJob = null;
+      mediaFinished = null;
+    }
+  });
+  handle(nativeChannels.processMedia, async (project, request) => {
+    if (mediaJob) throw new Error("Finish the current media operation first");
+    const controller = new AbortController();
+    mediaJob = controller;
+    try {
+      mediaFinished = processNativeMedia(
+        binary,
+        repository,
+        parseProject(project),
+        mediaOperationSchema.parse(request),
+        controller.signal,
+      );
+      return await mediaFinished;
+    } finally {
+      mediaJob = null;
+      mediaFinished = null;
+    }
   });
   let importingPhone = false;
   handle(nativeChannels.importPhoneVideo, async (source, name) => {
@@ -145,4 +239,11 @@ export function registerProjectCommands(
       ).filePaths[0];
     return source ? repository.importPortable(source) : null;
   });
+  return {
+    active: () => mediaJob !== null,
+    cancelAndWait: async () => {
+      mediaJob?.abort();
+      await mediaFinished?.catch(() => undefined);
+    },
+  };
 }

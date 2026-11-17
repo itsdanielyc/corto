@@ -5,6 +5,7 @@ import {
   type ExportResolution,
   type Scene,
 } from "../../contracts/project";
+import { transitionOverlap } from "./composition";
 
 export interface TimelineEntry {
   scene: Scene;
@@ -26,9 +27,10 @@ export interface Rectangle {
 /** Precompute cumulative boundaries for a linear storyboard. */
 export function buildTimeline(scenes: readonly Scene[]): TimelineEntry[] {
   let end = 0;
-  return scenes.map((scene) => {
-    const start = end;
-    end += scene.duration;
+  return scenes.map((scene, index) => {
+    const start =
+      end - (index ? transitionOverlap(scenes[index - 1], scene) : 0);
+    end = start + scene.duration;
     return { scene, start, end };
   });
 }
@@ -50,9 +52,9 @@ export function locateScene(
   let low = 0;
   let high = timeline.length - 1;
   while (low < high) {
-    const middle = Math.floor((low + high) / 2);
-    if (clamped >= timeline[middle].end) low = middle + 1;
-    else high = middle;
+    const middle = Math.ceil((low + high) / 2);
+    if (clamped >= timeline[middle].start) low = middle;
+    else high = middle - 1;
   }
   return {
     ...timeline[low],
@@ -63,7 +65,41 @@ export function locateScene(
 
 /** Report the complete film length without rebuilding its timeline. */
 export function filmDuration(scenes: readonly Scene[]): number {
-  return scenes.reduce((duration, scene) => duration + scene.duration, 0);
+  return scenes.reduce(
+    (duration, scene, index) =>
+      duration + scene.duration - transitionOverlap(scene, scenes[index + 1]),
+    0,
+  );
+}
+
+export interface LocatedComposition {
+  from: LocatedScene;
+  to: LocatedScene | null;
+  progress: number;
+}
+
+/** At most two scene decoders are needed for a transition, even in a long film. */
+export function locateComposition(
+  timeline: readonly TimelineEntry[],
+  time: number,
+): LocatedComposition | null {
+  const current = locateScene(timeline, time);
+  if (!current) return null;
+  const previous = timeline[current.index - 1];
+  if (!previous || previous.end <= time || previous.end <= current.start)
+    return { from: current, to: null, progress: 0 };
+  return {
+    from: {
+      ...previous,
+      index: current.index - 1,
+      localTime: time - previous.start,
+    },
+    to: current,
+    progress: Math.max(
+      0,
+      Math.min(1, (time - current.start) / (previous.end - current.start)),
+    ),
+  };
 }
 
 // Time O(n), space O(n); each rounding error is carried into the next scene instead of accumulating.

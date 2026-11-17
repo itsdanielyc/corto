@@ -1,6 +1,10 @@
 import type { ImportedMedia } from "../../contracts/platform";
 import type { CortoPlatform } from "../platform/types";
 import { inspectFile } from "./import";
+import { captureMetadata } from "./metadata";
+import { mediaAssetSchema } from "../../contracts/project";
+import { parseColourLut } from "../domain/lut";
+import { convertSvgPicture, convertTiffPicture } from "./pictures";
 import {
   BROWSER_CONVERSION_BYTES,
   needsPhoneConversion,
@@ -83,19 +87,44 @@ async function convertBrowserVideo(file: File): Promise<File> {
 }
 
 /** Store the untouched phone original alongside a linked, portable compatibility copy. */
-export async function importMedia(
+async function importMediaBytes(
   file: File,
   platform: CortoPlatform,
 ): Promise<ImportedMedia> {
+  if (/\.cube$/i.test(file.name)) {
+    parseColourLut(await file.text());
+    const asset = mediaAssetSchema.parse({
+      id: crypto.randomUUID(),
+      name: file.name,
+      kind: "lut",
+      mime: "application/x-cube",
+      size: file.size,
+      duration: 0,
+      width: 0,
+      height: 0,
+    });
+    await platform.putAsset(asset, file);
+    return { asset };
+  }
   const heif = /\.(heic|heif)$/i.test(file.name);
+  const extendedVideo =
+    /\.(mp4|mov|m4v|webm|wmv|avi|mkv|mts|m2ts|3gp|vob|mpg|mpeg|gif|tiff?)$/i.test(
+      file.name,
+    );
+  if (extendedVideo && platform.importMedia) return platform.importMedia(file);
   const phoneVideo = !heif && (await needsPhoneConversion(file));
   if (phoneVideo && platform.importPhoneVideo)
     return platform.importPhoneVideo(file);
   const compatible = heif
     ? await decodeHeif(file)
-    : phoneVideo
-      ? await convertBrowserVideo(file)
-      : file;
+    : /\.svg$/i.test(file.name)
+      ? await convertSvgPicture(file)
+      : /\.tiff?$/i.test(file.name)
+        ? await convertTiffPicture(file)
+        : phoneVideo ||
+            /\.(wmv|avi|mkv|mts|m2ts|3gp|vob|mpg|mpeg|gif)$/i.test(file.name)
+          ? await convertBrowserVideo(file)
+          : file;
   const { asset } = await inspectFile(compatible);
   if (compatible === file) {
     await platform.putAsset(asset, file);
@@ -109,11 +138,29 @@ export async function importMedia(
       ? /\.heif$/i.test(file.name)
         ? "image/heif"
         : "image/heic"
-      : /\.mov$/i.test(file.name)
-        ? "video/quicktime"
-        : /\.m4v$/i.test(file.name)
-          ? "video/x-m4v"
-          : "video/mp4",
+      : /\.svg$/i.test(file.name)
+        ? "image/svg+xml"
+        : /\.tiff?$/i.test(file.name)
+          ? "image/tiff"
+          : /\.gif$/i.test(file.name)
+            ? "image/gif"
+            : /\.wmv$/i.test(file.name)
+              ? "video/x-ms-wmv"
+              : /\.avi$/i.test(file.name)
+                ? "video/x-msvideo"
+                : /\.mkv$/i.test(file.name)
+                  ? "video/x-matroska"
+                  : /\.(mts|m2ts)$/i.test(file.name)
+                    ? "video/mp2t"
+                    : /\.3gp$/i.test(file.name)
+                      ? "video/3gpp"
+                      : /\.(vob|mpg|mpeg)$/i.test(file.name)
+                        ? "video/mpeg"
+                        : /\.mov$/i.test(file.name)
+                          ? "video/quicktime"
+                          : /\.m4v$/i.test(file.name)
+                            ? "video/x-m4v"
+                            : "video/mp4",
     size: file.size,
     isOriginalOnly: true,
   };
@@ -121,4 +168,19 @@ export async function importMedia(
   await platform.putAsset(original, file);
   await platform.putAsset(playback, compatible);
   return { asset: playback, original };
+}
+
+/** Attach optional local metadata without making EXIF a prerequisite for import. */
+export async function importMedia(
+  file: File,
+  platform: CortoPlatform,
+): Promise<ImportedMedia> {
+  const metadata = await captureMetadata(file);
+  const imported = await importMediaBytes(file, platform);
+  return {
+    asset: { ...imported.asset, ...metadata },
+    ...(imported.original
+      ? { original: { ...imported.original, ...metadata } }
+      : {}),
+  };
 }

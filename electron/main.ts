@@ -1,17 +1,33 @@
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
+import { mkdirSync } from "node:fs";
 import { channels, type PlatformInfo } from "./bridge";
 import { FileProjectRepository } from "./storage";
 import { registerProjectCommands, testPreset } from "./project-ipc";
 import { handleMediaRequests, registerMediaScheme } from "./media-protocol";
 import { registerExportCommands } from "./export-ipc";
 import { writeAtomic } from "./atomic-file";
+import { configureCapture, projectOpenIntegration } from "./shell-integration";
 
+const testingWorkspace = testPreset("CORTO_WORKSPACE_ROOT");
+if (testingWorkspace) {
+  const profile = join(testingWorkspace, "runtime-profile");
+  mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+}
 registerMediaScheme();
 let mainWindow: BrowserWindow | null = null;
 let nativeExporter: ReturnType<typeof registerExportCommands> | null = null;
+let nativeMediaJobs: ReturnType<typeof registerProjectCommands> | null = null;
 let readinessReported = false;
+let repositoryForOpen: FileProjectRepository | null = null;
+const projectFiles = projectOpenIntegration(
+  () => repositoryForOpen,
+  () => mainWindow,
+);
+if (process.env.CORTO_E2E !== "1" && !app.requestSingleInstanceLock())
+  app.exit(0);
 
 function reportInstallerReadiness(): void {
   const output = process.env.CORTO_SMOKE_OUTPUT;
@@ -82,16 +98,16 @@ function createWindow(): void {
   });
   let confirmingClose = false;
   win.on("close", (event) => {
-    if (!nativeExporter?.active()) return;
+    if (!nativeExporter?.active() && !nativeMediaJobs?.active()) return;
     event.preventDefault();
     if (confirmingClose) return;
     confirmingClose = true;
     void dialog
       .showMessageBox(win, {
         type: "question",
-        message: "Your movie is still exporting.",
-        detail: "Cancel the export and close Corto?",
-        buttons: ["Keep exporting", "Cancel export and close"],
+        message: "Corto is still processing your film.",
+        detail: "Cancel the current operation and close Corto?",
+        buttons: ["Keep processing", "Cancel and close"],
         defaultId: 0,
         cancelId: 0,
       })
@@ -99,6 +115,7 @@ function createWindow(): void {
         confirmingClose = false;
         if (result.response === 1) {
           await nativeExporter?.cancelAndWait();
+          await nativeMediaJobs?.cancelAndWait();
           win.destroy();
         }
       });
@@ -121,18 +138,26 @@ app.whenReady().then(() => {
     testPreset("CORTO_WORKSPACE_ROOT") ??
       join(app.getPath("userData"), "workspace-v1"),
   );
+  repositoryForOpen = repository;
   handleMediaRequests(repository);
-  registerProjectCommands(
+  const mediaJobs = registerProjectCommands(
     repository,
     () => mainWindow,
-    reportInstallerReadiness,
+    () => {
+      reportInstallerReadiness();
+      projectFiles.rendererReady();
+    },
   );
+  nativeMediaJobs = mediaJobs;
   const exporter = registerExportCommands(repository, () => mainWindow);
   nativeExporter = exporter;
   app.on("before-quit", (event) => {
-    if (!exporter.active()) return;
+    if (!exporter.active() && !mediaJobs.active()) return;
     event.preventDefault();
-    void exporter.cancelAndWait().finally(() => app.quit());
+    void Promise.all([
+      exporter.cancelAndWait(),
+      mediaJobs.cancelAndWait(),
+    ]).finally(() => app.quit());
   });
   session.defaultSession.setPermissionRequestHandler(
     (contents, permission, callback, details) =>
@@ -141,15 +166,18 @@ app.whenReady().then(() => {
           permission === "media" &&
           "mediaTypes" in details &&
           !!details.mediaTypes?.length &&
-          details.mediaTypes.every((type) => type === "audio"),
+          details.mediaTypes.every(
+            (type) => type === "audio" || type === "video",
+          ),
       ),
   );
   session.defaultSession.setPermissionCheckHandler(
     (contents, permission, _origin, details) =>
       contents === mainWindow?.webContents &&
       permission === "media" &&
-      details.mediaType === "audio",
+      (details.mediaType === "audio" || details.mediaType === "video"),
   );
+  configureCapture(() => mainWindow);
   ipcMain.handle(channels.platformInfo, () => platformInfo());
   createWindow();
   app.on("activate", () => {

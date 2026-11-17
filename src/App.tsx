@@ -1,4 +1,6 @@
-import { type CSSProperties } from "react";
+import { useT } from "./i18n/locale";
+import { setApplicationLocale } from "./i18n/locale";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   Check,
   CircleAlert,
@@ -24,8 +26,19 @@ import { EditorDialogs } from "./components/EditorDialogs";
 import { ProjectHome } from "./components/ProjectHome";
 import { SoundDialog } from "./components/SoundDialog";
 import { SubtitlesDialog } from "./components/SubtitlesDialog";
-
+import { SceneTools } from "./components/SceneTools";
+import { SlideshowDialog } from "./components/SlideshowDialog";
+import { FilmTools } from "./components/FilmTools";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { CaptureDialog } from "./components/CaptureDialog";
+import { createProject } from "./domain/project";
+import { useExportQueue } from "./hooks/use-export-queue";
+import { ExportTray } from "./components/ExportTray";
 export function App() {
+  const t = useT();
+  const [timelineMode, setTimelineMode] = useState(false);
+  const [timelineZoom, setTimelineZoom] = useState(24);
+  const [preferProxies, setPreferProxies] = useState(false);
   const {
     platform,
     error,
@@ -49,11 +62,15 @@ export function App() {
     dialog,
     setDialog,
     mediaInput,
+    folderInput,
+    replaceAsset,
     musicInput,
     projectInput,
     total,
     selected,
     selectedIndex,
+    selectedIds,
+    sceneAction,
     selectScene,
     edit,
     editScene,
@@ -80,7 +97,28 @@ export function App() {
     showProjects,
     openSavedProject,
   } = useEditorController();
-
+  const exports = useExportQueue(platform);
+  useEffect(() => {
+    void platform
+      .loadPreferences?.()
+      .then((preferences) => {
+        setApplicationLocale(preferences.locale);
+        setTimelineMode(preferences.timeline);
+        setTimelineZoom(preferences.timelineZoom);
+        setPreferProxies(preferences.proxyEditing);
+        if (preferences.checkUpdates)
+          void platform
+            .checkForUpdate?.()
+            .then((update) => {
+              if (update)
+                setMessage(
+                  `Corto ${update.version} is available in Settings → Updates.`,
+                );
+            })
+            .catch(report);
+      })
+      .catch(report);
+  }, [platform, report, setMessage]);
   return (
     <div
       className="editor-shell"
@@ -108,6 +146,7 @@ export function App() {
       }}
     >
       <Header
+        projectId={project.id}
         name={project.name}
         onName={(name) => {
           if (name !== current.current.present.name)
@@ -138,6 +177,13 @@ export function App() {
           setPlaying(false);
           setDialog("subtitles");
         }}
+        onSlideshow={() => {
+          setPlaying(false);
+          setDialog("slideshow");
+        }}
+        onFilmTools={() => setDialog("film-tools")}
+        onCapture={() => setDialog("capture")}
+        onSettings={() => setDialog("settings")}
       />
       <div className="app-body" inert={!!busy || !editor.loaded}>
         <NavigationRail
@@ -153,6 +199,9 @@ export function App() {
           busy={!!busy || !editor.loaded}
           backend={platform.kind}
           onImport={chooseMedia}
+          onFolder={() => folderInput.current?.click()}
+          onSlideshow={() => setDialog("slideshow")}
+          onReplace={replaceAsset}
           onAdd={addMedia}
           onTitle={addTitle}
           onExample={showExample}
@@ -167,20 +216,20 @@ export function App() {
             setDialog("subtitles");
           }}
         />
-        <main className="workspace" aria-label="Film editor">
+        <main className="workspace" aria-label={t("Film editor")}>
           <div className="workspace-heading">
             <div>
-              <span className="eyebrow">A LITTLE FILM BY YOU</span>
+              <span className="eyebrow">{t("A LITTLE FILM BY YOU")}</span>
               <h1>
                 {project.scenes.length
                   ? project.name
-                  : "Make something worth keeping."}
+                  : t("Make something worth keeping.")}
               </h1>
             </div>
             <label className="aspect-select">
-              <span className="sr-only">Aspect ratio</span>
+              <span className="sr-only">{t("Aspect ratio")}</span>
               <select
-                aria-label="Aspect ratio"
+                aria-label={t("Aspect ratio")}
                 value={project.ratio}
                 onChange={(event) =>
                   edit((project) => ({
@@ -189,13 +238,17 @@ export function App() {
                   }))
                 }
               >
-                <option value="landscape">16:9 · Landscape</option>
-                <option value="portrait">9:16 · Portrait</option>
-                <option value="square">1:1 · Square</option>
+                <option value="landscape">{t("16:9 \u00B7 Landscape")}</option>
+                <option value="portrait">{t("9:16 \u00B7 Portrait")}</option>
+                <option value="square">{t("1:1 \u00B7 Square")}</option>
+                <option value="classic">{t("4:3 \u00B7 Classic")}</option>
+                <option value="feed">{t("4:5 \u00B7 Social feed")}</option>
+                <option value="cinema">{t("2.35:1 \u00B7 Cinema")}</option>
               </select>
             </label>
           </div>
           <Preview
+            preferProxies={preferProxies}
             project={project}
             platform={platform}
             resources={resources}
@@ -208,37 +261,39 @@ export function App() {
           <div className="playback-controls">
             <span className="time-code">
               <strong>{formatTime(time)}</strong>
-              <span>/</span>
+              <span>{t("/")}</span>
               {formatTime(total)}
             </span>
             <div className="transport">
               <IconButton
                 icon={SkipBack}
-                label="Previous scene"
+                label={t("Previous scene")}
                 disabled={!project.scenes.length}
                 onClick={() => playbackStep(-1)}
               />
               <IconButton
                 icon={playing ? Pause : Play}
-                label={playing ? "Pause" : "Play"}
+                label={t(playing ? "Pause" : "Play")}
                 className="play-button"
                 disabled={!project.scenes.length}
                 onClick={togglePlayback}
               />
               <IconButton
                 icon={SkipForward}
-                label="Next scene"
+                label={t("Next scene")}
                 disabled={!project.scenes.length}
                 onClick={() => playbackStep(1)}
               />
             </div>
             <span className="preview-note">
-              {project.scenes.length ? "Preview" : "Your story starts here"}
+              {project.scenes.length
+                ? t("Preview")
+                : t("Your story starts here")}
             </span>
           </div>
           <input
             className="playhead"
-            aria-label="Playhead"
+            aria-label={t("Playhead")}
             type="range"
             min="0"
             max={total || 1}
@@ -259,9 +314,9 @@ export function App() {
             <div className="workspace-invitation">
               <button className="button primary" onClick={() => chooseMedia()}>
                 <ImagePlus size={16} />
-                Bring in your moments
+                {t("Bring in your moments")}
               </button>
-              <span>or drop photos and clips anywhere</span>
+              <span>{t("or drop photos and clips anywhere")}</span>
             </div>
           )}
         </main>
@@ -276,6 +331,10 @@ export function App() {
           onSplit={splitSelected}
           onMove={moveSelected}
           busy={!!busy}
+          onTools={() => {
+            setPlaying(false);
+            setDialog("scene-tools");
+          }}
         />
         <Storyboard
           project={project}
@@ -284,6 +343,20 @@ export function App() {
           time={time}
           playing={playing}
           onSelect={selectScene}
+          selectedIds={selectedIds}
+          onAction={sceneAction}
+          timelineMode={timelineMode}
+          zoom={timelineZoom}
+          platform={platform}
+          onAudioChange={changeMusic}
+          onSeek={(at) => {
+            setPlaying(false);
+            setTime(at);
+          }}
+          onAddAsset={(id, afterId) => {
+            const asset = project.assets[id];
+            if (asset) addMedia(asset, afterId);
+          }}
           onReorder={reorder}
           onTitle={() => addTitle()}
           onMusic={() => {
@@ -309,7 +382,22 @@ export function App() {
         ref={mediaInput}
         type="file"
         multiple
-        accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.mp4,.mov,.m4v,.webm,.mp3,.wav,.m4a,.aac,.flac,.ogg"
+        accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.gif,.tif,.tiff,.svg,.mp4,.mov,.m4v,.webm,.wmv,.avi,.mkv,.mts,.m2ts,.3gp,.vob,.mpg,.mpeg,.mp3,.wav,.m4a,.aac,.flac,.ogg,.cube"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = "";
+          if (files.length) importFiles(files);
+        }}
+      />
+      <input
+        hidden
+        data-testid="folder-input"
+        ref={(element) => {
+          folderInput.current = element;
+          element?.setAttribute("webkitdirectory", "");
+        }}
+        type="file"
+        multiple
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
           event.currentTarget.value = "";
@@ -346,7 +434,8 @@ export function App() {
       {busy && (
         <div className="busy-indicator" role="status">
           <LoaderCircle size={16} className="spin" />
-          {busy}…
+          {busy}
+          {t("\u2026")}
         </div>
       )}
       {message && !busy && (
@@ -355,7 +444,7 @@ export function App() {
           {message}
           <IconButton
             icon={X}
-            label="Dismiss notification"
+            label={t("Dismiss notification")}
             onClick={() => setMessage(null)}
           />
         </div>
@@ -364,8 +453,8 @@ export function App() {
         <div className="drop-overlay">
           <div>
             <Plus size={36} />
-            <strong>Drop a little life in.</strong>
-            <span>Photos, clips, music. Your story.</span>
+            <strong>{t("Drop a little life in.")}</strong>
+            <span>{t("Photos, clips, music. Your story.")}</span>
           </div>
         </div>
       )}
@@ -375,12 +464,15 @@ export function App() {
           <p>{error}</p>
           <IconButton
             icon={X}
-            label="Dismiss message"
+            label={t("Dismiss message")}
             onClick={() => setError(null)}
           />
         </div>
       )}
       <EditorDialogs
+        renderMovie={exports.renderMovie}
+        time={time}
+        selectedIds={selectedIds}
         dialog={dialog}
         project={project}
         platform={platform}
@@ -388,6 +480,65 @@ export function App() {
         onSave={savePortable}
         onTransition={performTransition}
       />
+      <ExportTray
+        jobs={exports.jobs}
+        platform={platform}
+        onCancel={(id) => exports.queue.cancel(id)}
+      />
+      {dialog === "scene-tools" && selected && (
+        <SceneTools
+          preferProxies={preferProxies}
+          project={project}
+          scene={selected}
+          platform={platform}
+          onChange={editScene}
+          onProject={edit}
+          onClose={modalClose}
+          report={report}
+        />
+      )}
+      {dialog === "slideshow" && (
+        <SlideshowDialog
+          project={project}
+          platform={platform}
+          onCreate={(draft) => {
+            editor.replace(draft);
+            setTime(0.6);
+          }}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "film-tools" && (
+        <FilmTools
+          project={project}
+          selectedIds={selectedIds}
+          time={time}
+          timelineMode={timelineMode}
+          zoom={timelineZoom}
+          onTimeline={setTimelineMode}
+          onZoom={setTimelineZoom}
+          onChange={edit}
+          onSeek={setTime}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "settings" && (
+        <SettingsDialog
+          project={project}
+          platform={platform}
+          onSave={(preferences) => {
+            setApplicationLocale(preferences.locale);
+            setTimelineMode(preferences.timeline);
+            setTimelineZoom(preferences.timelineZoom);
+            setPreferProxies(preferences.proxyEditing);
+            edit((current) => ({ ...current, defaults: preferences.defaults }));
+          }}
+          onClose={modalClose}
+        />
+      )}
+      {dialog === "capture" && (
+        <CaptureDialog onImport={importFiles} onClose={modalClose} />
+      )}
       {dialog === "projects" && (
         <ProjectHome
           platform={platform}
@@ -397,6 +548,20 @@ export function App() {
           onPortable={() => {
             setDialog(null);
             requestOpen();
+          }}
+          onChanged={(changed) => {
+            if (changed.id === project.id) edit(() => changed);
+          }}
+          onDeleted={(id) => {
+            if (id === project.id) {
+              editor.replace(createProject());
+              setTime(0);
+            }
+          }}
+          onRestored={(restored) => {
+            editor.replace(restored);
+            setTime(0.6);
+            modalClose();
           }}
         />
       )}
@@ -411,6 +576,7 @@ export function App() {
       )}
       {dialog === "subtitles" && (
         <SubtitlesDialog
+          platform={platform}
           project={project}
           time={time}
           onChange={(next) => edit(() => next)}

@@ -6,6 +6,7 @@ export interface ProcessOptions {
   signal: AbortSignal;
   onSeconds?: (seconds: number) => void;
   allowFailure?: boolean;
+  cwd?: string;
 }
 
 /** Execute a fixed binary with argument arrays, bounded diagnostics and immediate cancellation. */
@@ -29,7 +30,11 @@ export function runFfmpeg(
         "-nostats",
         ...arguments_,
       ],
-      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
+      {
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: options.cwd,
+      },
     );
     let diagnostics = "";
     let progressBuffer = "";

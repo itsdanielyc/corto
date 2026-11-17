@@ -15,11 +15,16 @@ import {
   summarizeProject,
   unavailableSummary,
 } from "../domain/catalogue";
+import type { ProjectAction, ProjectVersion } from "../../contracts/services";
+import { preferencesSchema } from "../../contracts/creative";
+import type { Preferences } from "../../contracts/project";
 
 const DATABASE_NAME = "corto-local-v1";
 const PROJECT_STORE = "projects";
 const MEDIA_STORE = "originals";
 const CURRENT_PROJECT = "current";
+const VERSION_STORE = "versions";
+const PREFERENCES_STORE = "preferences";
 
 function complete(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -65,13 +70,20 @@ export class BrowserProjectRepository implements ProjectRepository {
   private readonly database: Promise<IDBDatabase>;
   private readonly urls = new Map<string, string>();
   private pendingSave: Promise<void> = Promise.resolve();
+  private readonly deletedIds = new Set<string>();
 
   constructor(databaseName = DATABASE_NAME) {
     this.database = new Promise((resolve, reject) => {
-      const opening = indexedDB.open(databaseName, 1);
+      const opening = indexedDB.open(databaseName, 2);
       opening.onupgradeneeded = () => {
-        opening.result.createObjectStore(PROJECT_STORE);
-        opening.result.createObjectStore(MEDIA_STORE);
+        for (const store of [
+          PROJECT_STORE,
+          MEDIA_STORE,
+          VERSION_STORE,
+          PREFERENCES_STORE,
+        ])
+          if (!opening.result.objectStoreNames.contains(store))
+            opening.result.createObjectStore(store);
       };
       opening.onsuccess = () => {
         opening.result.onversionchange = () => opening.result.close();
@@ -97,18 +109,44 @@ export class BrowserProjectRepository implements ProjectRepository {
     return result === undefined ? null : parseProject(result);
   }
 
-  async saveProject(input: Project): Promise<void> {
+  async saveProject(input: Project, activate = true): Promise<void> {
     const project = parseProject(input);
+    if (this.deletedIds.has(project.id))
+      throw new Error("This film was removed from My films");
     const save = this.pendingSave
       .catch(() => undefined)
       .then(async () => {
         const database = await this.database;
-        const transaction = database.transaction(PROJECT_STORE, "readwrite");
+        const transaction = database.transaction(
+          [PROJECT_STORE, VERSION_STORE],
+          "readwrite",
+        );
         const finished = complete(transaction);
         const store = transaction.objectStore(PROJECT_STORE);
         const previous = await requestValue<SavedProject | undefined>(
           store.get(project.id),
         );
+        if (
+          previous &&
+          JSON.stringify(previous.project) !== JSON.stringify(project)
+        ) {
+          const versions = transaction.objectStore(VERSION_STORE);
+          const history =
+            (await requestValue<
+              { id: string; savedAt: string; project: Project }[] | undefined
+            >(versions.get(project.id))) ?? [];
+          versions.put(
+            [
+              {
+                id: crypto.randomUUID(),
+                savedAt: previous.updatedAt,
+                project: previous.project,
+              },
+              ...history,
+            ].slice(0, 30),
+            project.id,
+          );
+        }
         store.put(
           saveRecord(
             project,
@@ -116,11 +154,99 @@ export class BrowserProjectRepository implements ProjectRepository {
           ),
           project.id,
         );
-        store.put(project, CURRENT_PROJECT);
+        if (activate) store.put(project, CURRENT_PROJECT);
         await finished;
       });
     this.pendingSave = save;
     return save;
+  }
+
+  async projectAction(request: ProjectAction): Promise<Project | null> {
+    const id = identifierSchema.parse(request.id);
+    const project = await this.openProject(id);
+    if (request.operation === "delete") {
+      this.deletedIds.add(id);
+      await this.pendingSave.catch(() => undefined);
+      const database = await this.database;
+      const transaction = database.transaction(
+        [PROJECT_STORE, PREFERENCES_STORE],
+        "readwrite",
+      );
+      const finished = complete(transaction);
+      const store = transaction.objectStore(PROJECT_STORE);
+      transaction.objectStore(PREFERENCES_STORE).put(project, `trash:${id}`);
+      store.delete(id);
+      const current = await requestValue<Project | undefined>(
+        store.get(CURRENT_PROJECT),
+      );
+      if (current?.id === id) store.delete(CURRENT_PROJECT);
+      await finished;
+      return null;
+    }
+    const next = parseProject({
+      ...project,
+      id: request.operation === "duplicate" ? crypto.randomUUID() : id,
+      name:
+        request.operation === "rename"
+          ? request.name
+          : `${project.name.slice(0, 72)} (copy)`,
+    });
+    await this.saveProject(next, false);
+    return next;
+  }
+  private async versionRecords(
+    id: string,
+  ): Promise<{ id: string; savedAt: string; project: Project }[]> {
+    const database = await this.database;
+    return (
+      (await requestValue(
+        database
+          .transaction(VERSION_STORE)
+          .objectStore(VERSION_STORE)
+          .get(identifierSchema.parse(id)),
+      )) ?? []
+    );
+  }
+  async listVersions(id: string): Promise<ProjectVersion[]> {
+    await this.pendingSave.catch(() => undefined);
+    return (await this.versionRecords(id)).map((version) => ({
+      id: version.id,
+      savedAt: version.savedAt,
+      name: version.project.name,
+      sceneCount: version.project.scenes.length,
+    }));
+  }
+  async restoreVersion(id: string, versionId: string): Promise<Project> {
+    const version = (await this.versionRecords(id)).find(
+      (version) => version.id === identifierSchema.parse(versionId),
+    );
+    if (!version) throw new Error("This version is unavailable");
+    const project = parseProject({
+      ...version.project,
+      id: crypto.randomUUID(),
+      name: `${version.project.name.slice(0, 65)} (version)`,
+    });
+    await this.saveProject(project);
+    return project;
+  }
+  async loadPreferences(): Promise<Preferences> {
+    const database = await this.database;
+    return preferencesSchema.parse(
+      (await requestValue(
+        database
+          .transaction(PREFERENCES_STORE)
+          .objectStore(PREFERENCES_STORE)
+          .get("settings"),
+      )) ?? {},
+    );
+  }
+  async savePreferences(input: Preferences): Promise<void> {
+    const preferences = preferencesSchema.parse(input);
+    const database = await this.database;
+    const transaction = database.transaction(PREFERENCES_STORE, "readwrite");
+    const finished = complete(transaction);
+    transaction.objectStore(PREFERENCES_STORE).put(preferences, "settings");
+    await finished;
   }
 
   async listProjects() {

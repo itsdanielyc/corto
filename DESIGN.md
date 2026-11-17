@@ -29,4 +29,11 @@ The Product Design router was inspected; it excludes ordinary implementation. Th
 - Sound & narration and Timed subtitles use focused, keyboard-accessible panels. Persistent labels distinguish film time from original-source time; invalid edits explain their bounds.
 - Export choices name destinations, preserve the chosen aspect ratio and label size as an estimate. A sample uses the same export path.
 - Automatic slideshow creation and photo-presentation enhancements were explicitly declined. The scene editor, brand and photo-framing controls keep their existing scope.
+
+## Creator tools (current authorisation)
+- The user reopened slideshow and photo presentation in the Downloads audit. The existing quiet workspace remains the default; More scene tools opens picture, clip, text and overlay panels with a live composition preview.
+- Slideshow themes produce ordinary editable scenes in a separate film. Date sorting has explicit EXIF/file/name fallbacks; soundtrack fitting accounts for transition overlap.
+- Bulk actions name their selection scope. Ctrl/⌘ and Shift extend storyboard selection, with context-menu and keyboard equivalents. A proportional timeline is optional.
+- Project management keeps source files and restores versions as separate films. Optional models explain their download before use; media is processed locally.
+- Every output choice describes the real format and capability. Native staging is incremental; active exports own immutable snapshots.
 <!-- keel:end -->

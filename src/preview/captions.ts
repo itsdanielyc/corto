@@ -1,6 +1,7 @@
 import type { CaptionOverlay } from "../../contracts/platform";
 import type { ExportResolution, Project, Scene } from "../../contracts/project";
 import { frameDimensions } from "../domain/timeline";
+import { wrapText } from "./text";
 
 const MAX_CAPTION_LINES = 4;
 let fontsReady: Promise<unknown> | null = null;
@@ -10,6 +11,8 @@ export function loadCaptionFonts(): Promise<unknown> {
   fontsReady ??= Promise.all([
     document.fonts.load('400 60px "DM Serif Display"'),
     document.fonts.load('700 60px "Manrope Variable"'),
+    document.fonts.load('400 60px "JetBrains Mono Variable"'),
+    document.fonts.load('400 60px "Nunito Variable"'),
   ]);
   return fontsReady;
 }
@@ -74,25 +77,33 @@ export function drawCaption(
   context.save();
   const classic = scene.captionStyle === "classic";
   const minimal = scene.captionStyle === "minimal";
-  const fontSize = Math.min(
+  let fontSize = Math.min(
     height * (minimal ? 0.052 : 0.112),
     width * (minimal ? 0.055 : 0.112),
   );
-  context.font = classic
-    ? `400 ${fontSize}px "DM Serif Display", Georgia, serif`
-    : `${minimal ? 500 : 700} ${fontSize}px "Manrope Variable", sans-serif`;
   const text = minimal ? scene.caption.toLocaleUpperCase() : scene.caption;
-  const lines = wrapCaption(
-    text,
-    width * 0.82,
-    (value) => context.measureText(value).width,
-  );
+  let lines: string[] = [];
+  for (let attempt = 0; attempt < 8; attempt++) {
+    context.font = classic
+      ? `400 ${fontSize}px "DM Serif Display", Georgia, serif`
+      : `${minimal ? 500 : 700} ${fontSize}px "Manrope Variable", sans-serif`;
+    lines = wrapText(
+      text,
+      width * 0.82,
+      (value) => context.measureText(value).width,
+    );
+    if (lines.length * fontSize * 1.17 <= height * 0.8) break;
+    fontSize *= Math.min(
+      0.9,
+      Math.sqrt((height * 0.8) / (lines.length * fontSize * 1.17)),
+    );
+  }
   const lineHeight = fontSize * 1.17;
   const middle =
     scene.captionPosition === "bottom"
       ? height * 0.84 - ((lines.length - 1) * lineHeight) / 2
       : height / 2;
-  if (scene.assetId) {
+  if (scene.assetId && scene.captionShade) {
     const gradient = context.createLinearGradient(0, 0, 0, height);
     gradient.addColorStop(0, "rgba(0,0,0,0.08)");
     gradient.addColorStop(1, "rgba(0,0,0,0.48)");

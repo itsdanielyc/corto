@@ -37,7 +37,9 @@ await writeFile(
     {
       app: "Corto",
       appVersion: manifest.version,
-      sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+      sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
+        encoding: "utf8",
+      }).trim(),
       platform,
       sha256: hash.digest("hex"),
       ffmpegVersion: version.split("\n")[0],

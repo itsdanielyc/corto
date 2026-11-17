@@ -11,6 +11,7 @@ interface SoundPlayback {
   clip: AudioClip;
   audio: HTMLAudioElement;
   source: MediaElementAudioSourceNode | null;
+  gain: GainNode | null;
   starting: boolean;
   shouldPlay: boolean;
 }
@@ -22,6 +23,7 @@ export class AudioTimelinePlayer {
   private readonly clips: AudioClip[];
   private readonly windows;
   private disposed = false;
+  private context: AudioContext | null = null;
   ready = false;
 
   constructor(
@@ -35,6 +37,9 @@ export class AudioTimelinePlayer {
   }
 
   async prepare(): Promise<void> {
+    if (this.clips.length)
+      this.context =
+        (this.output?.context as AudioContext) ?? new AudioContext();
     for (const clip of this.clips) {
       const url = await this.resolveUrl(clip.assetId);
       if (this.disposed) return;
@@ -46,17 +51,18 @@ export class AudioTimelinePlayer {
         clip,
         audio,
         source: null,
+        gain: null,
         starting: false,
         shouldPlay: false,
       };
       this.sounds.push(sound);
       await waitForMedia(audio, clip.start < 1);
       if (this.disposed) return;
-      if (this.output) {
-        sound.source = (
-          this.output.context as AudioContext
-        ).createMediaElementSource(audio);
-        sound.source.connect(this.output);
+      if (this.context) {
+        sound.source = this.context.createMediaElementSource(audio);
+        sound.gain = this.context.createGain();
+        sound.source.connect(sound.gain);
+        sound.gain.connect(this.output ?? this.context.destination);
       }
     }
     if (!this.disposed) this.ready = true;
@@ -65,6 +71,8 @@ export class AudioTimelinePlayer {
   /** Synchronize to the film clock, seeking only at starts, loops and meaningful drift. */
   sync(time: number, playing: boolean): void {
     if (!this.ready || this.disposed) return;
+    if (playing && this.context?.state === "suspended")
+      void this.context.resume().catch(this.report);
     const duck = this.windows.some(
       (window) => time >= window.start && time < window.end,
     );
@@ -73,7 +81,8 @@ export class AudioTimelinePlayer {
       const active =
         playing && time >= clip.start && time < clip.start + clip.duration;
       sound.shouldPlay = active;
-      audio.volume = audioGain(clip, time, duck);
+      audio.volume = 1;
+      if (sound.gain) sound.gain.gain.value = audioGain(clip, time, duck);
       if (!active) {
         audio.pause();
         continue;
@@ -117,7 +126,9 @@ export class AudioTimelinePlayer {
     for (const sound of this.sounds) {
       disposeMedia(sound.audio);
       sound.source?.disconnect();
+      sound.gain?.disconnect();
     }
     this.sounds.length = 0;
+    if (!this.output) void this.context?.close();
   }
 }

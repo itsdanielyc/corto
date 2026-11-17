@@ -32,11 +32,11 @@ On systems without FUSE, the AppImage runtime supports `--appimage-extract-and-r
 
 Open [Corto in the browser](https://itsdanielyc.github.io/corto/). No account is required. After the first successful load and offline-cache installation, the application and bundled example are available offline in compatible browsers. Personal media stays in local browser storage.
 
-Browser export runs in real time; keep the tab visible. The export window offers MP4 where supported, or a portable project for desktop export. Experimental WebM capture is deferred; see ADR 004 and issue 8. Desktop MP4 export uses the bundled native encoder and can run independently of the preview.
+Browser MP4/GIF/audio export uses the bundled local WebAssembly encoder with deterministic timing. Its limits are 256 MB per source and 512 MB working files; use a portable project in the desktop app for larger films. Background jobs keep their own snapshots while you edit. Experimental WebM capture remains advisory (issue 8). Desktop export uses the bundled native encoder.
 
 ## Keeping your projects
 
-The application autosaves one working copy on the current device. Use **Project actions → Save portable copy** to preserve a transferable `.corto` file containing the edit and original media. Browser storage can be cleared by the browser or operating system; a portable copy is the backup to keep.
+The application autosaves named films and retains up to 30 metadata versions. **My films** can restore a version as a separate film. Use **Project actions → Save portable copy** to preserve a transferable `.corto` file containing the edit and original media. Browser storage can be cleared by the browser or operating system; a portable copy is the backup to keep.
 
 Source media is immutable. Locally cached copies can remain for recovery after a working copy is replaced; application caches can consume additional disk space. Your original imported files and portable projects remain under your control.
 

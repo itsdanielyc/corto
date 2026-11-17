@@ -22,6 +22,21 @@ const bridge: ElectronBridge = {
       );
     return ipcRenderer.invoke(nativeChannels.importPhoneVideo, path, file.name);
   },
+  importMedia: async (file) => {
+    const path = webUtils.getPathForFile(file);
+    if (!path && file.size > MAX_FALLBACK_BYTES)
+      throw new Error("This recording is too large; use a shorter take");
+    return ipcRenderer.invoke(
+      nativeChannels.importMedia,
+      path || new Uint8Array(await file.arrayBuffer()),
+      file.name,
+    );
+  },
+  processMedia: (project, request) =>
+    ipcRenderer.invoke(nativeChannels.processMedia, project, request),
+  cancelMedia: () => ipcRenderer.invoke(nativeChannels.cancelMedia),
+  audioSamples: (project, request) =>
+    ipcRenderer.invoke(nativeChannels.audioSamples, project, request),
   putAsset: async (asset, file) => {
     const path = webUtils.getPathForFile(file);
     if (!path && file.size > MAX_FALLBACK_BYTES)
@@ -38,8 +53,36 @@ const bridge: ElectronBridge = {
     ipcRenderer.invoke(nativeChannels.savePortable, project),
   exportMovie: (request) =>
     ipcRenderer.invoke(nativeChannels.exportMovie, request),
+  chooseExportDestination: (project, sample) =>
+    ipcRenderer.invoke(nativeChannels.chooseExportDestination, project, sample),
+  releaseExportDestination: (token) =>
+    ipcRenderer.invoke(nativeChannels.releaseExportDestination, token),
+  beginRenderAssets: (project, resolution) =>
+    ipcRenderer.invoke(nativeChannels.beginRenderAssets, project, resolution),
+  stageRenderAsset: (token, raster) =>
+    ipcRenderer.invoke(nativeChannels.stageRenderAsset, token, raster),
+  releaseRenderAssets: (token) =>
+    ipcRenderer.invoke(nativeChannels.releaseRenderAssets, token),
   cancelExport: () => ipcRenderer.invoke(nativeChannels.cancelExport),
   revealExport: () => ipcRenderer.invoke(nativeChannels.revealExport),
+  projectAction: (request) =>
+    ipcRenderer.invoke(nativeChannels.projectAction, request),
+  listVersions: (id) => ipcRenderer.invoke(nativeChannels.listVersions, id),
+  restoreVersion: (id, version) =>
+    ipcRenderer.invoke(nativeChannels.restoreVersion, id, version),
+  loadPreferences: () => ipcRenderer.invoke(nativeChannels.loadPreferences),
+  savePreferences: (preferences) =>
+    ipcRenderer.invoke(nativeChannels.savePreferences, preferences),
+  checkForUpdate: () => ipcRenderer.invoke(nativeChannels.checkForUpdate),
+  onProjectOpened: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      project: Parameters<typeof listener>[0],
+    ) => listener(project);
+    ipcRenderer.on(nativeChannels.projectOpened, handler);
+    return () =>
+      ipcRenderer.removeListener(nativeChannels.projectOpened, handler);
+  },
   onExportProgress: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

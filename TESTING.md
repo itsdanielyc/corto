@@ -37,5 +37,5 @@ Every new test is observed red before trusted; record the message in the ledger.
 No claim is broader than `VERIFICATION.md`: level, platform, timestamp/run and command. Browser tests use the labelled mock. Native tests bypass OS dialogs through test-only preset destinations. Export tests inspect the actual encoded movie, not just a successful command.
 
 ## Deliberately unverified initially
-Paid signing/notarization, native mobile installers, RAW/professional codecs, uncommon phone codec profiles beyond the fixtures, automatic transcription, screen-reader sessions and unsupported CPU architectures. These remain named gaps until actual evidence exists. Microphone automation uses a real capture API with a synthetic test device, not physical microphone certification on every OS.
+Paid signing/notarization, native mobile installers, RAW/professional codecs, uncommon phone codec profiles beyond the fixtures, screen-reader sessions and unsupported CPU architectures. These remain named gaps until actual evidence exists. Microphone automation uses a real capture API with a synthetic test device, not physical microphone certification on every OS. Optional cold model tests run separately with `playwright.models.config.ts` and the native `local_models` workflow matrix; the 500-photo encode uses `CORTO_STRESS_TESTS=1`.
 <!-- keel:end -->

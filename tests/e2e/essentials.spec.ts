@@ -66,6 +66,28 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
   test.setTimeout(60_000);
   const directory = await mkdtemp(join(tmpdir(), "corto-essentials-shell-"));
   const output = join(directory, "Phone memories-sample.mp4");
+  const audiblePhone = join(directory, "phone-hdr.mp4");
+  execFileSync(
+    ffmpeg!,
+    [
+      "-loglevel",
+      "error",
+      "-i",
+      join(process.cwd(), "tests/fixtures/phone-hdr.mp4"),
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:sample_rate=48000",
+      "-t",
+      "1",
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      audiblePhone,
+    ],
+    { windowsHide: true },
+  );
   const app = await electron.launch({
     args: [
       ".",
@@ -93,9 +115,7 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .setInputFiles(join(process.cwd(), "tests/fixtures/phone.heic"));
     await expect(page.getByTestId("scene-card")).toHaveCount(1);
     await number(page, "Duration (seconds)", "3");
-    await page
-      .getByTestId("media-input")
-      .setInputFiles(join(process.cwd(), "tests/fixtures/phone-hdr.mp4"));
+    await page.getByTestId("media-input").setInputFiles(audiblePhone);
     await expect(page.getByTestId("scene-card")).toHaveCount(2);
     await page
       .getByRole("button", { name: "Add title card", exact: true })
@@ -157,6 +177,10 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     ).toHaveLength(2);
     expect(project!.audioClips).toHaveLength(2);
     expect(project!.subtitles).toHaveLength(2);
+    await page.getByRole("slider", { name: "Playhead", exact: true }).fill("0");
+    await page
+      .getByRole("slider", { name: "Playhead", exact: true })
+      .press("Tab");
     await page
       .getByRole("button", { name: "Export movie", exact: true })
       .click();
@@ -165,7 +189,7 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     await completeNativeExport(
       page,
       page.getByRole("button", {
-        name: "Export first 5 seconds as a sample",
+        name: "Export 5-second sample at playhead",
         exact: true,
       }),
     );

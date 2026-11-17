@@ -19,11 +19,19 @@
   - text: "3"
   - paragraph: All the moments that make your film.
   - button "Import media"
+  - button "Import folder"
+  - button "Make a slideshow"
   - textbox "Search media":
     - /placeholder: Find a moment
-  - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Photo/
-  - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Photo/
-  - button /Add \d+ · Quiet water\.jpg/: /\d+ · Quiet water Photo/
+  - text: Sort
+  - combobox "Library sort":
+    - option "Filename" [selected]
+    - option "Date taken"
+    - option "Media type"
+    - option "Used first"
+  - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Used · Photo/
+  - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Used · Photo/
+  - button /Add \d+ · Quiet water\.jpg/: /\d+ · Quiet water Used · Photo/
   - text: Yours to make.
   - strong: Yours to keep.
   - text: mock
@@ -35,6 +43,9 @@
     - option /\d+:9 · Landscape/ [selected]
     - option /9:\d+ · Portrait/
     - option "1:1 · Square"
+    - option "4:3 · Classic"
+    - option "4:5 · Social feed"
+    - option /\d+\.\d+:1 · Cinema/
   - button "Full screen preview"
   - text: Ready
   - strong: /\d+:\d+/
@@ -51,6 +62,7 @@
   - button "Move scene right"
   - button "Duplicate scene"
   - button "Delete scene"
+  - button "More scene tools"
   - heading "Timing" [level=3]
   - text: Duration (seconds)
   - spinbutton "Duration (seconds)": "5"

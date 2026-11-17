@@ -7,9 +7,14 @@ directories:
   buildResources: build
 files:
   - out/**
-  - "!out/renderer/codecs/**"
+  - "!out/renderer/codecs/ffmpeg/**"
   - package.json
 asar: true
+fileAssociations:
+  - ext: corto
+    name: Corto project
+    role: Editor
+    mimeType: application/x-corto
 extraResources:
   - from: node_modules/ffmpeg-static
     to: ffmpeg
@@ -34,10 +39,10 @@ nsis:
 mac:
   icon: brand/corto-brand-assets/icons/macos/Corto.icns
   target: dmg
-  identity: null
   category: public.app-category.video
   extendInfo:
     NSMicrophoneUsageDescription: Record narration for your films on this device.
+    NSCameraUsageDescription: Record camera clips for your films on this device.
 dmg:
   writeUpdateInfo: false
 linux:

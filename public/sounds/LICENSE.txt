@@ -1,0 +1,6 @@
+Corto original sound pack
+
+All 20 musical compositions, recordings, synthesis patches and eight sound effects in this directory are dedicated to the public domain under CC0 1.0 Universal. No third-party recordings, samples or compositions were used.
+
+Generated reproducibly by scripts/generate-sound-pack.mjs. You may use, edit and redistribute these sounds commercially or otherwise without attribution.
+https://creativecommons.org/publicdomain/zero/1.0/
