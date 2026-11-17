@@ -30,7 +30,7 @@ interface LibraryProperties {
   onTitle: (caption?: string, style?: Scene["captionStyle"]) => void;
   onExample: () => void;
   onHelp: () => void;
-  onMusic: (music: Project["music"]) => void;
+  onMusic: (clips: Project["audioClips"]) => void;
   onSound: () => void;
   onSubtitles: () => void;
 }
@@ -100,9 +100,12 @@ export const Library = memo(function Library({
       ),
     [project.assets, mode, query],
   );
-  const soundtrack = project.music
-    ? project.assets[project.music.assetId]
-    : null;
+  const musicClip = project.audioClips.find((clip) => clip.role === "music");
+  const soundtrack = musicClip ? project.assets[musicClip.assetId] : null;
+  const usedAudio = useMemo(
+    () => new Set(project.audioClips.map((clip) => clip.assetId)),
+    [project.audioClips],
+  );
   return (
     <aside
       className="media-library"
@@ -222,7 +225,7 @@ export const Library = memo(function Library({
               const resource = resources[asset.id];
               return (
                 <button
-                  className={`media-tile ${project.music?.assetId === asset.id ? "chosen" : ""}`}
+                  className={`media-tile ${usedAudio.has(asset.id) ? "chosen" : ""}`}
                   key={asset.id}
                   disabled={busy || !!resource?.error}
                   onClick={() => onAdd(asset)}
@@ -296,40 +299,62 @@ export const Library = memo(function Library({
               )}
             </div>
           )}
-          {mode === "music" && project.music && soundtrack && (
+          {mode === "music" && musicClip && soundtrack && (
             <div className="music-settings">
               <div className="setting-heading">
                 <h3>Your soundtrack</h3>
                 <IconButton
                   icon={X}
                   label="Remove soundtrack"
-                  onClick={() => onMusic(null)}
+                  onClick={() =>
+                    onMusic(
+                      project.audioClips.filter(
+                        (clip) => clip.id !== musicClip.id,
+                      ),
+                    )
+                  }
                 />
               </div>
               <p className="track-name">{soundtrack.name}</p>
               <label className="range-label">
                 Music volume
-                <span>{Math.round(project.music.volume * 100)}%</span>
+                <span>{Math.round(musicClip.volume * 100)}%</span>
                 <input
                   aria-label="Music volume"
                   type="range"
                   min="0"
                   max="100"
-                  value={Math.round(project.music.volume * 100)}
+                  value={Math.round(musicClip.volume * 100)}
                   onChange={(event) =>
-                    onMusic({
-                      ...project.music!,
-                      volume: Number(event.target.value) / 100,
-                    })
+                    onMusic(
+                      project.audioClips.map((clip) =>
+                        clip.id === musicClip.id
+                          ? {
+                              ...clip,
+                              volume: Number(event.target.value) / 100,
+                            }
+                          : clip,
+                      ),
+                    )
                   }
                 />
               </label>
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={project.music.loop}
+                  checked={musicClip.followFilm && musicClip.loop}
                   onChange={(event) =>
-                    onMusic({ ...project.music!, loop: event.target.checked })
+                    onMusic(
+                      project.audioClips.map((clip) =>
+                        clip.id === musicClip.id
+                          ? {
+                              ...clip,
+                              loop: event.target.checked,
+                              followFilm: event.target.checked,
+                            }
+                          : clip,
+                      ),
+                    )
                   }
                 />
                 Loop to the end of the film

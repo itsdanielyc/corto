@@ -14,55 +14,42 @@ export interface SoundWindow {
   end: number;
 }
 
-/** Translate the original one-song control into the same timeline as placed sound. */
+/** Resolve film-following sounds without adding a second editing or persistence model. */
 export function projectAudioClips(project: Project): AudioClip[] {
   const duration = filmDuration(project.scenes);
-  const legacyDuration =
-    project.music && !project.music.loop
-      ? Math.min(duration, project.assets[project.music.assetId].duration)
-      : duration;
-  const legacy =
-    project.music && duration > 0
-      ? [
-          {
-            id: "legacy-music",
-            assetId: project.music.assetId,
-            role: "music" as const,
-            start: 0,
-            offset: 0,
-            duration: project.music.loop
-              ? duration
-              : Math.min(
-                  duration,
-                  project.assets[project.music.assetId].duration,
-                ),
-            volume: project.music.volume,
-            loop: project.music.loop,
-            fadeIn: Math.min(LEGACY_MUSIC_FADE_SECONDS, legacyDuration / 2),
-            fadeOut: Math.min(LEGACY_MUSIC_FADE_SECONDS, legacyDuration / 2),
-          },
-        ]
-      : [];
-  return [...legacy, ...project.audioClips];
+  return project.audioClips.map((clip) => {
+    if (!clip.followFilm) return clip;
+    const available = clip.loop
+      ? Infinity
+      : project.assets[clip.assetId].duration - clip.offset;
+    const length = Math.min(
+      duration > clip.start ? duration - clip.start : clip.duration,
+      available,
+    );
+    return {
+      ...clip,
+      duration: length,
+      fadeIn: Math.min(clip.fadeIn, length / 2),
+      fadeOut: Math.min(clip.fadeOut, length / 2),
+    };
+  });
 }
 
 /** Append one song after the previously placed music. */
 export function placeNextSong(project: Project, asset: MediaAsset): Project {
-  let clips = projectAudioClips(project);
-  if (project.music) {
-    const original = project.assets[project.music.assetId];
-    const first = createAudioClip(original, "music");
-    // Adding a next song intentionally ends the old all-film loop after one complete play.
-    clips = [
-      {
-        ...first,
-        volume: project.music.volume,
-        fadeIn: Math.min(LEGACY_MUSIC_FADE_SECONDS, first.duration / 2),
-        fadeOut: Math.min(LEGACY_MUSIC_FADE_SECONDS, first.duration / 2),
-      },
-      ...project.audioClips,
-    ];
-  }
+  const clips = project.audioClips.map((clip) =>
+    clip.followFilm
+      ? {
+          ...clip,
+          followFilm: false,
+          loop: false,
+          duration: Math.min(
+            project.assets[clip.assetId].duration - clip.offset,
+            LIMITS.filmSeconds - clip.start,
+          ),
+        }
+      : clip,
+  );
   const start = clips
     .filter((clip) => clip.role === "music")
     .reduce((end, clip) => Math.max(end, clip.start + clip.duration), 0);
@@ -70,8 +57,20 @@ export function placeNextSong(project: Project, asset: MediaAsset): Project {
     throw new Error("This film has too many placed sounds");
   return {
     ...project,
-    music: null,
     audioClips: [...clips, createAudioClip(asset, "music", start)],
+  };
+}
+
+/** Keep the beginner's first song spanning the film, using the same placed-sound record as every other sound. */
+export function addMusic(project: Project, asset: MediaAsset): Project {
+  if (project.audioClips.length) return placeNextSong(project, asset);
+  const clip = createAudioClip(asset, "music");
+  const fade = Math.min(LEGACY_MUSIC_FADE_SECONDS, clip.duration / 2);
+  return {
+    ...project,
+    audioClips: [
+      { ...clip, loop: true, followFilm: true, fadeIn: fade, fadeOut: fade },
+    ],
   };
 }
 

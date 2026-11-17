@@ -10,17 +10,29 @@ import {
   type Page,
 } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 import type { PlatformInfo } from "../../electron/bridge";
 
 let app: ElectronApplication;
 let win: Page;
+let smokeWorkspace: string;
 const consoleErrors: string[] = [];
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  app = await electron.launch({ args: ["."], cwd: process.cwd() });
+  smokeWorkspace = await mkdtemp(join(tmpdir(), "corto-shell-smoke-"));
+  app = await electron.launch({
+    args: ["."],
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      CORTO_E2E: "1",
+      CORTO_WORKSPACE_ROOT: join(smokeWorkspace, "workspace"),
+    },
+  });
   win = await app.firstWindow();
   win.on("console", (m) => {
     if (m.type() === "error") consoleErrors.push(m.text());
@@ -30,6 +42,12 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await app?.close();
+  if (
+    smokeWorkspace &&
+    dirname(resolve(smokeWorkspace)) === resolve(tmpdir()) &&
+    basename(smokeWorkspace).startsWith("corto-shell-smoke-")
+  )
+    await rm(smokeWorkspace, { recursive: true, force: true });
 });
 
 test.describe("corto in the real shell", () => {

@@ -27,6 +27,15 @@ Preview uses one canvas composition surface and only the current media element; 
 ## Platform integration
 Native file selection, save destination and reveal-in-folder are confined to Electron. Environment-controlled dialog presets are accepted only in automated-test mode. No arbitrary shell commands, arbitrary renderer paths or remote navigation are exposed.
 
+## Creator-tools evolution
+- Shared schemas are split by responsibility (values, creative settings, project, platform). V3 migration normalises old music into placed sounds and adds explicit transform/text/overlay/output/default fields.
+- Domain geometry, transitions, source-time mapping, selection/clipboard, templates and export segmentation are pure. Arrays retain chronology; ID maps/sets provide reference and selection lookup.
+- One composition contract describes oriented/focal media, motion, colour, timed layers, transition overlap and sound. Preview/browser output and native command planning consume those same values.
+- Native exports stage small raster layers incrementally and render bounded segments; do not collect every full-frame title in an IPC request or build an unbounded all-scenes filter graph.
+- Effects/capture/model/proxy services live behind typed adapters. Native jobs own temporary paths and fixed subprocess arguments; browser effects use local workers. No renderer filesystem/process or remote-code primitive is added.
+- Export queues own immutable project snapshots; editing never mutates an active job. Temporary outputs are atomic and cancelled jobs clean only their owned directories.
+- Version/trash/preferences metadata is separate from immutable originals. Removing project references never silently deletes shared source files or another film's history.
+
 ## Deliberately simple
 - A single linear storyboard instead of a general multitrack graph. Add tracks only if user jobs require overlapping clips.
 - Placed music/narration is a bounded sound list with source offset, film start, duration, volume, fades and looping. The original simple soundtrack control remains compatible. Ducking uses source-sound-enabled video/narration intervals rather than speech recognition.

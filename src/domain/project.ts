@@ -3,6 +3,7 @@ import {
   DEFAULT_PHOTO_SECONDS,
   LIMITS,
   mediaAssetSchema,
+  projectSchema,
   sceneSchema,
   type MediaAsset,
   type Project,
@@ -11,18 +12,17 @@ import {
 
 /** Create an empty, versioned project with a stable opaque identifier. */
 export function createProject(name = "Untitled film"): Project {
-  return {
-    schemaVersion: 2,
+  return projectSchema.parse({
+    schemaVersion: 3,
     id: crypto.randomUUID(),
     name,
     ratio: "landscape",
     assets: {},
     scenes: [],
-    music: null,
     audioClips: [],
     subtitles: [],
     duckMusic: false,
-  };
+  });
 }
 
 /** Create an editable scene without touching the immutable source file. */
@@ -30,7 +30,7 @@ export function createScene(
   asset: MediaAsset | null,
   id: string = crypto.randomUUID(),
 ): Scene {
-  if (asset?.kind === "audio")
+  if (asset && asset.kind !== "image" && asset.kind !== "video")
     throw new Error("Add audio as the soundtrack instead");
   const duration =
     asset?.kind === "video"
@@ -63,7 +63,7 @@ export function addAsset(project: Project, input: MediaAsset): Project {
     assets.reduce((total, item) => total + item.size, asset.size) >
     LIMITS.projectBytes
   )
-    throw new Error("This project exceeds the 8 GB media limit");
+    throw new Error("This project exceeds the 64 GB media limit");
   return { ...project, assets: { ...project.assets, [asset.id]: asset } };
 }
 
@@ -80,7 +80,7 @@ function assertDuration(scenes: readonly Scene[]): void {
     scenes.reduce((total, scene) => total + scene.duration, 0) >
     LIMITS.filmSeconds
   )
-    throw new Error("Keep this film within 30 minutes");
+    throw new Error("Keep this film within three hours");
 }
 
 /** Append a scene while validating its source and the film's duration budget. */
@@ -180,7 +180,7 @@ export function splitScene(
     {
       ...scene,
       id: newId,
-      start: isVideo ? scene.start + offset : 0,
+      start: isVideo ? scene.start + offset * scene.speed : 0,
       duration: scene.duration - offset,
     },
   );

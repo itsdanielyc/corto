@@ -2,10 +2,14 @@ name: pages
 
 on:
   workflow_run:
-    workflows: [ci]
-    branches: [main]
+    workflows: [release]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release tag (blank selects the newest published release)
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -20,23 +24,37 @@ jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.source.outputs.deploy }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
+      - name: Resolve a published release source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/resolve-pages-source.mjs
+      - uses: actions/checkout@v7
+        if: steps.source.outputs.deploy == 'true'
+        with:
+          ref: ${{ steps.source.outputs.ref }}
       - run: npm ci
+        if: steps.source.outputs.deploy == 'true'
       - run: npm run build:web
+        if: steps.source.outputs.deploy == 'true'
       - uses: actions/configure-pages@v6
+        if: steps.source.outputs.deploy == 'true'
       - uses: actions/upload-pages-artifact@v5
+        if: steps.source.outputs.deploy == 'true'
         with:
           path: dist
 
   deploy:
     needs: build
+    if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

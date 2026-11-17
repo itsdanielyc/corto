@@ -22,6 +22,12 @@
 7. Multiple named films, last-edit recovery and corrupt catalogue isolation: L2/L3/L4/L6.
 8. Real HEIC/HEVC/HDR originals, local compatible copies, recorded narration, timed sound/subtitles and sample exports: L1/L3/L4/L6; assert actual movie pixels and independent audio tone levels.
 
+## Creator-tools surface
+- Pure checks: v3 migration/reference bounds, overlap timing/frame budgets, transforms/focal points/motion, speed/source offsets, selection/clipboard, slideshow fit/date fallback and output ranges.
+- Real I/O: transformed/transition/overlay/text pixels and soundtrack levels in encoded outputs, legacy conversion, capture derivatives, large caption staging, originals across project/history operations and job cancellation.
+- Browser/native journeys: beginner slideshow, crop/motion + transition, timed credits/PiP, bulk editing, project recovery/file open, optional local features and background export while editing.
+- Capability-dependent hardware and physical devices are named honestly. Model tests use pinned open models and synthetic/redistributable fixtures. No competitor assertion substitutes for a behaviour check.
+
 ## Visual evidence
 ARIA structure and geometry (8 px tolerance) share baselines across OSes. Pixel baselines are per-OS, 0.002 maximum difference ratio, captured only by the snapshots workflow and reviewed before merge. Real-shell screenshots form a contact sheet. First run's missing baseline is an expected red, never a suppressed pass.
 

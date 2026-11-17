@@ -25,7 +25,7 @@ import { createExampleProject } from "../media/example";
 import { importMedia } from "../media/phone";
 import { createPlatform } from "../platform";
 import { type LibraryMode } from "../components/Library";
-import { placeNextSong } from "../domain/audio";
+import { addMusic } from "../domain/audio";
 
 function readableError(error: unknown): string {
   if (error instanceof DOMException && error.name === "QuotaExceededError")
@@ -219,7 +219,8 @@ export function useEditorController() {
   );
 
   const changeMusic = useCallback(
-    (music: Project["music"]) => edit((project) => ({ ...project, music })),
+    (audioClips: Project["audioClips"]) =>
+      edit((project) => ({ ...project, audioClips })),
     [edit],
   );
 
@@ -237,14 +238,7 @@ export function useEditorController() {
   const addMedia = useCallback(
     (asset: MediaAsset) => {
       if (asset.kind === "audio") {
-        edit((project) =>
-          project.music || project.audioClips.length
-            ? placeNextSong(project, asset)
-            : {
-                ...project,
-                music: { assetId: asset.id, volume: 0.5, loop: true },
-              },
-        );
+        edit((project) => addMusic(project, asset));
         return;
       }
       const scene = createScene(asset);
@@ -288,14 +282,7 @@ export function useEditorController() {
               original ? addAsset(next, original) : next,
               asset,
             );
-            if (asset.kind === "audio")
-              candidate =
-                candidate.music || candidate.audioClips.length
-                  ? placeNextSong(candidate, asset)
-                  : {
-                      ...candidate,
-                      music: { assetId: asset.id, volume: 0.5, loop: true },
-                    };
+            if (asset.kind === "audio") candidate = addMusic(candidate, asset);
             else {
               const scene = createScene(asset);
               candidate = appendScene(candidate, scene);
