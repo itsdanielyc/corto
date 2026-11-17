@@ -41,10 +41,6 @@ test("an unsupported browser offers an accessible desktop-export fallback", asyn
 test("multiple films resume and recovery keeps the latest edit", async ({
   page,
 }) => {
-  test.skip(
-    process.platform === "darwin" && !process.env.CORTO_RECOVERY_DIAGNOSTIC,
-    "Saved-status race quarantined under issue #18; retained in recovery diagnosis",
-  );
   await page.getByLabel("Project name").fill("First memory");
   await page.getByLabel("Project name").press("Tab");
   await expect(page.getByTestId("save-status")).toHaveText(

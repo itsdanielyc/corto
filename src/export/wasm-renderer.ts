@@ -20,7 +20,7 @@ import { codecBytes } from "../media/local-codec";
 import { creatorSceneArguments } from "./ffmpeg-scene";
 import { soundMixArguments } from "./ffmpeg-sound";
 import { encoderArguments } from "./encoder-settings";
-import type { StagedRaster } from "./ffmpeg-types";
+import type { Encoder, StagedRaster } from "./ffmpeg-types";
 import { exportBitrate } from "./presets";
 
 const MAX_WORKING_BYTES = 512 * 1024 ** 2;
@@ -81,10 +81,12 @@ export async function renderWasmMovie(
   });
   const cancel = () => codec.terminate();
   signal.addEventListener("abort", cancel, { once: true });
-  const encoder = {
+  // Single-threaded WASM favours lower CPU cost; CRF and the bitrate ceiling still control output quality/size.
+  const encoder: Encoder = {
     name: "libx264",
     threads: 1,
     quality: project.output.quality,
+    preset: "ultrafast",
   };
   const bitrate = Math.round(
     exportBitrate(request) *

@@ -636,5 +636,15 @@
   "Include microphone audio": "Incluir el audio del micrófono",
   "Project template": "Plantilla de proyecto",
   "Start with a template": "Empezar con una plantilla",
-  "Use a project template": "Usar una plantilla de proyecto"
+  "Use a project template": "Usar una plantilla de proyecto",
+  "Theme soundtrack · original CC0 music": "Música del tema · original CC0",
+  "Emoji stickers": "Pegatinas de emojis",
+  "Emoji sticker": "Pegatina de emoji",
+  "Add emoji sticker": "Añadir pegatina de emoji",
+  "Directed by": "Dirección",
+  "Directed by\nYour name": "Dirección\nTu nombre",
+  "Starring": "Reparto",
+  "Starring\nOur family\nOur friends": "Reparto\nNuestra familia\nNuestros amigos",
+  "This media tool could not finish": "Esta herramienta no ha podido finalizar",
+  "Desktop and web encode movies locally. Browser codec budgets apply to large films. Browser storage can be cleared by your browser; keep a portable .corto copy of films you want to preserve.": "La aplicación y la web codifican las películas localmente. Los límites del códec del navegador se aplican a las películas grandes. El navegador puede borrar su almacenamiento; guarda una copia portátil .corto de las películas que quieras conservar."
 }

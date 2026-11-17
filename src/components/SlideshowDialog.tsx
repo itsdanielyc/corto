@@ -12,6 +12,9 @@ import type { CortoPlatform } from "../platform/types";
 import { Choice, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { Modal } from "./primitives";
 import { soundAnalysis } from "../media/sound-analysis";
+import { bundledSoundFile } from "../media/bundled-sounds";
+import { inspectFile } from "../media/import";
+import { addAsset } from "../domain/project";
 export function SlideshowDialog({
   project,
   platform,
@@ -56,19 +59,28 @@ export function SlideshowDialog({
     setBusy(true);
     setError(null);
     try {
+      let source = project;
+      let selectedMusic = music;
+      if (musicId === "theme") {
+        const file = await bundledSoundFile(THEMES[theme].music);
+        const { asset } = await inspectFile(file);
+        await platform.putAsset(asset, file);
+        source = addAsset(source, asset);
+        selectedMusic = asset;
+      }
       const analysis =
-        beats && music && !template
-          ? await soundAnalysis(platform, project, music)
+        beats && selectedMusic && !template
+          ? await soundAnalysis(platform, source, selectedMusic)
           : null;
       const draft = template
         ? buildProjectTemplate(
-            { ...project, id: crypto.randomUUID() },
+            { ...source, id: crypto.randomUUID() },
             theme,
             title,
-            musicId || null,
+            selectedMusic?.id ?? null,
           )
         : buildSlideshow(
-            { ...project, id: crypto.randomUUID() },
+            { ...source, id: crypto.randomUUID() },
             {
               assetIds: [...selected],
               theme,
@@ -78,11 +90,13 @@ export function SlideshowDialog({
               dateCaptions: dates,
               title,
               fitSeconds:
-                fit && music ? music.duration - musicOffset : undefined,
+                fit && selectedMusic
+                  ? selectedMusic.duration - musicOffset
+                  : undefined,
               beats: analysis?.beats
                 .filter((beat) => beat >= musicOffset)
                 .map((beat) => beat - musicOffset),
-              musicAssetId: musicId || null,
+              musicAssetId: selectedMusic?.id ?? null,
               musicOffset,
             },
           );
@@ -207,6 +221,7 @@ export function SlideshowDialog({
             translateOptions={false}
             options={[
               ["", t("No music")],
+              ["theme", t("Theme soundtrack · original CC0 music")],
               ...Object.values(project.assets)
                 .filter(
                   (asset) => asset.kind === "audio" && !asset.isOriginalOnly,
@@ -246,14 +261,14 @@ export function SlideshowDialog({
               />
             </>
           )}
-          {music && !template && (
+          {(music || musicId === "theme") && !template && (
             <Toggle
               label={t("Fit photos to the soundtrack")}
               checked={fit}
               onChange={setFit}
             />
           )}
-          {music && !template && (
+          {(music || musicId === "theme") && !template && (
             <Toggle
               label={t("Align photo changes to music beats")}
               checked={beats}

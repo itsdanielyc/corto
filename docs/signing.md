@@ -26,8 +26,10 @@ On 2026-11-17, the repository had no signing secrets and this machine had no
 current-user code-signing certificate. Trusted signing therefore remains an
 external prerequisite. No certificate or paid account was purchased.
 
-Updates use the public stable release channel at
+Updates use the public release channel at
 `itsdanielyc/corto/releases`. Checks are opt-in and read only public metadata;
-the app links to downloads rather than silently executing an installer.
+the app links to downloads rather than silently executing an installer. Builds
+below 1.0 follow published previews as well as stable releases; established
+versions follow stable releases only.
 Releases include SHA-256 checksums. Installer and published-asset smoke checks
 remain required on every declared desktop target before distribution claims.

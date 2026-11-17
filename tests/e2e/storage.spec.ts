@@ -8,6 +8,7 @@ import {
   createProject,
   createScene,
 } from "../../src/domain/project";
+import { FileProjectRepository } from "../../electron/storage";
 
 test("native project commands save and reopen original media through the sandboxed preload", async () => {
   const directory = await mkdtemp(join(tmpdir(), "corto-shell-storage-"));
@@ -78,6 +79,44 @@ test("native project commands save and reopen original media through the sandbox
   } finally {
     await app.close();
     if (basename(directory).startsWith("corto-shell-storage-"))
+      await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("opens an OS-supplied portable path at cold launch without losing it to initial autosave", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "corto-open-path-"));
+  const portable = join(directory, "A film from another computer.corto");
+  const repository = new FileProjectRepository(join(directory, "source"));
+  const project = {
+    ...createProject("Opened from desktop"),
+    scenes: [{ ...createScene(null), caption: "The selected portable film" }],
+  };
+  await repository.exportPortable(project, portable);
+  const app = await electron.launch({
+    args: [".", portable],
+    env: {
+      ...process.env,
+      CORTO_E2E: "1",
+      CORTO_WORKSPACE_ROOT: join(directory, "destination"),
+    },
+  });
+  try {
+    const page = await app.firstWindow();
+    await expect(page.getByLabel("Project name")).toHaveValue(
+      "Opened from desktop",
+    );
+    await expect(page.getByTestId("scene-card")).toHaveCount(1);
+    await expect(page.getByTestId("save-status")).toHaveText(
+      "Saved on this device",
+    );
+    const saved = await page.evaluate(() =>
+      window.electronBridge!.loadProject(),
+    );
+    expect(saved!.id).not.toBe(project.id);
+    expect(saved!.scenes[0].caption).toBe("The selected portable film");
+  } finally {
+    await app.close();
+    if (basename(directory).startsWith("corto-open-path-"))
       await rm(directory, { recursive: true, force: true });
   }
 });

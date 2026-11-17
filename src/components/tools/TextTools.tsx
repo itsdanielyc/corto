@@ -55,6 +55,20 @@ const TEMPLATES = {
     size: 0.1,
     animation: "pop",
   },
+  director: {
+    label: "Directed by",
+    text: "Directed by\nYour name",
+    font: "serif",
+    size: 0.07,
+    animation: "credits",
+  },
+  cast: {
+    label: "Starring",
+    text: "Starring\nOur family\nOur friends",
+    font: "sans",
+    size: 0.07,
+    animation: "credits",
+  },
   dedication: {
     label: "Dedication",
     text: "In loving memory\nForever in our hearts",

@@ -41,6 +41,25 @@ describe("sound and subtitle editing", () => {
       assets: { audio: asset },
     };
     expect(duckingWindows(project)).toEqual([{ start: 3, end: 9 }]);
+    const video = {
+      ...asset,
+      id: "silent",
+      kind: "video" as const,
+      mime: "video/mp4",
+      hasAudio: false,
+    };
+    const silentFilm = {
+      ...createProject(),
+      assets: { silent: video },
+      scenes: [{ ...createScene(video), duration: 2 }],
+    };
+    expect(duckingWindows(silentFilm)).toEqual([]);
+    expect(
+      duckingWindows({
+        ...silentFilm,
+        assets: { silent: { ...video, hasAudio: true } },
+      }),
+    ).toEqual([{ start: 0, end: 2 }]);
     const legacy = {
       ...project,
       audioClips: [

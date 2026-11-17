@@ -101,6 +101,7 @@ it("builds a date-sorted, music-fitted editable themed draft with safe minimum t
     "late",
   ]);
   expect(project.scenes[0].transform.motion).not.toBe("none");
+  expect(project.scenes[0].adjustments.look).toBe("warm");
   expect(project.scenes[0].caption).toContain("2020");
   const duration =
     project.scenes.reduce((sum, scene) => sum + scene.duration, 0) -

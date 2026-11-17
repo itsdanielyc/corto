@@ -1,5 +1,6 @@
 import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
+import { bundledSoundFile } from "../media/bundled-sounds";
 interface PackEntry {
   id: string;
   title: string;
@@ -43,12 +44,8 @@ export function SoundPack({
   const add = async (entry: PackEntry) => {
     try {
       audio.current?.pause();
-      const response = await fetch(`${base}${entry.file}`);
-      if (!response.ok) throw new Error("This bundled sound could not be read");
       await onAdd(
-        new File([await response.blob()], `${entry.title} · Corto CC0.mp3`, {
-          type: "audio/mpeg",
-        }),
+        await bundledSoundFile(entry.id),
         entry.category === "effect",
       );
     } catch (error) {

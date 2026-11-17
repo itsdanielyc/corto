@@ -22,3 +22,10 @@ advisory path under issue #8, with its existing assertions retained.
 The new export path must pass actual encoded frame/audio assertions and 20 clean
 macOS repetitions before the recording quarantine (#15) is retired. A capture
 API's availability no longer determines whether local MP4 encoding is possible.
+
+The first WASM repeat had 18 valid outputs and two 30-second test-budget
+overruns at Full HD with two concurrent workers (44024159851); screenshots
+show completed exports, not truncated output. WASM now uses x264's ultrafast
+preset because its single CPU thread made the desktop veryfast preset too
+costly. CRF and bitrate ceilings still apply; native retains veryfast. The
+existing test budget and independent pixel/audio assertions remain unchanged.

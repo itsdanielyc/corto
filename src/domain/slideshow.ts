@@ -16,6 +16,8 @@ export const THEMES = {
     style: "classic",
     transition: "dissolve",
     seconds: 0.6,
+    look: "warm",
+    music: "music-01",
   },
   holiday: {
     name: "Holiday",
@@ -23,6 +25,8 @@ export const THEMES = {
     style: "modern",
     transition: "slide-left",
     seconds: 0.5,
+    look: "vivid",
+    music: "music-09",
   },
   birthday: {
     name: "Birthday",
@@ -30,6 +34,8 @@ export const THEMES = {
     style: "modern",
     transition: "zoom",
     seconds: 0.4,
+    look: "vivid",
+    music: "music-12",
   },
   memorial: {
     name: "In loving memory",
@@ -37,6 +43,8 @@ export const THEMES = {
     style: "classic",
     transition: "dissolve",
     seconds: 1,
+    look: "faded",
+    music: "music-15",
   },
   wedding: {
     name: "Wedding",
@@ -44,6 +52,8 @@ export const THEMES = {
     style: "classic",
     transition: "fade-white",
     seconds: 0.8,
+    look: "warm",
+    music: "music-13",
   },
 } as const;
 export interface SlideshowOptions {
@@ -302,6 +312,7 @@ export function buildSlideshow(
       transition: theme.transition,
       transitionSeconds: theme.seconds,
       fit: project.defaults.fit,
+      adjustments: { ...scene.adjustments, look: theme.look },
       transform: {
         ...scene.transform,
         motion:

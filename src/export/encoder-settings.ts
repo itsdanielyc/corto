@@ -7,7 +7,7 @@ export function encoderArguments(encoder: Encoder, bitrate?: number): string[] {
     ...(encoder.name === "libx264"
       ? [
           "-preset",
-          "veryfast",
+          encoder.preset ?? "veryfast",
           "-crf",
           String(Math.round(35 - encoder.quality * 0.25)),
         ]

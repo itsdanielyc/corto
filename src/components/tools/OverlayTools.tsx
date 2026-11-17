@@ -1,6 +1,6 @@
 import { useT } from "../../i18n/locale";
 import { useState } from "react";
-import { visualLayerSchema } from "../../../contracts/creative";
+import { textItemSchema, visualLayerSchema } from "../../../contracts/creative";
 import type { Project, Scene, VisualLayer } from "../../../contracts/project";
 import { Choice, Colour, Numeric, Slider, Toggle, ToolSection } from "./Fields";
 export function OverlayTools({
@@ -15,6 +15,7 @@ export function OverlayTools({
   const t = useT();
   const [selected, setSelected] = useState(scene.layers[0]?.id ?? "");
   const [mediaId, setMediaId] = useState("");
+  const [emoji, setEmoji] = useState("🎉");
   const media = Object.values(project.assets).filter(
     (asset) =>
       ["image", "video"].includes(asset.kind) &&
@@ -107,6 +108,37 @@ export function OverlayTools({
             {t("Four-picture collage")}
           </button>
         </div>
+      </ToolSection>
+      <ToolSection title={t("Emoji stickers")}>
+        <label className="field-label">
+          {t("Emoji sticker")}
+          <input
+            aria-label={t("Emoji sticker")}
+            value={emoji}
+            maxLength={32}
+            onChange={(event) => setEmoji(event.target.value)}
+          />
+        </label>
+        <button
+          className="button secondary"
+          disabled={!emoji.trim() || scene.textItems.length >= 24}
+          onClick={() =>
+            onChange({
+              textItems: [
+                ...scene.textItems,
+                textItemSchema.parse({
+                  id: crypto.randomUUID(),
+                  text: emoji.trim(),
+                  size: 0.2,
+                  font: "sans",
+                  shadow: false,
+                }),
+              ],
+            })
+          }
+        >
+          {t("Add emoji sticker")}
+        </button>
       </ToolSection>
       {layer && (
         <>

@@ -41,6 +41,10 @@ test("picture, timed text and overlay edits persist and save a composed PNG", as
     .getByRole("button", { name: "Add shape / sticker", exact: true })
     .click();
   await page.getByLabel("Shape or sticker").selectOption("heart");
+  await page.getByLabel("Emoji sticker", { exact: true }).fill("🎈");
+  await page
+    .getByRole("button", { name: "Add emoji sticker", exact: true })
+    .click();
   const violations = await new AxeBuilder({ page })
     .include(".creator-dialog")
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
@@ -59,7 +63,10 @@ test("picture, timed text and overlay edits persist and save a composed PNG", as
     .toMatchObject({
       transform: { rotation: 90, motion: "zoom-in" },
       adjustments: { look: "mono" },
-      textItems: [{ text: "Our family\nA long title stays editable" }],
+      textItems: [
+        { text: "Our family\nA long title stays editable" },
+        { text: "🎈" },
+      ],
       layers: [{ shape: "heart" }],
     });
   await page.reload();
@@ -77,6 +84,7 @@ test("makes a separate editable themed slideshow and supports bulk scene clipboa
   await menu(page, "Make a slideshow");
   await page.getByLabel("Slideshow opening title").fill("Family Sunday");
   await page.getByLabel("Slideshow theme").selectOption("wedding");
+  await page.getByLabel("Slideshow soundtrack").selectOption("theme");
   await page.getByLabel("Slideshow order").selectOption("name");
   await page.getByLabel("Seconds per photo").fill("2");
   await page.getByLabel("Seconds per photo").press("Tab");
@@ -87,6 +95,10 @@ test("makes a separate editable themed slideshow and supports bulk scene clipboa
     .poll(async () => (await savedBrowserProject(page)).id)
     .not.toBe(previous.id);
   const draft = await savedBrowserProject(page);
+  expect(draft.audioClips).toHaveLength(1);
+  expect(draft.assets[draft.audioClips[0].assetId].name).toContain(
+    "Together always",
+  );
   expect(draft.scenes[1].transform.motion).toBe("zoom-in");
   expect(draft.scenes[1].transition).toBe("fade-white");
   await page.getByTestId("scene-card").nth(1).click();

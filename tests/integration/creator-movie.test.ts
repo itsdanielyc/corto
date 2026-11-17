@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
@@ -95,6 +95,101 @@ it("encodes real overlapping colour frames with one frame budget and preserves o
   expect(blended[2]).toBeGreaterThan(60);
   expect(sample(output, 1.6)[2]).toBeGreaterThan(200);
   expect(await readFile(repository.assetPath(red.id))).toEqual(bytes);
+}, 30000);
+
+it("renders actual chroma transparency and an imported 3D LUT into independently decoded pixels", async () => {
+  const repository = new FileProjectRepository(join(directory, "workspace"));
+  const greenPath = join(directory, "green.png");
+  execFileSync(
+    ffmpeg!,
+    [
+      "-loglevel",
+      "error",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x00ff00:s=160x90",
+      "-frames:v",
+      "1",
+      "-threads",
+      "1",
+      greenPath,
+    ],
+    { windowsHide: true },
+  );
+  const green: MediaAsset = {
+    id: "green",
+    name: "green.png",
+    kind: "image",
+    mime: "image/png",
+    size: (await stat(greenPath)).size,
+    duration: 0,
+    width: 160,
+    height: 90,
+  };
+  await repository.putAsset(green, greenPath);
+  let project = addAsset(createProject("Chroma"), green);
+  project = {
+    ...project,
+    output: { ...project.output, encoder: "software", fps: 24 },
+    scenes: [
+      {
+        ...createScene(green),
+        duration: 0.5,
+        keyColour: "#00ff00",
+        background: "#ff0000",
+      },
+    ],
+  };
+  const keyed = join(directory, "keyed.mp4");
+  await new MovieRenderer(ffmpeg!, repository).render(
+    { project, resolution: "720p", overlays: [] },
+    keyed,
+    new AbortController().signal,
+    () => {},
+  );
+  const keyPixel = sample(keyed, 0.2);
+  expect(keyPixel[0]).toBeGreaterThan(220);
+  expect(keyPixel[1]).toBeLessThan(30);
+  const red = await original(repository, "red.png");
+  const cube =
+    "LUT_3D_SIZE 2\n1 1 1\n0 1 1\n1 0 1\n0 0 1\n1 1 0\n0 1 0\n1 0 0\n0 0 0\n";
+  const cubePath = join(directory, "invert.cube");
+  await writeFile(cubePath, cube);
+  const lut: MediaAsset = {
+    id: "invert",
+    name: "invert.cube",
+    kind: "lut",
+    mime: "application/x-cube",
+    size: Buffer.byteLength(cube),
+    duration: 0,
+    width: 0,
+    height: 0,
+  };
+  await repository.putAsset(lut, cubePath);
+  project = addAsset(addAsset(project, red), lut);
+  const scene = createScene(red);
+  project = {
+    ...project,
+    scenes: [
+      {
+        ...scene,
+        duration: 0.5,
+        adjustments: { ...scene.adjustments, lutAssetId: lut.id },
+      },
+    ],
+  };
+  const output = join(directory, "look.mp4");
+  await new MovieRenderer(ffmpeg!, repository).render(
+    { project, resolution: "720p", overlays: [] },
+    output,
+    new AbortController().signal,
+    () => {},
+  );
+  const cyan = sample(output, 0.2);
+  expect(cyan[0]).toBeLessThan(30);
+  expect(cyan[1]).toBeGreaterThan(220);
+  expect(cyan[2]).toBeGreaterThan(220);
 }, 30000);
 
 it("applies actual monochrome, rotation and pan/zoom to a range at 24 fps", async () => {
