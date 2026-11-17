@@ -21,12 +21,6 @@ for (const recordingMode of [
     page,
   }, info) => {
     test.skip(
-      process.platform === "darwin" &&
-        recordingMode === "automatic" &&
-        !process.env.CORTO_RECORDING_DIAGNOSTIC,
-      "Quarantined macOS recording truncation; issue #15, retained in the recording diagnostic",
-    );
-    test.skip(
       recordingMode !== "automatic" && !process.env.CORTO_ADVISORY_WEBM,
       "Experimental WebM capture is advisory; see the tracked Linux video-tail finding",
     );

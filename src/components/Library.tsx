@@ -96,7 +96,7 @@ export const Library = memo(function Library({
 }: LibraryProperties) {
   const t = useT();
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"name" | "date" | "used">("name");
+  const [sort, setSort] = useState<"name" | "date" | "type" | "used">("name");
   const [context, setContext] = useState<string | null>(null);
   const replacement = useRef<HTMLInputElement>(null);
   const used = useMemo(() => usedAssetIds(project), [project]);
@@ -115,7 +115,11 @@ export const Library = memo(function Library({
         ),
         sort === "date" ? "date" : "name",
       ).sort((a, b) =>
-        sort === "used" ? Number(used.has(b.id)) - Number(used.has(a.id)) : 0,
+        sort === "used"
+          ? Number(used.has(b.id)) - Number(used.has(a.id))
+          : sort === "type"
+            ? a.kind.localeCompare(b.kind)
+            : 0,
       ),
     [project.assets, mode, query, sort, used],
   );
@@ -262,6 +266,7 @@ export const Library = memo(function Library({
                 >
                   <option value="name">{t("Filename")}</option>
                   <option value="date">{t("Date taken")}</option>
+                  <option value="type">{t("Media type")}</option>
                   <option value="used">{t("Used first")}</option>
                 </select>
               </label>

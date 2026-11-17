@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { join } from "node:path";
 import { savedBrowserProject } from "../helpers/browser-project";
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 test("library drag inserts at the target and proportional ruler remains keyboard accessible", async ({
   page,
 }) => {
@@ -124,4 +125,34 @@ test("opens and edits a 500-photo film through the real browser store", async ({
     )
     .toBeGreaterThan(0.5);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
+});
+
+test("library type sorting groups pictures and clips before applying the filename fallback", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByTestId("media-input").setInputFiles([
+    {
+      name: "z-photo.png",
+      mimeType: "image/png",
+      buffer: await readFile(join(process.cwd(), "tests/fixtures/red.png")),
+    },
+    {
+      name: "a-video.mp4",
+      mimeType: "video/mp4",
+      buffer: await readFile(join(process.cwd(), "tests/fixtures/motion.mp4")),
+    },
+  ]);
+  await expect(page.getByTestId("scene-card")).toHaveCount(2);
+  await expect(
+    page.getByRole("option", { name: "Media type", exact: true }),
+  ).toHaveCount(1);
+  await page.getByLabel("Library sort", { exact: true }).selectOption("type");
+  const names = await page
+    .getByRole("complementary", { name: "Media library", exact: true })
+    .getByRole("button", { name: /^Add (z-photo\.png|a-video\.mp4)$/ })
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("aria-label")),
+    );
+  expect(names).toEqual(["Add z-photo.png", "Add a-video.mp4"]);
 });

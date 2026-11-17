@@ -85,11 +85,27 @@ test("real native models recognise speech, matte a local SVG copy and reuse mode
     ],
     { windowsHide: true },
   );
-  const launch = () =>
-    electron.launch({
-      args: ["."],
+  const packagedExecutable = process.env.CORTO_PACKAGED_EXECUTABLE;
+  const privateProfile = join(workspace, "runtime-profile");
+  const launch = async () => {
+    const application = await electron.launch({
+      ...(packagedExecutable ? { executablePath: packagedExecutable } : {}),
+      args: packagedExecutable ? [`--user-data-dir=${privateProfile}`] : ["."],
       env: { ...process.env, CORTO_E2E: "1", CORTO_WORKSPACE_ROOT: workspace },
     });
+    if (packagedExecutable) {
+      const profile = await application.evaluate(({ app }) =>
+        app.getPath("userData"),
+      );
+      if (profile !== privateProfile) {
+        await application.close();
+        throw new Error(
+          "Packaged model proof requires its own private profile",
+        );
+      }
+    }
+    return application;
+  };
   let app = await launch();
   try {
     let page = await app.firstWindow();
