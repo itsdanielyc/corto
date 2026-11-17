@@ -178,3 +178,8 @@ The user's Downloads audit contains 80 numbered capabilities and six findings. `
 | 2026-11-17 01:26 | release policy | Public deployment resolver selects the existing published v0.1.1 commit, not unreleased schema-v3 main | local windows-x64; real GitHub read | Resolver selected `3d603dae049f80449981ef120267709b07ebddab` for v0.1.1. Unit policy covers CI/PR/fork/draft/mismatched-source rejection and explicit published rollback. Hosted workflow proof pending. |
 
 Unverified for creator tools: hosted foundation CI and all later creative/media/model/UI/export/installer slices. Repository signing secrets were inspected by name; none are configured. No certificate identity or paid service is fabricated.
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-17 02:17 | L0-L6 foundation | Creator data and canonical sound foundation passed every required hosted job; released web stayed at the published source | windows-x64; macos-arm64/x64; linux-x64; production web | [CI 43996516140](https://github.com/itsdanielyc/corto/actions/runs/43996516140) successful, PR #13 merged. [Pages 43999336823](https://github.com/itsdanielyc/corto/actions/runs/43999336823) successful using published v0.1.1. |
+| 2026-11-17 02:17 | L0/L2 | Typed creator services restrict media jobs to finite, project-owned operations and expose incremental raster staging | local windows-x64 | Typecheck exit 0; unit suite 36 passed. Deliberate strict-object removal failed `expected function to throw` for a renderer-supplied source path; restored and green. Implementations and hosted proof pending. |
