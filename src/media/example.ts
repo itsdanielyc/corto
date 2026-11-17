@@ -8,6 +8,7 @@ import {
 } from "../domain/project";
 import type { CortoPlatform } from "../platform/types";
 import { inspectFile } from "./import";
+import { createAudioClip } from "../domain/audio";
 
 const files = [
   { source: "braies.jpg", name: "01 · Lago di Braies.jpg", mime: "image/jpeg" },
@@ -44,7 +45,15 @@ export async function createExampleProject(
     if (asset.kind === "audio")
       project = {
         ...project,
-        music: { assetId: asset.id, volume: 0.38, loop: false },
+        audioClips: [
+          {
+            ...createAudioClip(asset, "music"),
+            volume: 0.38,
+            followFilm: true,
+            fadeIn: 0.3,
+            fadeOut: 0.3,
+          },
+        ],
       };
     else project = appendScene(project, createScene(asset));
   }

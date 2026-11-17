@@ -68,12 +68,15 @@ export function filmDuration(scenes: readonly Scene[]): number {
 
 // Time O(n), space O(n); each rounding error is carried into the next scene instead of accumulating.
 /** Allocate native output frames from cumulative boundaries, keeping total timing within half a frame. */
-export function sceneFrameCounts(scenes: readonly Scene[]): number[] {
+export function sceneFrameCounts(
+  scenes: readonly Scene[],
+  fps: number = EXPORT_FPS,
+): number[] {
   let seconds = 0;
   let previousFrame = 0;
   return scenes.map((scene) => {
     seconds += scene.duration;
-    const nextFrame = Math.round(seconds * EXPORT_FPS);
+    const nextFrame = Math.round(seconds * fps);
     const count = nextFrame - previousFrame;
     previousFrame = nextFrame;
     return count;
@@ -94,10 +97,18 @@ export function frameDimensions(
   ratio: AspectRatio,
   resolution: ExportResolution,
 ): { width: number; height: number } {
-  const short = resolution === "1080p" ? 1080 : 720;
-  const long = resolution === "1080p" ? 1920 : 1280;
+  const short =
+    resolution === "2160p" ? 2160 : resolution === "1080p" ? 1080 : 720;
+  const long =
+    resolution === "2160p" ? 3840 : resolution === "1080p" ? 1920 : 1280;
   if (ratio === "portrait") return { width: short, height: long };
   if (ratio === "square") return { width: short, height: short };
+  if (ratio === "classic")
+    return { width: Math.round((short * 4) / 3 / 2) * 2, height: short };
+  if (ratio === "feed")
+    return { width: short, height: Math.round((short * 5) / 4 / 2) * 2 };
+  if (ratio === "cinema")
+    return { width: long, height: Math.round(long / 2.35 / 2) * 2 };
   return { width: long, height: short };
 }
 
@@ -127,8 +138,12 @@ export function fitRect(
 
 /** Fade through black without overlapping scenes or changing total film duration. */
 export function fadeOpacity(scene: Scene, localTime: number): number {
-  if (scene.transition === "cut") return 1;
-  const duration = Math.min(FADE_SECONDS, scene.duration / 2);
+  if (scene.transition !== "fade") return 1;
+  const duration = Math.min(
+    scene.transitionSeconds ?? FADE_SECONDS,
+    scene.duration / 2,
+  );
+  if (duration <= 0) return 1;
   return Math.max(
     0,
     Math.min(1, localTime / duration, (scene.duration - localTime) / duration),

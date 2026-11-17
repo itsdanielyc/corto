@@ -60,6 +60,11 @@ Explored and deferred: professional tracks/keyframes, generative effects, cloud 
 ## v0.1.1 selection (user decision)
 Shipped in v0.1.1: phone-media compatibility, a project home/recovery, sound/narration, timed subtitles/SRT and sharing presets/sample export. Automatic slideshow creation and photo-presentation enhancements were explicitly declined. Optional local automatic transcription and 4K remain later candidates. The next-release recommendation above is superseded by this selection.
 
+## Creator-tools selection (2026-11-17)
+The user supplied `Corto-missing-features.md` and authorised the numbered feature backlog and bug findings, explicitly reopening automatic slideshows and better photo presentation. `docs/FEATURES.md` traces all 80 items; its statuses distinguish implemented/proven capabilities from external dependencies. The previous exclusions of these two feature groups no longer apply.
+Keep the simple storyboard and add an optional proportional timeline; support preset/start-end animation without professional curve editors. A small bundled CC0 sound pack and optional local model downloads are allowed; personal media stays local and no generative/cloud service is introduced. Preserve original media, reject future schemas, and migrate known projects explicitly to v3.
+Ruling: proceed autonomously through contract, rendering, editing, media, automation and distribution slices. Existing certificate credentials may be used; none are currently configured. Wire signing and update checks while accurately retaining unsigned status until external certificates exist. Do not purchase services or invent signing identity. Version selection remains the next patch, v0.1.2, unless the implementation requires an explicit superseding decision.
+
 ## Risks and rulings
 - Browser codec support differs: detect capabilities; tell people the available output; test browser and native exports separately.
 - Video rendering can exhaust memory: stream native export per scene, bound file sizes and project lengths, cancel cleanly.

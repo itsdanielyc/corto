@@ -43,9 +43,15 @@ describe("sound and subtitle editing", () => {
     expect(duckingWindows(project)).toEqual([{ start: 3, end: 9 }]);
     const legacy = {
       ...project,
-      audioClips: [],
+      audioClips: [
+        {
+          ...createAudioClip(asset, "music"),
+          duration: 20,
+          loop: true,
+          followFilm: true,
+        },
+      ],
       scenes: [{ ...createScene(null), duration: 20 }],
-      music: { assetId: asset.id, volume: 0.5, loop: true },
     };
     const sequence = placeNextSong(legacy, asset);
     expect(
@@ -54,7 +60,7 @@ describe("sound and subtitle editing", () => {
       [0, 10],
       [10, 10],
     ]);
-    expect(sequence.music).toBeNull();
+    expect(sequence).not.toHaveProperty("music");
   });
   it("round-trips Unicode SRT, finds exact boundaries and rejects malformed or overlapping cues", () => {
     const cues = parseSrt(

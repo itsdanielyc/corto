@@ -53,7 +53,6 @@ export function SoundDialog({
     try {
       commit({
         ...current.current,
-        music: null,
         audioClips: projectAudioClips(current.current).map((clip) =>
           clip.id === id ? { ...clip, ...changes } : clip,
         ),
@@ -86,7 +85,6 @@ export function SoundDialog({
               );
       commit({
         ...addAsset(previous, asset),
-        music: null,
         audioClips: [...existing, createAudioClip(asset, role, start)],
       });
     } finally {
@@ -233,7 +231,6 @@ export function SoundDialog({
                   try {
                     commit({
                       ...project,
-                      music: null,
                       audioClips: sounds.filter(
                         (sound) => sound.id !== clip.id,
                       ),

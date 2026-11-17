@@ -21,6 +21,7 @@ import {
   createScene,
 } from "../../src/domain/project";
 import type { MediaAsset, Project } from "../../contracts/project";
+import { addMusic } from "../../src/domain/audio";
 import { inspectMovie } from "../helpers/movie-inspection";
 
 let directory: string;
@@ -75,7 +76,7 @@ async function film(): Promise<Project> {
     background: "#0011ee",
     duration: 0.5,
   });
-  return { ...project, music: { assetId: music.id, volume: 0.5, loop: true } };
+  return addMusic(project, music);
 }
 
 function pixel(path: string, time: number): Buffer {

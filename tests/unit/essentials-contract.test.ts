@@ -3,8 +3,8 @@ import { parseProject } from "../../contracts/project";
 import { createProject } from "../../src/domain/project";
 
 describe("v0.1.1 project evolution", () => {
-  it("creates v2 projects and migrates only the known v1 shape without losing edits", () => {
-    expect(createProject().schemaVersion).toBe(2);
+  it("creates current projects and migrates only the known v1 shape without losing edits", () => {
+    expect(createProject().schemaVersion).toBe(3);
     const legacy = {
       schemaVersion: 1,
       id: "old-film",
@@ -15,8 +15,10 @@ describe("v0.1.1 project evolution", () => {
       music: null,
     };
     expect(parseProject(legacy)).toMatchObject({
-      ...legacy,
-      schemaVersion: 2,
+      id: legacy.id,
+      name: legacy.name,
+      ratio: legacy.ratio,
+      schemaVersion: 3,
       audioClips: [],
       subtitles: [],
       duckMusic: false,

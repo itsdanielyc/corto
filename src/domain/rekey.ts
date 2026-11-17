@@ -18,6 +18,9 @@ export function rekeyProjectAssets(project: Project): {
       ...(asset.originalAssetId
         ? { originalAssetId: identifiers.get(asset.originalAssetId)! }
         : {}),
+      ...(asset.proxyAssetId
+        ? { proxyAssetId: identifiers.get(asset.proxyAssetId)! }
+        : {}),
     };
   }
   return {
@@ -29,10 +32,23 @@ export function rekeyProjectAssets(project: Project): {
       scenes: project.scenes.map((scene) => ({
         ...scene,
         assetId: scene.assetId ? identifiers.get(scene.assetId)! : null,
+        layers: scene.layers.map((layer) => ({
+          ...layer,
+          assetId: layer.assetId ? identifiers.get(layer.assetId)! : null,
+        })),
+        backdrop: {
+          ...scene.backdrop,
+          assetId: scene.backdrop.assetId
+            ? identifiers.get(scene.backdrop.assetId)!
+            : null,
+        },
+        adjustments: {
+          ...scene.adjustments,
+          ...(scene.adjustments.lutAssetId
+            ? { lutAssetId: identifiers.get(scene.adjustments.lutAssetId)! }
+            : {}),
+        },
       })),
-      music: project.music
-        ? { ...project.music, assetId: identifiers.get(project.music.assetId)! }
-        : null,
       audioClips: project.audioClips.map((clip) => ({
         ...clip,
         assetId: identifiers.get(clip.assetId)!,

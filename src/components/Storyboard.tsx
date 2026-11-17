@@ -52,7 +52,8 @@ export const Storyboard = memo(function Storyboard({
     else if (selected.right > visible.right)
       container.scrollLeft += selected.right - visible.right + 2;
   }, [scrollId]);
-  const music = project.music ? project.assets[project.music.assetId] : null;
+  const soundtrack = project.audioClips.find((clip) => clip.role === "music");
+  const music = soundtrack ? project.assets[soundtrack.assetId] : null;
   return (
     <section
       className="storyboard"
@@ -193,7 +194,7 @@ export const Storyboard = memo(function Storyboard({
           onClick={onMusic}
           disabled={busy}
         >
-          {project.audioClips.length ? (
+          {project.audioClips.length > 1 ? (
             <>
               <span className="music-pattern" aria-hidden="true" />
               <span>{project.audioClips.length} placed sounds</span>
@@ -204,7 +205,7 @@ export const Storyboard = memo(function Storyboard({
               <span className="music-pattern" aria-hidden="true" />
               <span>{music.name.replace(/\.[^.]+$/, "")}</span>
               <small>
-                {project.music?.loop
+                {soundtrack?.followFilm && soundtrack.loop
                   ? "Loops to fit"
                   : formatTime(music.duration)}
               </small>

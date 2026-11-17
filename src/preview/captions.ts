@@ -1,5 +1,5 @@
 import type { CaptionOverlay } from "../../contracts/platform";
-import type { Project, Scene } from "../../contracts/project";
+import type { ExportResolution, Project, Scene } from "../../contracts/project";
 import { frameDimensions } from "../domain/timeline";
 
 const MAX_CAPTION_LINES = 4;
@@ -119,7 +119,7 @@ export function drawCaption(
 /** Native export receives transparent PNG layers, preserving local font rendering exactly. */
 export async function createCaptionOverlays(
   project: Project,
-  resolution: "720p" | "1080p",
+  resolution: ExportResolution,
   signal: AbortSignal,
 ): Promise<CaptionOverlay[]> {
   await loadCaptionFonts();

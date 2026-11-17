@@ -77,14 +77,7 @@ export function Preview({
       player.dispose();
       if (sound.current === player) sound.current = null;
     };
-  }, [
-    project.music,
-    project.audioClips,
-    project.duckMusic,
-    project.scenes,
-    platform,
-    report,
-  ]);
+  }, [project.audioClips, project.duckMusic, project.scenes, platform, report]);
 
   useEffect(() => {
     if (playing) return;
@@ -261,7 +254,6 @@ export function Preview({
     playing,
     timeline,
     project.assets,
-    project.music,
     project.audioClips,
     project.subtitles,
     resources,
