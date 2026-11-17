@@ -8,10 +8,6 @@ declare global {
 test("Spanish settings persist while personal project names and captions remain unchanged", async ({
   page,
 }) => {
-  test.skip(
-    process.platform === "darwin" && !process.env.CORTO_LOCALIZATION_DIAGNOSTIC,
-    "Late settings load quarantined under issue #20; retained in settings diagnosis",
-  );
   await page.goto("/");
   await page
     .getByTestId("media-input")
