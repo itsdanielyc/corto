@@ -68,7 +68,7 @@ Source: the v0.1.2 bug sweep (17 Nov 2026). Role: solo, one branch per batch.
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 26 | Export correctness | Fade-through-black keeps neutral colour; ranges starting inside a transition keep audio and mix music; animated layers neither smear nor clip; preview slide/push/zoom/blur match export, each with a test seen red first | L1/L3/L4/L6 | tested locally on windows-x64 (L0/L1/L3/L4/L6); linux-x64 and macOS not run |
+| 26 | Export correctness | Fade-through-black keeps neutral colour; ranges starting inside a transition keep audio and mix music; animated layers neither smear nor clip; preview slide/push/zoom/blur match export, each with a test seen red first | L1/L3/L4/L6 | done on branch fix/export-correctness; CI 44093131135 green on all four desktop targets; not merged |
 
 Ruling: the preview follows FFmpeg `xfade` for slide, push, zoom and blur rather than export following the preview, because the export is what people keep and the bundled native (6.1) and web (5.1) FFmpeg builds lack cover-style transitions. Cost if wrong: four preview animations change again.
 Ruling: the crossfade audio uses two streaming linear fades mixed together instead of `acrossfade`, which buffers its whole output until both inputs end. Same curve; cost if wrong: a level difference in crossfades, covered by the existing dissolve and audio-output tests.
