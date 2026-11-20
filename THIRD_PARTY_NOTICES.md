@@ -19,6 +19,7 @@ The distribution tag is not a uniform FFmpeg version across operating systems. T
 - Lucide icons: ISC, Lucide contributors.
 - Manrope: SIL Open Font License 1.1, Mikhail Sharanda and contributors.
 - DM Serif Display: SIL Open Font License 1.1, Colophon Foundry.
+- Inter: SIL Open Font License 1.1, Rasmus Andersson and contributors.
 - Fontsource packages retain the upstream font licenses.
 - Browser WebM finalization uses `webm-duration-fix` and its EBML, Buffer and EventEmitter helpers. Upstream MIT/ISC notices are preserved in `public/licenses`; original repository: https://github.com/buynao/webm-duration-fix. No finalization service receives the recording.
 

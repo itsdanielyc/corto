@@ -73,6 +73,22 @@ Source: the v0.1.2 bug sweep (17 Nov 2026). Role: solo, one branch per batch.
 Ruling: the preview follows FFmpeg `xfade` for slide, push, zoom and blur rather than export following the preview, because the export is what people keep and the bundled native (6.1) and web (5.1) FFmpeg builds lack cover-style transitions. Cost if wrong: four preview animations change again.
 Ruling: the crossfade audio uses two streaming linear fades mixed together instead of `acrossfade`, which buffers its whole output until both inputs end. Same curve; cost if wrong: a level difference in crossfades, covered by the existing dissolve and audio-output tests.
 
+## Redesign: a light table and a screen (2026-11-20)
+Source: the approved mockups recorded in DESIGN.md. The user asked for readable text sizes, no reassurance subtext, a separate design branch and a PR. Role: solo, branch `design/redesign`. Framework, platforms, project schema and export paths are unchanged.
+
+| # | Slice | Done when | Levels | Status |
+|---|---|---|---|---|
+| 27 | Design system and shell | Tokens (light, dark, system), Inter, 12px text floor, title bar, library tabs, dark stage, mark play/pause, restyled controls; reassurance copy removed | L0/L4/L5 | open |
+| 28 | Contextual inspector | Scene tools live in the inspector (Picture/Clip/Card, Text, Overlays, Timing); film settings, sound and subtitles open there; no Scene tools modal | L4 | open |
+| 29 | Reel and seams | Transition picker at every seam; storyboard/timeline switch in the reel; sound lane restyled | L4 | open |
+| 30 | On the picture | Text items drag on the preview; start and end framing set on the picture | L1/L4 | open |
+| 31 | Start and finish | Films home view, first launch with drop count, slideshow steps, export sheet with progress in the title bar and a premiere, command palette | L4/L6 | open |
+| 32 | Every platform | Phone layout with bottom tabs and sheets; macOS and Windows title bars; theme setting | L4/L5/L6 | open |
+| 33 | Proof | New ARIA/geometry/pixel baselines from runners, CI on every target, ledger rows, PR | L0-L6 | open |
+
+Ruling: Linux keeps the system window frame instead of a drawn header bar — client-side decorations differ by compositor and cannot be checked from a Windows machine. Cost if wrong: Linux looks less integrated than macOS and Windows.
+Ruling: the theme preference is stored per device in local storage, not in the project or the preferences contract — it is presentation only. Cost if wrong: the choice does not travel with a portable copy, which it should not anyway.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.
