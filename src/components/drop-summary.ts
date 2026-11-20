@@ -24,7 +24,8 @@ export function describeDrop(items: DataTransferItemList, t: Translate) {
   )
     .filter(([key]) => counts[key] > 0)
     .map(
-      ([key, plural]) => `${counts[key]} ${t(counts[key] === 1 ? key : plural)}`,
+      ([key, plural]) =>
+        `${counts[key]} ${t(counts[key] === 1 ? key : plural)}`,
     );
   if (!parts.length) return "";
   const list =

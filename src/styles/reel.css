@@ -112,7 +112,9 @@
 }
 .scene-card.selected:focus-visible::after {
   border-style: solid;
-  box-shadow: 0 0 0 2px var(--table), 0 0 0 4px var(--ink-3);
+  box-shadow:
+    0 0 0 2px var(--table),
+    0 0 0 4px var(--ink-3);
 }
 .scene-thumbnail {
   position: relative;

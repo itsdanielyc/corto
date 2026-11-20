@@ -95,7 +95,12 @@ function WordsLayer({
     snapX: boolean;
     snapY: boolean;
   } | null>(null);
-  const start = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
+  const start = useRef<{
+    pointerX: number;
+    pointerY: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const visible = scene.textItems.filter(
     (item) =>
       item.text &&
@@ -189,7 +194,13 @@ function WordsLayer({
                 x: item.x,
                 y: item.y,
               };
-              setDrag({ id: item.id, x: item.x, y: item.y, snapX: false, snapY: false });
+              setDrag({
+                id: item.id,
+                x: item.x,
+                y: item.y,
+                snapX: false,
+                snapY: false,
+              });
             }}
             onPointerMove={(event) => {
               const next = position(event);
@@ -320,7 +331,10 @@ function FramingLayer({
     scene.fit,
   );
   const poses = cameraEndpoints(scene);
-  const rects = { from: geometry.toRect(poses.from), to: geometry.toRect(poses.to) };
+  const rects = {
+    from: geometry.toRect(poses.from),
+    to: geometry.toRect(poses.to),
+  };
   // Fit the whole photo inside the stage with room for the toolbar.
   const room = { width: area.width - 48, height: area.height - 120 };
   const fit = Math.min(room.width / photoWidth, room.height / photoHeight);
@@ -347,14 +361,26 @@ function FramingLayer({
     });
   };
   const constrain = (rect: FrameRect): FrameRect => {
-    const minimum = geometry.toRect({ focusX: 0.5, focusY: 0.5, zoom: ZOOM_LIMITS.max });
-    const maximum = geometry.toRect({ focusX: 0.5, focusY: 0.5, zoom: ZOOM_LIMITS.min });
+    const minimum = geometry.toRect({
+      focusX: 0.5,
+      focusY: 0.5,
+      zoom: ZOOM_LIMITS.max,
+    });
+    const maximum = geometry.toRect({
+      focusX: 0.5,
+      focusY: 0.5,
+      zoom: ZOOM_LIMITS.min,
+    });
     const width = clamp(rect.width, minimum.width, maximum.width);
     const height = (width / maximum.width) * maximum.height;
     const centreX = rect.left + rect.width / 2;
     const centreY = rect.top + rect.height / 2;
-    const left = width < 1 ? clamp(centreX - width / 2, 0, 1 - width) : (1 - width) / 2;
-    const top = height < 1 ? clamp(centreY - height / 2, 0, 1 - height) : (1 - height) / 2;
+    const left =
+      width < 1 ? clamp(centreX - width / 2, 0, 1 - width) : (1 - width) / 2;
+    const top =
+      height < 1
+        ? clamp(centreY - height / 2, 0, 1 - height)
+        : (1 - height) / 2;
     return { left, top, width, height };
   };
   const pointerRect = (event: ReactPointerEvent): FrameRect | null => {
@@ -373,7 +399,8 @@ function FramingLayer({
       left: state.rect.left - grow,
       top: state.rect.top - (grow * state.rect.height) / state.rect.width,
       width: state.rect.width + grow * 2,
-      height: state.rect.height + (grow * 2 * state.rect.height) / state.rect.width,
+      height:
+        state.rect.height + (grow * 2 * state.rect.height) / state.rect.width,
     });
   };
   const nudge = (event: ReactKeyboardEvent, which: "from" | "to") => {
@@ -482,38 +509,67 @@ function FramingLayer({
           ? (["to", "from"] as const)
           : (["from", "to"] as const)
         ).map((which) => {
-            const rect = which === end && live ? live : rects[which];
-            const active = which === end;
-            return (
-              <div
-                key={which}
-                className={`frame-rect ${active ? "active" : ""} frame-${which}`}
-                style={{
-                  left: `${rect.left * 100}%`,
-                  top: `${rect.top * 100}%`,
-                  width: `${rect.width * 100}%`,
-                  height: `${rect.height * 100}%`,
-                  boxShadow: active
-                    ? `0 0 0 ${Math.max(area.width, area.height) * 2}px rgb(0 0 0 / 58%)`
-                    : undefined,
+          const rect = which === end && live ? live : rects[which];
+          const active = which === end;
+          return (
+            <div
+              key={which}
+              className={`frame-rect ${active ? "active" : ""} frame-${which}`}
+              style={{
+                left: `${rect.left * 100}%`,
+                top: `${rect.top * 100}%`,
+                width: `${rect.width * 100}%`,
+                height: `${rect.height * 100}%`,
+                boxShadow: active
+                  ? `0 0 0 ${Math.max(area.width, area.height) * 2}px rgb(0 0 0 / 58%)`
+                  : undefined,
+              }}
+            >
+              <button
+                type="button"
+                className="frame-body"
+                aria-label={t(
+                  which === "from"
+                    ? "Start frame. Drag or use arrow keys to move, plus and minus to resize."
+                    : "End frame. Drag or use arrow keys to move, plus and minus to resize.",
+                )}
+                tabIndex={active ? 0 : -1}
+                onFocus={() => setEnd(which)}
+                onKeyDown={(event) => nudge(event, which)}
+                onPointerDown={(event) => {
+                  setEnd(which);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  grab.current = {
+                    mode: "move",
+                    pointerX: event.clientX,
+                    pointerY: event.clientY,
+                    rect: rects[which],
+                  };
+                }}
+                onPointerMove={(event) => {
+                  const next = pointerRect(event);
+                  if (next) setLive(next);
+                }}
+                onPointerUp={(event) => {
+                  const next = pointerRect(event);
+                  grab.current = null;
+                  setLive(null);
+                  if (next) commit(which, next);
                 }}
               >
-                <button
-                  type="button"
-                  className="frame-body"
-                  aria-label={t(
-                    which === "from"
-                      ? "Start frame. Drag or use arrow keys to move, plus and minus to resize."
-                      : "End frame. Drag or use arrow keys to move, plus and minus to resize.",
-                  )}
-                  tabIndex={active ? 0 : -1}
-                  onFocus={() => setEnd(which)}
-                  onKeyDown={(event) => nudge(event, which)}
+                <span className="frame-label">
+                  {t(which === "from" ? "Start" : "End")}
+                </span>
+              </button>
+              {active && (
+                <span
+                  className="frame-corner"
+                  aria-hidden="true"
                   onPointerDown={(event) => {
-                    setEnd(which);
+                    event.stopPropagation();
                     event.currentTarget.setPointerCapture(event.pointerId);
                     grab.current = {
-                      mode: "move",
+                      mode: "size",
                       pointerX: event.clientX,
                       pointerY: event.clientY,
                       rect: rects[which],
@@ -529,40 +585,11 @@ function FramingLayer({
                     setLive(null);
                     if (next) commit(which, next);
                   }}
-                >
-                  <span className="frame-label">
-                    {t(which === "from" ? "Start" : "End")}
-                  </span>
-                </button>
-                {active && (
-                  <span
-                    className="frame-corner"
-                    aria-hidden="true"
-                    onPointerDown={(event) => {
-                      event.stopPropagation();
-                      event.currentTarget.setPointerCapture(event.pointerId);
-                      grab.current = {
-                        mode: "size",
-                        pointerX: event.clientX,
-                        pointerY: event.clientY,
-                        rect: rects[which],
-                      };
-                    }}
-                    onPointerMove={(event) => {
-                      const next = pointerRect(event);
-                      if (next) setLive(next);
-                    }}
-                    onPointerUp={(event) => {
-                      const next = pointerRect(event);
-                      grab.current = null;
-                      setLive(null);
-                      if (next) commit(which, next);
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
       <p className="framing-hint">
         {t(
@@ -631,10 +658,7 @@ export function StageOverlay({
   const asset = scene.assetId ? project.assets[scene.assetId] : null;
   const showFraming = framing && asset?.kind === "image" && area;
   return (
-    <div
-      ref={root}
-      className={`stage-overlay ${showFraming ? "framing" : ""}`}
-    >
+    <div ref={root} className={`stage-overlay ${showFraming ? "framing" : ""}`}>
       {showFraming ? (
         <FramingLayer
           project={project}

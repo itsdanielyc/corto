@@ -79,9 +79,7 @@ export function EditorDialogs({
           onClose={onClose}
           className="confirm-dialog"
         >
-          <p className="modal-introduction">
-            {t("This film stays in Films.")}
-          </p>
+          <p className="modal-introduction">{t("This film stays in Films.")}</p>
           <div className="modal-actions">
             <button className="button secondary" onClick={onClose}>
               {t("Cancel")}

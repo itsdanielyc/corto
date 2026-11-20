@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { settled } from "../helpers/settled";
 import { test, expect } from "@playwright/test";
 
 test("the editor has no detected WCAG A/AA violations and stays usable on a narrow screen", async ({
@@ -7,9 +8,8 @@ test("the editor has no detected WCAG A/AA violations and stays usable on a narr
   await page.goto("/");
   await page.getByRole("button", { name: "Try an example" }).click();
   await expect(page.getByTestId("scene-card")).toHaveCount(4);
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  await settled(page);
   const desktop = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -27,6 +27,7 @@ test("the editor has no detected WCAG A/AA violations and stays usable on a narr
   ).toBe(true);
   expect(await page.evaluate(() => scrollY)).toBe(0);
   await page.getByRole("button", { name: "Export movie" }).click();
+  await settled(page);
   const dialog = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -48,9 +49,10 @@ test("Space plays and pauses the actual preview clock", async ({ page }) => {
     .getByTestId("media-input")
     .setInputFiles("tests/fixtures/motion.mp4");
   await expect(page.getByTestId("preview-status")).toHaveText("Ready");
-  await page
-    .getByRole("heading", { name: "Untitled film", exact: true })
-    .click();
+  // Move focus off any control so Space reaches the editor shortcut.
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
   const initial = Number(
     await page.getByRole("slider", { name: "Playhead" }).inputValue(),
   );

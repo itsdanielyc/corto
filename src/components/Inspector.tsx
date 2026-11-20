@@ -175,11 +175,7 @@ function WordsSection({
           </button>
         ))}
       </div>
-      <div
-        className="segmented"
-        role="group"
-        aria-label={t("Title position")}
-      >
+      <div className="segmented" role="group" aria-label={t("Title position")}>
         <button
           type="button"
           aria-pressed={scene.captionPosition === "center"}
@@ -227,11 +223,7 @@ function SceneHeading({
 }) {
   const t = useT();
   const kind =
-    asset?.kind === "video"
-      ? t("Clip")
-      : asset
-        ? t("Photo")
-        : t("Title card");
+    asset?.kind === "video" ? t("Clip") : asset ? t("Photo") : t("Title card");
   return (
     <div className="inspector-heading">
       <span
@@ -284,12 +276,9 @@ function SceneHeading({
 }
 
 /** Everything about one scene, grouped by what you are changing. */
-function SceneInspector(
-  properties: InspectorProperties & { scene: Scene },
-) {
+function SceneInspector(properties: InspectorProperties & { scene: Scene }) {
   const t = useT();
-  const { project, scene, asset, platform, onChange, tab, report } =
-    properties;
+  const { project, scene, asset, platform, onChange, tab, report } = properties;
   const poster = asset
     ? (properties.resources[asset.id]?.poster ?? undefined)
     : undefined;

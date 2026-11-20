@@ -65,7 +65,11 @@ export interface MovieResult {
 export type WindowFrame = "mac" | "windows" | "system";
 /** The appearance the person chose; "system" follows the operating system. */
 export type ThemeChoice = "system" | "light" | "dark";
-export const THEME_CHOICES: readonly ThemeChoice[] = ["system", "light", "dark"];
+export const THEME_CHOICES: readonly ThemeChoice[] = [
+  "system",
+  "light",
+  "dark",
+];
 
 /** Narrow, typed preload API. The renderer never receives raw IPC or filesystem primitives. */
 export interface NativeBridge extends ProjectRepository, CreatorServices {
@@ -84,10 +88,16 @@ export interface NativeBridge extends ProjectRepository, CreatorServices {
   cancelMedia?(): Promise<void>;
   onExportProgress(listener: (progress: ExportProgress) => void): () => void;
   revealExport(): Promise<void>;
-  beginRenderAssets?(project: Project, resolution: ExportResolution): Promise<string>;
+  beginRenderAssets?(
+    project: Project,
+    resolution: ExportResolution,
+  ): Promise<string>;
   stageRenderAsset?(token: string, raster: RenderRaster): Promise<void>;
   releaseRenderAssets?(token: string): Promise<void>;
-  chooseExportDestination?(project: Project, sample?: boolean): Promise<string | null>;
+  chooseExportDestination?(
+    project: Project,
+    sample?: boolean,
+  ): Promise<string | null>;
   releaseExportDestination?(token: string): Promise<void>;
 }
 

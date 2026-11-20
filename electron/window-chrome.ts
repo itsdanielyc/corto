@@ -32,7 +32,8 @@ export function windowFrame(
   return "system";
 }
 
-const chrome = () => (nativeTheme.shouldUseDarkColors ? CHROME.dark : CHROME.light);
+const chrome = () =>
+  nativeTheme.shouldUseDarkColors ? CHROME.dark : CHROME.light;
 
 /** Constructor options for the frame this platform uses. */
 export function frameOptions(

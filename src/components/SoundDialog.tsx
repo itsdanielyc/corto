@@ -140,9 +140,7 @@ export function SoundDialog({
       className="sound-dialog"
     >
       <p className="modal-introduction">
-        {t(
-          "Times are in seconds. Sound past the end of the film is left out.",
-        )}
+        {t("Times are in seconds. Sound past the end of the film is left out.")}
       </p>
       <fieldset disabled={busy} className="sound-controls">
         <SoundPack

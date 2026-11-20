@@ -20,7 +20,8 @@ function roveRadio<T extends string>(
   if (!(event.key in step)) return;
   event.preventDefault();
   const index = values.indexOf(value);
-  const next = values[(index + step[event.key] + values.length) % values.length];
+  const next =
+    values[(index + step[event.key] + values.length) % values.length];
   onChange(next);
   event.currentTarget
     .querySelector<HTMLElement>(`[data-value="${next}"]`)
@@ -131,7 +132,9 @@ export function TransitionGlyph({
         <svg
           {...common}
           style={
-            transition === "wipe-right" ? { transform: "scaleX(-1)" } : undefined
+            transition === "wipe-right"
+              ? { transform: "scaleX(-1)" }
+              : undefined
           }
         >
           <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
@@ -266,7 +269,9 @@ export function TransitionTiles({
       onChange={onChange}
       className="transition-tiles"
       columns={4}
-      art={(transition) => <TransitionGlyph transition={transition} size={20} />}
+      art={(transition) => (
+        <TransitionGlyph transition={transition} size={20} />
+      )}
     />
   );
 }

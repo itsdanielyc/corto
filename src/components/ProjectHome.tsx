@@ -152,7 +152,10 @@ export function ProjectHome({
               <strong>{t("New film")}</strong>
               <small>{t("Start empty")}</small>
             </button>
-            <button className="start-card start-slideshow" onClick={onSlideshow}>
+            <button
+              className="start-card start-slideshow"
+              onClick={onSlideshow}
+            >
               <span className="start-art">
                 <Sparkles size={20} strokeWidth={1.6} aria-hidden="true" />
               </span>

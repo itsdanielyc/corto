@@ -55,8 +55,7 @@ export function useEditorCommands({
 }): Command[] {
   const empty = !project.scenes.length;
   const photo =
-    !!selected?.assetId &&
-    project.assets[selected.assetId]?.kind === "image";
+    !!selected?.assetId && project.assets[selected.assetId]?.kind === "image";
   return useMemo(
     () => [
       {
@@ -247,15 +246,6 @@ export function useEditorCommands({
         run: actions.about,
       },
     ],
-    [
-      actions,
-      playing,
-      empty,
-      selected,
-      photo,
-      canUndo,
-      canRedo,
-      timelineMode,
-    ],
+    [actions, playing, empty, selected, photo, canUndo, canRedo, timelineMode],
   );
 }

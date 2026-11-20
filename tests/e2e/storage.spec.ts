@@ -24,9 +24,7 @@ test("native project commands save and reopen original media through the sandbox
   });
   try {
     const page = await app.firstWindow();
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     const asset = {
       id: "family-1",
       name: "Family.png",
@@ -106,9 +104,7 @@ test("opens an OS-supplied portable path at cold launch without losing it to ini
       "Opened from desktop",
     );
     await expect(page.getByTestId("scene-card")).toHaveCount(1);
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     const saved = await page.evaluate(() =>
       window.electronBridge!.loadProject(),
     );

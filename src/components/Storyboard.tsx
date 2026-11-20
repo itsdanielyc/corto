@@ -141,7 +141,10 @@ function Seam({
   }, [open, onClose]);
   const label = `${t("Transition after scene ")}${index + 1}`;
   return (
-    <span className={`seam ${open ? "open" : ""}`} data-transition={scene.transition}>
+    <span
+      className={`seam ${open ? "open" : ""}`}
+      data-transition={scene.transition}
+    >
       <button
         ref={trigger}
         type="button"
@@ -483,7 +486,10 @@ export const Storyboard = memo(function Storyboard({
                     onClose={() => setOpenSeam(null)}
                     onChange={(changes) => onSceneChange(scene.id, changes)}
                     onAll={() =>
-                      onAllTransitions(scene.transition, scene.transitionSeconds)
+                      onAllTransitions(
+                        scene.transition,
+                        scene.transitionSeconds,
+                      )
                     }
                   />
                 )}

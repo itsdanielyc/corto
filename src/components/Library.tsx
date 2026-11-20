@@ -388,7 +388,9 @@ export const Library = memo(function Library({
                   <input
                     type="search"
                     aria-label={t("Search media")}
-                    placeholder={t(mode === "music" ? "Search music" : "Search")}
+                    placeholder={t(
+                      mode === "music" ? "Search music" : "Search",
+                    )}
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                   />

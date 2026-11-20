@@ -58,9 +58,7 @@ export function SubtitlesDialog({
       className="subtitles-dialog"
     >
       <p className="modal-introduction">
-        {t(
-          "Type captions or import an SRT file.",
-        )}
+        {t("Type captions or import an SRT file.")}
       </p>
       <AutomaticCaptions
         project={project}

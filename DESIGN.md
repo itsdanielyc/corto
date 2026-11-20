@@ -19,7 +19,7 @@ Defined once in `src/styles/tokens.css`; components never hard-code colours.
 | `--well` | #F1F1F3 | #1F1F23 | inputs, segmented controls |
 | `--table` | #ECECEE | #0A0A0B | the reel |
 | `--line` / `--line-2` | #E4E4E7 / #D4D4D8 | #26262A / #38383E | dividers / control borders |
-| `--ink` / `--ink-2` / `--ink-3` | #0F0F10 / #3F3F46 / #6B6B74 | #F4F4F5 / #BCBCC3 / #8E8E97 | text levels; `--ink` is also the accent |
+| `--ink` / `--ink-2` / `--ink-3` | #0F0F10 / #3F3F46 / #64646C | #F4F4F5 / #BCBCC3 / #8E8E97 | text levels; `--ink` is also the accent |
 | `--stage` | #0C0C0D | #000000 | around the picture |
 | `--record` | #E5484D | #E5484D | recording only |
 

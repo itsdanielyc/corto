@@ -254,9 +254,7 @@ export function ExportDialog({
           <p className="premiere-meta">
             <span>{result.fileName}</span>
             <span>
-              {result.location === "file"
-                ? t("Saved")
-                : t("Download started")}
+              {result.location === "file" ? t("Saved") : t("Download started")}
             </span>
           </p>
           <div className="premiere-actions">

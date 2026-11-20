@@ -230,8 +230,9 @@
   width: 72px;
   max-height: 72px;
 }
+/* At thumbnail size a title card reads as its colour; its words would be too small. */
 .export-summary .film-poster span {
-  font-size: 9px;
+  display: none;
 }
 .export-summary > div {
   display: grid;
@@ -244,7 +245,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.export-summary span {
+.export-summary > div > span {
   color: var(--ink-3);
   font-size: var(--fs-s);
 }
@@ -283,10 +284,15 @@
   box-shadow: inset 0 0 0 2px var(--ink);
   color: var(--ink);
 }
+/* The native radio stays clickable in an empty corner; the whole tile is its label. */
 .resolution-option input {
   position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
 }
 .resolution-option:has(input:focus-visible) {
   outline: 2px solid var(--ink);
@@ -617,29 +623,172 @@ progress::-moz-progress-bar {
 .slideshow-layout .tool-section:first-child {
   border-top: 0;
 }
+/* Slideshow: three steps. */
+.stepper {
+  display: flex;
+  gap: 6px;
+  margin: 0 24px 18px;
+  padding: 0;
+  list-style: none;
+}
+.stepper li {
+  flex: 1;
+}
+.stepper button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0 10px;
+  border-bottom: 2px solid var(--line);
+  color: var(--ink-3);
+  font-size: var(--fs-m);
+  font-weight: 560;
+  transition:
+    color var(--t-base) var(--ease),
+    border-color var(--t-base) var(--ease);
+}
+.stepper button[aria-current="step"] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.stepper button[data-done="true"] {
+  border-color: var(--ink-3);
+  color: var(--ink-2);
+}
+.step-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--well);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.stepper button[aria-current="step"] .step-number {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.slideshow-step {
+  display: grid;
+  gap: 14px;
+  min-height: 300px;
+  align-content: start;
+  animation: rise-in var(--t-base) var(--ease);
+}
+.slideshow-step > .tool-section {
+  padding-top: 4px;
+  border-top: 0;
+}
+.slideshow-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+  font-size: var(--fs-s);
+}
+.slideshow-selection-bar > span {
+  margin-right: auto;
+}
 .slideshow-media {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 6px;
-  max-height: 240px;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  max-height: 260px;
   overflow: auto;
+  padding: 2px;
 }
 .slideshow-media label {
   position: relative;
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
   font-size: var(--fs-xs);
 }
-.slideshow-media img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
+.slideshow-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
   border-radius: var(--radius-s);
+  background: var(--well);
+  opacity: 0.45;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.slideshow-media label.chosen .slideshow-thumb {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--ink);
+}
+.slideshow-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.slideshow-name {
+  overflow: hidden;
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.slideshow-media small {
+  color: var(--ink-3);
 }
 .slideshow-media input {
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  accent-color: var(--ink);
+}
+.theme-tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.theme-tile {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: var(--fs-s);
+  font-weight: 540;
+  text-align: left;
+}
+.theme-art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  padding: 8px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  color: #fff;
+  text-align: center;
+  font-size: 15px;
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+.theme-art.caption-minimal {
+  font-size: var(--fs-xs);
+}
+.theme-art[data-light="true"] {
+  color: #151517;
+}
+.theme-tile[aria-checked="true"] {
+  color: var(--ink);
+}
+.theme-tile[aria-checked="true"] .theme-art {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3.5px var(--ink);
+}
+.template-captions {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+}
+.slideshow-summary {
+  font-size: var(--fs-l);
+  font-weight: 600;
 }
 .slideshow-layout ol {
   margin: 0;

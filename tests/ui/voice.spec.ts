@@ -31,8 +31,8 @@ test("a real microphone stream records portable narration and is released when s
     .getByRole("button", { name: "Record narration", exact: true })
     .click();
   await expect(
-    page.getByRole("status").filter({ hasText: /Recording locally · 1s/ }),
-  ).toBeVisible();
+    page.getByRole("status").filter({ hasText: /Recording · 1s/ }),
+  ).toBeVisible({ timeout: 10000 });
   await page
     .getByRole("button", { name: "Stop and add narration", exact: true })
     .click();

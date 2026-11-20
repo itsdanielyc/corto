@@ -27,11 +27,7 @@ export function FitChoice({
 }: Pick<PictureProperties, "scene" | "onChange">) {
   const t = useT();
   return (
-    <div
-      className="segmented"
-      role="group"
-      aria-label={t("Picture framing")}
-    >
+    <div className="segmented" role="group" aria-label={t("Picture framing")}>
       <button
         type="button"
         aria-pressed={scene.fit === "cover"}

@@ -210,6 +210,9 @@
   .home-starts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .theme-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .preset-grid,
   .slideshow-layout,
   .settings-fields,

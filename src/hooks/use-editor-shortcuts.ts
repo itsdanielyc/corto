@@ -1,8 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import {
-  PANEL_DIALOGS,
-  type EditorDialog,
-} from "../components/EditorDialogs";
+import { PANEL_DIALOGS, type EditorDialog } from "../components/EditorDialogs";
 
 interface EditorShortcutsProperties {
   state: RefObject<{ busy: string | null; dialog: EditorDialog }>;

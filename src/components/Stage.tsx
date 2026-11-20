@@ -60,7 +60,11 @@ function Scrubber({
     const timeline = buildTimeline(project.scenes);
     return timeline.map((entry, index) => {
       const end = timeline[index + 1]?.start ?? total;
-      return { id: entry.scene.id, start: entry.start, span: end - entry.start };
+      return {
+        id: entry.scene.id,
+        start: entry.start,
+        span: end - entry.start,
+      };
     });
   }, [project.scenes, total]);
   const progress = total ? Math.min(1, time / total) : 0;
@@ -216,8 +220,9 @@ export function Stage(properties: StageProperties) {
               <span className="sr-only">{t("Aspect ratio")}</span>
               {/* The closed control shows only the ratio; the menu names each shape. */}
               <span className="aspect-value" aria-hidden="true">
-                {RATIO_CHOICES.find(([value]) => value === project.ratio)?.[1]
-                  .split(" · ")[0] ?? project.ratio}
+                {RATIO_CHOICES.find(
+                  ([value]) => value === project.ratio,
+                )?.[1].split(" · ")[0] ?? project.ratio}
               </span>
               <select
                 aria-label={t("Aspect ratio")}

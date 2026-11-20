@@ -240,7 +240,8 @@ export function App() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [busy]);
-  const modal = dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
+  const modal =
+    dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
   const bulk = selectedIds.size > 1;
   const panel = useMemo(() => {
     if (dialog === "sound")
@@ -696,15 +697,13 @@ export function App() {
         onCancel={(id) => exports.queue.cancel(id)}
       />
       {palette && (
-        <CommandPalette
-          commands={commands}
-          onClose={() => setPalette(false)}
-        />
+        <CommandPalette commands={commands} onClose={() => setPalette(false)} />
       )}
       {dialog === "slideshow" && (
         <SlideshowDialog
           project={project}
           platform={platform}
+          resources={resources}
           onCreate={(draft) => {
             editor.replace(draft);
             setTime(0.6);
