@@ -28,6 +28,15 @@
 - Browser/native journeys: beginner slideshow, crop/motion + transition, timed credits/PiP, bulk editing, project recovery/file open, optional local features and background export while editing.
 - Capability-dependent hardware and physical devices are named honestly. Model tests use pinned open models and synthetic/redistributable fixtures. No competitor assertion substitutes for a behaviour check.
 
+## Redesigned interface (slices 27–33)
+Each line names the test that carries it; all enter through the shipped editor or the built app.
+- Transition picked at a seam and applied to every join, command palette from the keyboard, start/end framing and words edited on the picture, a pressed or cancelled framing drag changing nothing, appearance kept across reload: `tests/ui/redesign.spec.ts` (L4).
+- Framing rectangles equal what the renderer shows and stay inside the schema's zoom range, the drop summary, the appearance guard and the frame each OS gets: `tests/unit/redesign.test.ts` (L1).
+- No scene tool or side panel (sound, subtitles, bulk edits) sticks out of, is clipped by or scrolls sideways in its column at 1024 and 1440 px: `tests/ui/panel-layout.spec.ts` (L5, measured rather than compared to a baseline).
+- Narration counts down before recording, cancelling the countdown releases the microphone and records nothing: `tests/ui/voice.spec.ts` (L4); narration through the real shell: `tests/e2e/essentials.spec.ts` (L6).
+- The appearance channel refuses anything but the three choices and the preload reports the frame the main process built: `tests/e2e/app.spec.ts` (L6).
+- The production web build offline: `tests/web/offline.spec.ts`; the experimental WebM capture offline: `tests/advisory/offline-webm.spec.ts` (advisory, weekly).
+
 ## Visual evidence
 ARIA structure and geometry (8 px tolerance) share baselines across OSes. Pixel baselines are per-OS, 0.002 maximum difference ratio, captured only by the snapshots workflow and reviewed before merge. Real-shell screenshots form a contact sheet. First run's missing baseline is an expected red, never a suppressed pass.
 

@@ -9,9 +9,9 @@ import {
   type BrowserWindowConstructorOptions,
 } from "electron";
 import {
+  isThemeChoice,
   nativeChannels,
-  THEME_CHOICES,
-  type ThemeChoice,
+  windowFrameFor,
   type WindowFrame,
 } from "../contracts/platform";
 import { assertMainSender } from "./project-ipc";
@@ -24,20 +24,12 @@ const CHROME = {
   dark: { color: "#0e0e10", symbolColor: "#bcbcc3", window: "#0e0e10" },
 } as const;
 
-export function windowFrame(
-  platform: NodeJS.Platform = process.platform,
-): WindowFrame {
-  if (platform === "darwin") return "mac";
-  if (platform === "win32") return "windows";
-  return "system";
-}
-
 const chrome = () =>
   nativeTheme.shouldUseDarkColors ? CHROME.dark : CHROME.light;
 
 /** Constructor options for the frame this platform uses. */
 export function frameOptions(
-  frame: WindowFrame = windowFrame(),
+  frame: WindowFrame = windowFrameFor(process.platform),
 ): BrowserWindowConstructorOptions {
   const colours = chrome();
   const base = { backgroundColor: colours.window };
@@ -64,16 +56,17 @@ export function frameOptions(
 export function registerWindowChrome(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(nativeChannels.setNativeTheme, (event, theme: unknown) => {
     assertMainSender(event, getWindow());
-    if (!THEME_CHOICES.includes(theme as ThemeChoice))
-      throw new Error("Unknown appearance");
-    nativeTheme.themeSource = theme as ThemeChoice;
+    // The renderer is not trusted: refuse anything but a known choice rather
+    // than hand an arbitrary value to Electron.
+    if (!isThemeChoice(theme)) throw new Error("Unknown appearance");
+    nativeTheme.themeSource = theme;
   });
   nativeTheme.on("updated", () => {
     const window = getWindow();
     if (!window || window.isDestroyed()) return;
     const colours = chrome();
     window.setBackgroundColor(colours.window);
-    if (windowFrame() === "windows")
+    if (windowFrameFor(process.platform) === "windows")
       window.setTitleBarOverlay({
         color: colours.color,
         symbolColor: colours.symbolColor,

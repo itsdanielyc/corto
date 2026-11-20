@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { frameGeometry, ZOOM_LIMITS } from "../../src/domain/framing";
 import { mediaPlacement } from "../../src/domain/composition";
 import { describeDrop } from "../../src/components/drop-summary";
+import {
+  isThemeChoice,
+  THEME_CHOICES,
+  windowFrameFor,
+} from "../../contracts/platform";
+import { transformSchema } from "../../contracts/creative";
 
 const transform = {
   rotation: 0 as const,
@@ -86,6 +92,47 @@ describe("framing on the picture", () => {
       height: 0.001,
     });
     expect(geometry.toPose(tiny).zoom).toBeCloseTo(ZOOM_LIMITS.max, 6);
+  });
+
+  it("allows exactly the zoom range the project schema accepts", () => {
+    // A frame dragged to either limit must still save and reopen.
+    const parses = (zoom: number) =>
+      transformSchema.safeParse({ ...transform, zoom, endZoom: zoom }).success;
+    expect(parses(ZOOM_LIMITS.min)).toBe(true);
+    expect(parses(ZOOM_LIMITS.max)).toBe(true);
+    expect(parses(ZOOM_LIMITS.min - 0.01)).toBe(false);
+    expect(parses(ZOOM_LIMITS.max + 0.01)).toBe(false);
+  });
+});
+
+describe("appearance across the native boundary", () => {
+  it("accepts the three choices and nothing that merely resembles one", () => {
+    for (const choice of THEME_CHOICES)
+      expect(isThemeChoice(choice)).toBe(true);
+    for (const malformed of [
+      null,
+      undefined,
+      "",
+      "Dark",
+      "dark ",
+      "auto",
+      0,
+      1,
+      true,
+      ["dark"],
+      { theme: "dark" },
+      new Date(0),
+      new String("dark"),
+    ])
+      expect(isThemeChoice(malformed), String(malformed)).toBe(false);
+  });
+
+  it("gives each operating system the frame its window is built with", () => {
+    expect(windowFrameFor("darwin")).toBe("mac");
+    expect(windowFrameFor("win32")).toBe("windows");
+    expect(windowFrameFor("linux")).toBe("system");
+    // Anything unrecognised keeps the system frame rather than hiding it.
+    expect(windowFrameFor("freebsd")).toBe("system");
   });
 });
 

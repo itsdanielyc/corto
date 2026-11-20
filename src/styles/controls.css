@@ -411,8 +411,11 @@ input[type="radio"] {
 }
 
 /* Sections inside panels and dialogs. */
+/* One column that may shrink: without minmax(0, …) a grid track grows to its
+   widest control and pushes a whole section out of a narrow panel. */
 .tool-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 16px 0;
   border-top: 1px solid var(--line);
@@ -430,6 +433,7 @@ input[type="radio"] {
 }
 .tool-fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .tool-button-row,

@@ -80,6 +80,50 @@ test("start and end framing set on the picture become a custom camera move", asy
   ).toHaveAttribute("aria-checked", "true");
 });
 
+test("picking a frame or having a drag cancelled leaves the camera move as it was", async ({
+  page,
+}) => {
+  await example(page);
+  await page
+    .getByRole("button", { name: "Set start and end on the picture" })
+    .click();
+  const start = page.getByRole("button", { name: /^Start frame\./ });
+  const yourFraming = page
+    .getByRole("radiogroup", { name: "Motion", exact: true })
+    .getByRole("radio", { name: "Your framing", exact: true });
+  // A press without movement picks the frame; the motion preset stays.
+  await start.click();
+  await expect(start).toBeFocused();
+  await expect(yourFraming).toHaveAttribute("aria-checked", "false");
+
+  // Zoom in so the frame has room to move, then start dragging it.
+  await page.keyboard.press("+");
+  await page.keyboard.press("+");
+  await expect(yourFraming).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const saved = (await savedBrowserProject(page)).scenes[0].transform;
+  const before = (await start.boundingBox())!;
+  const centre = {
+    x: before.x + before.width / 2,
+    y: before.y + before.height / 2,
+  };
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x - 12, centre.y - 8, { steps: 3 });
+  await expect
+    .poll(async () => (await start.boundingBox())!.x)
+    .toBeLessThan(before.x - 4);
+  // A touch scroll, a system gesture or a lost capture ends a drag like this.
+  await start.dispatchEvent("pointercancel");
+  await page.mouse.move(centre.x - 30, centre.y - 20, { steps: 3 });
+  await page.mouse.up();
+  const after = (await start.boundingBox())!;
+  expect(after.x).toBeCloseTo(before.x, 1);
+  expect(after.y).toBeCloseTo(before.y, 1);
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  expect((await savedBrowserProject(page)).scenes[0].transform).toEqual(saved);
+});
+
 test("words are moved where they appear on the picture, by keyboard as well as by dragging", async ({
   page,
 }) => {

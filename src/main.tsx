@@ -6,7 +6,7 @@ import "@fontsource-variable/nunito";
 import "@fontsource-variable/jetbrains-mono";
 import { App } from "./App";
 import { LocaleProvider } from "./i18n/locale";
-import { applyTheme, loadTheme } from "./components/theme";
+import { applyTheme, loadTheme } from "./platform/appearance";
 import "./editor.css";
 
 applyTheme(loadTheme());

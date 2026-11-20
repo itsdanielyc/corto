@@ -461,10 +461,13 @@
   text-overflow: ellipsis;
 }
 .waveform-status {
-  position: absolute;
-  right: 8px;
   color: var(--ink-3);
   font-size: var(--fs-xs);
+}
+/* Pinned to the block's end in the reel only; in the sound panel it flows with its row. */
+.sound-block .waveform-status {
+  position: absolute;
+  right: 8px;
 }
 
 /* The sound lane under the storyboard. */

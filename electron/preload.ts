@@ -2,18 +2,12 @@
 // and nothing else: no ipcRenderer, no Node.
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { channels, type ElectronBridge } from "./bridge";
-import { nativeChannels } from "../contracts/platform";
+import { nativeChannels, windowFrameFor } from "../contracts/platform";
 
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
 const bridge: ElectronBridge = {
-  // Same mapping as electron/window-chrome.ts; the sandboxed preload cannot import Electron main APIs.
-  windowFrame:
-    process.platform === "darwin"
-      ? "mac"
-      : process.platform === "win32"
-        ? "windows"
-        : "system",
+  windowFrame: windowFrameFor(process.platform),
   setNativeTheme: (theme) =>
     ipcRenderer.invoke(nativeChannels.setNativeTheme, theme),
   platformInfo: () => ipcRenderer.invoke(channels.platformInfo),

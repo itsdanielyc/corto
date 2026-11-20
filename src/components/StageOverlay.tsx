@@ -59,8 +59,8 @@ function useRelativeBox(
 /* ---------------------------------------------------------------- words */
 
 /** Text-item boxes in frame fractions, laid out exactly as the renderer does. */
-function textBoxes(project: Project, items: readonly TextItem[]) {
-  const { width, height } = frameDimensions(project.ratio, "720p");
+function textBoxes(ratio: Project["ratio"], items: readonly TextItem[]) {
+  const { width, height } = frameDimensions(ratio, "720p");
   const context = document.createElement("canvas").getContext("2d");
   if (!context) return [];
   return items.map((item) => {
@@ -107,11 +107,13 @@ function WordsLayer({
       localTime >= item.start &&
       localTime < (item.end ?? scene.duration),
   );
+  // Measuring text is the costly part, and scrubbing re-renders this layer on
+  // every frame with a new array. The serialised items are the dependency, so
+  // text is measured again only when the visible words or the shape change.
+  const visibleItems = JSON.stringify(visible);
   const boxes = useMemo(
-    () => textBoxes(project, visible),
-    // Text geometry depends only on the visible items and the frame shape.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [project.ratio, JSON.stringify(visible)],
+    () => textBoxes(project.ratio, JSON.parse(visibleItems) as TextItem[]),
+    [project.ratio, visibleItems],
   );
   const move = (id: string, x: number, y: number) =>
     onChange({
@@ -315,9 +317,13 @@ function FramingLayer({
     });
   };
   const constrain = geometry.constrain;
+  /** The frame under the pointer, or null when no drag is under way or it has not moved yet. */
   const pointerRect = (event: ReactPointerEvent): FrameRect | null => {
     const state = grab.current;
     if (!state) return null;
+    // A press without movement only picks the frame; it must not rewrite the camera move.
+    if (event.clientX === state.pointerX && event.clientY === state.pointerY)
+      return null;
     const dx = (event.clientX - state.pointerX) / photo.width;
     const dy = (event.clientY - state.pointerY) / photo.height;
     if (state.mode === "move")
@@ -335,6 +341,36 @@ function FramingLayer({
         state.rect.height + (grow * 2 * state.rect.height) / state.rect.width,
     });
   };
+  /** Pointer handlers for moving a frame (its body) or resizing it (its corner). */
+  const dragHandlers = (which: "from" | "to", mode: "move" | "size") => ({
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      if (mode === "move") setEnd(which);
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      grab.current = {
+        mode,
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        rect: rects[which],
+      };
+    },
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+      const next = pointerRect(event);
+      if (next) setLive(next);
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+      const next = pointerRect(event);
+      grab.current = null;
+      setLive(null);
+      if (next) commit(which, next);
+    },
+    // The system can take a gesture away (a touch scroll, a lost capture).
+    // The frame then returns to where it was and nothing is saved.
+    onPointerCancel: () => {
+      grab.current = null;
+      setLive(null);
+    },
+  });
   const nudge = (event: ReactKeyboardEvent, which: "from" | "to") => {
     const rect = rects[which];
     const step = event.shiftKey ? NUDGE_LARGE : NUDGE;
@@ -468,26 +504,7 @@ function FramingLayer({
                 tabIndex={active ? 0 : -1}
                 onFocus={() => setEnd(which)}
                 onKeyDown={(event) => nudge(event, which)}
-                onPointerDown={(event) => {
-                  setEnd(which);
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  grab.current = {
-                    mode: "move",
-                    pointerX: event.clientX,
-                    pointerY: event.clientY,
-                    rect: rects[which],
-                  };
-                }}
-                onPointerMove={(event) => {
-                  const next = pointerRect(event);
-                  if (next) setLive(next);
-                }}
-                onPointerUp={(event) => {
-                  const next = pointerRect(event);
-                  grab.current = null;
-                  setLive(null);
-                  if (next) commit(which, next);
-                }}
+                {...dragHandlers(which, "move")}
               >
                 <span className="frame-label">
                   {t(which === "from" ? "Start" : "End")}
@@ -497,26 +514,7 @@ function FramingLayer({
                 <span
                   className="frame-corner"
                   aria-hidden="true"
-                  onPointerDown={(event) => {
-                    event.stopPropagation();
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                    grab.current = {
-                      mode: "size",
-                      pointerX: event.clientX,
-                      pointerY: event.clientY,
-                      rect: rects[which],
-                    };
-                  }}
-                  onPointerMove={(event) => {
-                    const next = pointerRect(event);
-                    if (next) setLive(next);
-                  }}
-                  onPointerUp={(event) => {
-                    const next = pointerRect(event);
-                    grab.current = null;
-                    setLive(null);
-                    if (next) commit(which, next);
-                  }}
+                  {...dragHandlers(which, "size")}
                 />
               )}
             </div>

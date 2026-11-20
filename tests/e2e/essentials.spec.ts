@@ -141,9 +141,11 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     await page
       .getByRole("button", { name: "Record narration", exact: true })
       .click();
+    // The recorder counts 3-2-1 first, so one recorded second is about four
+    // seconds away: allow for it rather than racing the default five.
     await expect(
       page.getByRole("status").filter({ hasText: /Recording · 1s/ }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 8000 });
     await page
       .getByRole("button", { name: "Stop and add narration", exact: true })
       .click();

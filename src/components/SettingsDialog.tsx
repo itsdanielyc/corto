@@ -7,7 +7,7 @@ import type { CortoPlatform } from "../platform/types";
 import { Modal } from "./primitives";
 import { Choice, Colour, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { TRANSITION_CHOICES } from "./tools/choice-lists";
-import { loadTheme, saveTheme } from "./theme";
+import { loadTheme, saveTheme } from "../platform/appearance";
 export function SettingsDialog({
   project,
   platform,
@@ -87,7 +87,10 @@ export function SettingsDialog({
             onChange={(choice) => {
               setTheme(choice);
               saveTheme(choice);
-              void platform.setNativeTheme?.(choice);
+              // The page has already changed; say so if the window frame could not follow.
+              void platform
+                .setNativeTheme?.(choice)
+                .catch((failure) => setError(String(failure)));
             }}
           />
         </ToolSection>

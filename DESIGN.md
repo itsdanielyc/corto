@@ -46,7 +46,7 @@ Easing `--ease` cubic-bezier(.22,1,.36,1) for arrivals, `--ease-io` (.65,0,.35,1
 - **Title bar:** mark (to Films), film name, save state, undo/redo, command search (Ctrl/⌘ K), more menu, Export. Draggable; macOS traffic lights inset, Windows caption buttons overlaid; Linux keeps the system frame.
 - **Library (left):** Media, Music and Text tabs; import, search, sort, tiles.
 - **Stage (centre):** the picture on `--stage`, time, previous / play / next, shape and full screen, then the mark-thumb scrubber.
-- **Inspector (right):** follows the selection. A scene shows Picture (Clip / Card), Text, Overlays and Timing tabs; nothing selected shows the film (shape, defaults, bulk edits); sound and subtitles open here too.
+- **Inspector (right):** follows the selection. A scene shows Picture (Clip / Card), Text, Overlays and Timing tabs; nothing selected shows the film (shape, defaults, bulk edits); sound and subtitles open here too. Whatever opens here is exactly one column wide: sections stack, tiles shrink and long button names wrap, so nothing is cut off or scrolls sideways (`tests/ui/panel-layout.spec.ts`).
 - **Reel (bottom):** storyboard cards on the table, a transition control at every seam, a storyboard / timeline switch and the sound lane.
 - **Films:** a full window view with starts (empty film, slideshow, templates) and recent films; not a modal.
 - **Phone (< 760px):** title bar, stage, reel, bottom tabs (Edit, Media, Sound, Text) opening sheets.

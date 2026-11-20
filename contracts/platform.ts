@@ -71,6 +71,28 @@ export const THEME_CHOICES: readonly ThemeChoice[] = [
   "dark",
 ];
 
+/**
+ * Runtime check for an appearance that crossed IPC or came out of storage.
+ * Only the three exact strings pass; nothing is coerced or defaulted here.
+ */
+export function isThemeChoice(value: unknown): value is ThemeChoice {
+  return (
+    typeof value === "string" &&
+    (THEME_CHOICES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * The frame each operating system gets, from Node's `process.platform`. One
+ * mapping for the main process, which builds the window, and the sandboxed
+ * preload, which tells the page how much room to leave.
+ */
+export function windowFrameFor(platform: string): WindowFrame {
+  if (platform === "darwin") return "mac";
+  if (platform === "win32") return "windows";
+  return "system";
+}
+
 /** Narrow, typed preload API. The renderer never receives raw IPC or filesystem primitives. */
 export interface NativeBridge extends ProjectRepository, CreatorServices {
   /** Set by the preload from the operating system; absent on older builds. */

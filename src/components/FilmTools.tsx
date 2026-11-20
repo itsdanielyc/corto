@@ -53,7 +53,7 @@ export function FilmTools({
     <Panel
       title={t("Film tools & bulk edits")}
       onClose={onClose}
-      className="slideshow-dialog"
+      className="film-tools"
     >
       <p className="modal-introduction">
         {selectedIds.size}

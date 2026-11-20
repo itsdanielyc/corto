@@ -31,22 +31,24 @@ export function ExportTray({
     (job) =>
       !isPending(job) && job.status !== "cancelled" && !dismissed.has(job.id),
   );
-  const finishedKey = finished.map((job) => job.id).join();
+  // The job arrays are new on every render, so the effect depends on the ids
+  // of the finished exports still showing (generated UUIDs, never a comma).
+  const doneIds = finished
+    .filter((job) => job.status === "done")
+    .map((job) => job.id)
+    .join(",");
   // Successful exports step aside on their own; failures wait to be read.
   useEffect(() => {
-    const done = finished.filter((job) => job.status === "done");
-    if (!done.length) return;
+    if (!doneIds) return;
     const timer = window.setTimeout(
       () =>
         setDismissed(
-          (previous) => new Set([...previous, ...done.map((job) => job.id)]),
+          (previous) => new Set([...previous, ...doneIds.split(",")]),
         ),
       FINISHED_VISIBLE_MS,
     );
     return () => window.clearTimeout(timer);
-    // The key captures which jobs are shown; the array itself is new every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finishedKey]);
+  }, [doneIds]);
   if (!pending.length && !finished.length) return null;
   const active = pending.find((job) => job.status === "running");
   const queued = pending.length - (active ? 1 : 0);

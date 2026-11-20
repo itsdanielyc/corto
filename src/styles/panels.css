@@ -449,8 +449,10 @@ img.look-art {
 .panel-body > .modal-actions {
   margin-top: 16px;
 }
+/* A panel is one inspector column wide, so dialog layouts stack inside it. */
 .side-panel .slideshow-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
 }
 .side-panel .dialog-toolbar .button {
@@ -458,6 +460,7 @@ img.look-art {
 }
 .sound-controls {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .sound-row,
@@ -506,6 +509,13 @@ img.look-art {
 .subtitle-style-controls > :not(summary),
 .advanced-export > :not(summary) {
   margin-top: 8px;
+}
+/* These actions have long names; they wrap rather than leave a narrow panel. */
+.local-model-tool .button {
+  max-width: 100%;
+  padding-block: 6px;
+  white-space: normal;
+  text-align: center;
 }
 .sound-pack-list {
   display: grid;

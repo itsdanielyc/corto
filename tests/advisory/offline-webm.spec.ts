@@ -34,9 +34,7 @@ test("the production web app caches its shell and exports a film entirely offlin
   await page.getByRole("button", { name: "Try an example" }).click();
   await expect(page.getByTestId("scene-card")).toHaveCount(4);
   await expect(page.getByTestId("preview-status")).toHaveText("Ready");
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   expect(await page.getByRole("alert").count()).toBe(0);
   for (let count = 4; count > 1; count--) {
     await page.getByTestId("scene-card").last().click();
@@ -45,6 +43,7 @@ test("the production web app caches its shell and exports a film entirely offlin
       .click();
     await expect(page.getByTestId("scene-card")).toHaveCount(count - 1);
   }
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill("0.5");
   await page.getByLabel("Duration (seconds)").press("Tab");
   await page.getByRole("button", { name: "Export movie" }).click();

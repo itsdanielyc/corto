@@ -1,14 +1,17 @@
-import { THEME_CHOICES, type ThemeChoice } from "../../contracts/platform";
+import { isThemeChoice, type ThemeChoice } from "../../contracts/platform";
 
-/** Per-device presentation preference; never part of a project. */
+/**
+ * The appearance choice is a per-device presentation preference: it lives in
+ * this browser profile's storage and never in a project. It sits with the
+ * other platform effects so components do not reach for storage themselves.
+ */
 const STORAGE_KEY = "corto.theme";
 
+/** The saved choice, or "system" when nothing valid is stored or storage is refused. */
 export function loadTheme(): ThemeChoice {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return THEME_CHOICES.includes(stored as ThemeChoice)
-      ? (stored as ThemeChoice)
-      : "system";
+    return isThemeChoice(stored) ? stored : "system";
   } catch {
     return "system";
   }
@@ -21,6 +24,7 @@ export function applyTheme(choice: ThemeChoice) {
   else root.dataset.theme = choice;
 }
 
+/** Applies the choice now and remembers it for the next launch. */
 export function saveTheme(choice: ThemeChoice) {
   applyTheme(choice);
   try {

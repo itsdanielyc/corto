@@ -89,6 +89,15 @@ Source: the approved mockups recorded in DESIGN.md. The user asked for readable 
 Ruling: Linux keeps the system window frame instead of a drawn header bar — client-side decorations differ by compositor and cannot be checked from a Windows machine. Cost if wrong: Linux looks less integrated than macOS and Windows.
 Ruling: the theme preference is stored per device in local storage, not in the project or the preferences contract — it is presentation only. Cost if wrong: the choice does not travel with a portable copy, which it should not anyway.
 
+### Review of PR #22 (2026-11-20, reviewer pass on slices 27–33)
+Findings and fixes are in VERIFICATION.md under the same date. Decisions taken while reviewing:
+
+Ruling: the contract additions (`setNativeTheme`, `windowFrame`, `isThemeChoice`, `windowFrameFor`) stay in this PR instead of a contract PR of their own — one role, one branch, additive, and the only consumers are in the same change. Cost if wrong: none until a second role shares the repository.
+Ruling: the narration tests wait eight to ten seconds for "Recording · 1s" — the recorder now counts down three seconds on purpose, and the tests assert the countdown first. This is a product delay, not a widened timeout for a flaky test. Cost if wrong: a slower failure by a few seconds.
+Ruling: the appearance storage keeps the author's per-device ruling but moves from `src/components` to `src/platform/appearance.ts`, because components reach platform effects only through the platform boundary. Cost if wrong: one import path.
+Ruling: left for their own slices because main behaves the same — five English strings without Spanish (`Slideshow soundtrack`, `No music`, `Timeline ruler`, `Marker`, the template hint) and a typed duration that is not clamped to its limits. Cost if wrong: they stay as they are on main a little longer.
+Ruling: the finished-export notice still sits over the inspector heading for ten seconds (seen in the hosted Linux real-shell screenshot). It is dismissible and brief, so it is recorded as a design follow-up rather than changed in review. Cost if wrong: scene actions are covered for up to ten seconds after a background export.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

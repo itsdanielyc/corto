@@ -38,7 +38,7 @@ import { inspectFile } from "./media/import";
 import { useExportQueue } from "./hooks/use-export-queue";
 import { ExportTray } from "./components/ExportTray";
 import { describeDrop } from "./components/drop-summary";
-import { loadTheme } from "./components/theme";
+import { loadTheme } from "./platform/appearance";
 
 /** Phone layouts show one of these as a bottom sheet over the reel. */
 type PhoneSheet = "edit" | "library" | null;
