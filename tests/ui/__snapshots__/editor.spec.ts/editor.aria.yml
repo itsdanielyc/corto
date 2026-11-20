@@ -1,43 +1,40 @@
 - banner:
-  - link "Corto home":
-    - /url: "#"
-    - img "Corto"
-  - textbox "Project name": Mountain days
-  - text: Saved on this device
   - button "My films"
+  - textbox "Project name": Mountain days
+  - text: Saved
+  - button "Search commands"
   - button "Undo" [disabled]
   - button "Redo" [disabled]
   - button "Project actions"
   - button "Export movie"
-- navigation "Creative tools":
-  - button "Media" [pressed]
-  - button "Titles"
-  - button "Music"
-  - button "Help and shortcuts"
 - complementary "Media library":
-  - heading "Your media" [level=2]
-  - text: "3"
-  - paragraph: All the moments that make your film.
-  - button "Import media"
-  - button "Import folder"
-  - button "Make a slideshow"
-  - textbox "Search media":
-    - /placeholder: Find a moment
-  - text: Sort
-  - combobox "Library sort":
-    - option "Filename" [selected]
-    - option "Date taken"
-    - option "Media type"
-    - option "Used first"
-  - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Used · Photo/
-  - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Used · Photo/
-  - button /Add \d+ · Quiet water\.jpg/: /\d+ · Quiet water Used · Photo/
-  - text: Yours to make.
-  - strong: Yours to keep.
-  - text: mock
+  - tablist "Library":
+    - tab "Media" [selected]
+    - tab "Music"
+    - tab "Titles"
+  - tabpanel:
+    - button "Import media"
+    - button "Import folder"
+    - button "Make a slideshow"
+    - searchbox "Search media"
+    - text: Sort
+    - combobox "Library sort":
+      - option "Filename" [selected]
+      - option "Date taken"
+      - option "Media type"
+      - option "Used first"
+    - button /Add \d+ · Lago di Braies\.jpg/: /\d+ · Lago di Braies Used · Photo/
+    - button /Add \d+ · A slower afternoon\.jpg/: /\d+ · A slower afternoon Used · Photo/
+    - button /Add \d+ · Quiet water\.jpg/: /\d+ · Quiet water Used · Photo/
+    - text: mock
 - main "Film editor":
-  - text: A LITTLE FILM BY YOU
-  - heading "Mountain days" [level=1]
+  - text: Ready
+  - slider "Playhead": "0.6"
+  - strong: /\d+:\d+/
+  - text: /of \d+:\d+/
+  - button "Previous scene"
+  - button "Play"
+  - button "Next scene"
   - text: Aspect ratio
   - combobox "Aspect ratio":
     - option /\d+:9 · Landscape/ [selected]
@@ -47,55 +44,66 @@
     - option "4:5 · Social feed"
     - option /\d+\.\d+:1 · Cinema/
   - button "Full screen preview"
-  - text: Ready
-  - strong: /\d+:\d+/
-  - text: /\/\d+:\d+/
-  - button "Previous scene"
-  - button "Play"
-  - button "Next scene"
-  - text: Preview
-  - slider "Playhead": "0.6"
 - complementary "Scene settings":
-  - text: /SCENE \d+/
-  - heading "The moment." [level=2]
+  - heading "Scene 1" [level=2]
+  - text: Photo · 5 s
   - button "Move scene left" [disabled]
   - button "Move scene right"
   - button "Duplicate scene"
   - button "Delete scene"
-  - button "More scene tools"
-  - heading "Timing" [level=3]
-  - text: Duration (seconds)
-  - spinbutton "Duration (seconds)": "5"
-  - text: sec
-  - button "Split scene"
-  - heading "Say something" [level=3]
-  - text: On-screen title
-  - textbox "On-screen title":
-    - /placeholder: A place. A feeling. A few words.
-    - text: The days we'll keep.
-  - group "Title style":
-    - button "Classic title style" [pressed]: Aa classic
-    - button "Modern title style": Aa modern
-    - button "Minimal title style": Aa minimal
-  - text: Position
-  - combobox "Title position":
-    - option "Centre" [selected]
-    - option "Lower third"
-  - heading "Picture & pace" [level=3]
-  - group "Picture framing":
-    - button "Fill frame" [pressed]
-    - button "Fit whole image"
-  - text: Transition
-  - combobox "Scene transition":
-    - option "Straight cut"
-    - option "Fade through black" [selected]
-  - text: Your originals stay just as they are.
+  - tablist "Scene tool categories":
+    - tab "Picture" [selected]
+    - tab "Text"
+    - tab "Overlays"
+    - tab "Timing"
+  - tabpanel "Picture":
+    - group:
+      - heading "Framing & movement" [level=3]
+      - group "Picture framing":
+        - button "Fill frame" [pressed]
+        - button "Fit whole image"
+      - radiogroup "Motion":
+        - radio "Still" [checked]
+        - radio "Slow zoom in"
+        - radio "Slow zoom out"
+        - radio "Pan left"
+        - radio "Pan right"
+        - radio "Pan up"
+        - radio "Pan down"
+        - radio "Your framing"
+      - button "Set start and end on the picture"
+      - button /Rotate \d+°/
+      - button "Flip horizontal"
+      - button "Flip vertical"
+      - group: Exact framing
+      - heading "Look" [level=3]
+      - radiogroup "Look":
+        - radio "Original" [checked]
+        - radio "Black & white"
+        - radio "Sepia"
+        - radio "Warm"
+        - radio "Cool"
+        - radio "Vivid"
+        - radio "Faded film"
+      - button "Auto enhance"
+      - button "Reset colour"
+      - group: Adjust colour
+      - heading "Cut-out" [level=3]
+      - group: Remove photo background locally
+      - group: Behind the picture
+      - button "Save composed frame as PNG"
 - region "Storyboard":
-  - heading /Your storyboard 4 scenes·\d+:\d+/ [level=2]
+  - group "Reel view":
+    - button "Storyboard" [pressed]
+    - button "Timeline"
+  - text: /4 scenes \d+:\d+/
   - button "Add title card"
-  - 'button /Scene 1: \d+ · Lago di Braies\.jpg/ [pressed]': /\d+ \d+[hmsp]+ \d+ · Lago di Braies/
-  - 'button /Scene 2: \d+ · A slower afternoon\.jpg/': /\d+ \d+[hmsp]+ \d+ · A slower afternoon/
-  - 'button /Scene 3: \d+ · Quiet water\.jpg/': /\d+ \d+[hmsp]+ \d+ · Quiet water/
-  - 'button "Scene 4: Until next time."': /\d+ Until next time\. \d+[hmsp]+ Title card/
+  - 'button /Scene 1: \d+ · Lago di Braies\.jpg/ [pressed]': /1 \d+[hmsp]+ \d+ · Lago di Braies/
+  - 'button "Transition after scene 1: Fade through black"'
+  - 'button /Scene 2: \d+ · A slower afternoon\.jpg/': /2 \d+[hmsp]+ \d+ · A slower afternoon/
+  - 'button "Transition after scene 2: Fade through black"'
+  - 'button /Scene 3: \d+ · Quiet water\.jpg/': /3 \d+[hmsp]+ \d+ · Quiet water/
+  - 'button "Transition after scene 3: Fade through black"'
+  - 'button "Scene 4: Until next time."': /Until next time\. 4 \d+[hmsp]+ Until next time\./
   - button "Add another title card"
   - button /Quiet morning · original music \d+:\d+/

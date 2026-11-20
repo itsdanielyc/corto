@@ -2,6 +2,8 @@ import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { MAX_VOICE_SECONDS, voiceRecordingFile } from "../media/voice";
+/** Seconds counted down between granting the microphone and recording, so the first words are not cut. */
+const COUNTDOWN_SECONDS = 3;
 interface Recording {
   recorder: MediaRecorder;
   stream: MediaStream;
@@ -20,8 +22,9 @@ export function VoiceRecorder({
 }) {
   const t = useT();
   const [state, setState] = useState<
-    "idle" | "requesting" | "recording" | "saving"
+    "idle" | "requesting" | "countdown" | "recording" | "saving"
   >("idle");
+  const [count, setCount] = useState(COUNTDOWN_SECONDS);
   const active = useRef<Recording | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const mounted = useRef(true);
@@ -32,6 +35,7 @@ export function VoiceRecorder({
     window.clearTimeout(recording.timer);
     window.clearInterval(recording.clockTimer);
     if (recording.recorder.state !== "inactive") recording.recorder.stop();
+    else if (active.current === recording) active.current = null;
     recording.stream.getTracks().forEach((track) => track.stop());
     if (mounted.current) setState(discard ? "idle" : "saving");
   };
@@ -101,6 +105,13 @@ export function VoiceRecorder({
             if (mounted.current) setState("idle");
           });
       };
+      setState("countdown");
+      for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining--) {
+        setCount(remaining);
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        // Discarded or closed during the countdown: the stream is already released.
+        if (!mounted.current || active.current !== recording) return;
+      }
       recorder.start(250);
       setElapsed(0);
       const started = performance.now();
@@ -126,8 +137,18 @@ export function VoiceRecorder({
   };
   return (
     <div className="recorder-status">
-      {state === "recording" ? (
+      {state === "countdown" ? (
         <>
+          <span className="countdown" aria-live="assertive" key={count}>
+            {count}
+          </span>
+          <button className="text-button" onClick={() => stop(true)}>
+            {t("Cancel")}
+          </button>
+        </>
+      ) : state === "recording" ? (
+        <>
+          <span className="recording-dot" aria-hidden="true" />
           <button className="button primary" onClick={() => stop(false)}>
             <Square size={15} />
             {t("Stop and add narration")}
@@ -154,8 +175,10 @@ export function VoiceRecorder({
       )}
       <span role="status" className="dialog-note">
         {state === "recording"
-          ? `Recording locally · ${elapsed}s · up to 5 minutes`
-          : t("Your voice stays on this device.")}
+          ? `${t("Recording")} · ${elapsed}s · ${t("up to 5 minutes")}`
+          : state === "countdown"
+            ? t("Recording starts after the countdown")
+            : ""}
       </span>
     </div>
   );

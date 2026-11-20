@@ -79,9 +79,7 @@ test("the production web app caches its shell and preserves portable projects en
   await page.getByRole("button", { name: "Try an example" }).click();
   await expect(page.getByTestId("scene-card")).toHaveCount(4);
   await expect(page.getByTestId("preview-status")).toHaveText("Ready");
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   expect(await page.getByRole("alert").count()).toBe(0);
   await page.getByRole("button", { name: "Project actions" }).click();
   const download = page.waitForEvent("download");

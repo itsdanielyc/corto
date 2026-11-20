@@ -14,6 +14,7 @@ async function photo(page: import("@playwright/test").Page, seconds = "0.5") {
     .getByTestId("media-input")
     .setInputFiles(join(process.cwd(), "tests/fixtures/red.png"));
   await expect(page.getByTestId("scene-card")).toHaveCount(1);
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill(seconds);
   await page.getByLabel("Duration (seconds)").press("Tab");
 }
@@ -23,6 +24,7 @@ test("background export keeps its original film and title while another film is 
   await photo(page, "1");
   await page.getByLabel("Project name").fill("Queued original");
   await page.getByLabel("Project name").press("Tab");
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("ORIGINAL");
   await page.getByRole("button", { name: "Export movie", exact: true }).click();
   await page
@@ -36,6 +38,7 @@ test("background export keeps its original film and title while another film is 
       exact: true,
     })
     .click();
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("");
   await page
     .getByRole("button", { name: "Project actions", exact: true })

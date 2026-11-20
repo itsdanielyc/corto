@@ -47,10 +47,8 @@ async function captions(page: Page) {
       { timeout: 120000 },
     )
     .toContain("americans");
-  await page.getByRole("button", { name: "Close dialog", exact: true }).click();
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await page.getByRole("button", { name: "Close panel", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
 }
 
 test("real native models recognise speech, matte a local SVG copy and reuse model data after an offline restart", async () => {
@@ -116,6 +114,7 @@ test("real native models recognise speech, matte a local SVG copy and reuse mode
     await page
       .getByRole("button", { name: "Add title card", exact: true })
       .click();
+    await page.getByRole("tab", { name: "Timing", exact: true }).click();
     await page.getByLabel("Duration (seconds)").fill("8");
     await page.getByLabel("Duration (seconds)").press("Tab");
     await page.getByTestId("music-input").setInputFiles(speech);
@@ -124,7 +123,7 @@ test("real native models recognise speech, matte a local SVG copy and reuse mode
       .getByLabel("Sound 1 role", { exact: true })
       .selectOption("voiceover");
     await page
-      .getByRole("button", { name: "Close dialog", exact: true })
+      .getByRole("button", { name: "Close panel", exact: true })
       .click();
     await captions(page);
     const first = await page.evaluate(() =>
@@ -140,16 +139,12 @@ test("real native models recognise speech, matte a local SVG copy and reuse mode
       .getByTestId("media-input")
       .setInputFiles(join(process.cwd(), "tests/fixtures/plant.svg"));
     await expect(page.getByTestId("scene-card")).toHaveCount(2);
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     const before = await page.evaluate(() =>
       window.electronBridge!.loadProject(),
     );
     const photo = before!.scenes[1].assetId!;
-    await page
-      .getByRole("button", { name: "More scene tools", exact: true })
-      .click();
+    await page.getByRole("tab", { name: "Picture", exact: true }).click();
     await page
       .getByText("Remove photo background locally", { exact: true })
       .click();
@@ -170,7 +165,6 @@ test("real native models recognise speech, matte a local SVG copy and reuse mode
         { timeout: 120000 },
       )
       .not.toBe(photo);
-    await page.getByRole("button", { name: "Done", exact: true }).click();
     const saved = await page.evaluate(() =>
       window.electronBridge!.loadProject(),
     );

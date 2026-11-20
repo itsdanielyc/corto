@@ -25,7 +25,7 @@ The UI sees `CortoPlatform`, never `ipcRenderer`. Shared TypeScript contracts pl
 Preview uses one canvas composition surface and a bounded current/next media pool with independent clocks for repeated assets and overlays. Native and browser-WASM export consume the same pure frame/filter plans, render bounded scene/overlap segments, concatenate once and mix sound. Text is rasterised incrementally so typography agrees without aggregating every PNG in IPC. Temporary output is cleaned on failure/cancellation; only a complete movie reaches its destination.
 
 ## Platform integration
-Native file selection, save destination and reveal-in-folder are confined to Electron. Environment-controlled dialog presets are accepted only in automated-test mode. No arbitrary shell commands, arbitrary renderer paths or remote navigation are exposed.
+Native file selection, save destination and reveal-in-folder are confined to Electron. The window frame follows the OS (macOS traffic lights inset, Windows caption overlay, Linux system frame); the preload reports which from the mapping in `contracts/platform.ts` that the main process also uses, and the appearance choice reaches `nativeTheme` through one validated channel so native controls match the page. The choice itself is per-device browser storage behind `src/platform/appearance.ts`; components never touch storage. Environment-controlled dialog presets are accepted only in automated-test mode. No arbitrary shell commands, arbitrary renderer paths or remote navigation are exposed.
 
 ## Creator-tools evolution
 - Shared schemas are split by responsibility (values, creative settings, project, platform). V3 migration normalises old music into placed sounds and adds explicit transform/text/overlay/output/default fields.

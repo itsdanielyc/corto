@@ -1,44 +1,58 @@
 import { useT } from "./i18n/locale";
 import { setApplicationLocale } from "./i18n/locale";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   CircleAlert,
-  ImagePlus,
+  Images,
   LoaderCircle,
-  Pause,
-  Play,
-  Plus,
-  SkipBack,
-  SkipForward,
+  Music2,
+  SlidersHorizontal,
+  Type,
   X,
 } from "lucide-react";
-import { type Project } from "../contracts/project";
-import { formatTime } from "./domain/timeline";
+import type { Project, Scene } from "../contracts/project";
 import { Header } from "./components/Header";
-import { Library, NavigationRail } from "./components/Library";
-import { Inspector } from "./components/Inspector";
-import { Preview } from "./components/Preview";
+import { Library } from "./components/Library";
+import { Inspector, type InspectorTab } from "./components/Inspector";
+import { Stage } from "./components/Stage";
+import { StageOverlay } from "./components/StageOverlay";
 import { Storyboard } from "./components/Storyboard";
 import { IconButton } from "./components/primitives";
 import { useEditorController } from "./hooks/use-editor-controller";
 import { EditorDialogs } from "./components/EditorDialogs";
-import { ProjectHome } from "./components/ProjectHome";
+import { ProjectHome, type TemplateTheme } from "./components/ProjectHome";
 import { SoundDialog } from "./components/SoundDialog";
 import { SubtitlesDialog } from "./components/SubtitlesDialog";
-import { SceneTools } from "./components/SceneTools";
 import { SlideshowDialog } from "./components/SlideshowDialog";
 import { FilmTools } from "./components/FilmTools";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { CaptureDialog } from "./components/CaptureDialog";
-import { createProject } from "./domain/project";
+import { CommandPalette } from "./components/CommandPalette";
+import { useEditorCommands } from "./components/editor-commands";
+import { addAsset, changeScene, createProject } from "./domain/project";
+import { changeScenes } from "./domain/editing";
+import { buildProjectTemplate, THEMES } from "./domain/slideshow";
+import { bundledSoundFile } from "./media/bundled-sounds";
+import { inspectFile } from "./media/import";
 import { useExportQueue } from "./hooks/use-export-queue";
 import { ExportTray } from "./components/ExportTray";
+import { describeDrop } from "./components/drop-summary";
+import { loadTheme } from "./platform/appearance";
+
+/** Phone layouts show one of these as a bottom sheet over the reel. */
+type PhoneSheet = "edit" | "library" | null;
+
 export function App() {
   const t = useT();
   const [timelineMode, setTimelineMode] = useState(false);
   const [timelineZoom, setTimelineZoom] = useState(24);
   const [preferProxies, setPreferProxies] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("look");
+  const [palette, setPalette] = useState(false);
+  const [framing, setFraming] = useState(false);
+  const [sheet, setSheet] = useState<PhoneSheet>(null);
+  const [dropSummary, setDropSummary] = useState("");
   const {
     platform,
     error,
@@ -98,6 +112,7 @@ export function App() {
     openSavedProject,
   } = useEditorController();
   const exports = useExportQueue(platform);
+  const running = exports.jobs.find((job) => job.status === "running");
   useEffect(() => {
     void platform
       .loadPreferences?.()
@@ -119,11 +134,180 @@ export function App() {
       })
       .catch(report);
   }, [platform, report, setMessage]);
+  useEffect(() => {
+    void platform.setNativeTheme?.(loadTheme()).catch(report);
+  }, [platform, report]);
+  // Framing belongs to one photo; leave it when the selection moves on.
+  useEffect(() => setFraming(false), [selected?.id]);
+  const pause = useCallback(() => setPlaying(false), [setPlaying]);
+  const openPanel = useCallback(
+    (panel: "sound" | "subtitles" | "film-tools") => {
+      pause();
+      setDialog(panel);
+      setSheet(null);
+    },
+    [pause, setDialog],
+  );
+  const addTitleCard = useCallback(
+    (caption?: string, style?: Scene["captionStyle"]) => {
+      addTitle(caption, style);
+      setInspectorTab("text");
+    },
+    [addTitle],
+  );
+  const startTemplate = useCallback(
+    async (theme: TemplateTheme) => {
+      try {
+        const file = await bundledSoundFile(THEMES[theme].music);
+        const { asset } = await inspectFile(file);
+        await platform.putAsset(asset, file);
+        const draft = buildProjectTemplate(
+          { ...addAsset(createProject(), asset), id: crypto.randomUUID() },
+          theme,
+          "",
+          asset.id,
+        );
+        draft.name = t(THEMES[theme].name);
+        draft.scenes = draft.scenes.map((scene) => ({
+          ...scene,
+          caption: t(scene.caption),
+        }));
+        const present = current.current.present;
+        if (present.scenes.length || Object.keys(present.assets).length)
+          await platform.saveProject(present);
+        editor.replace(draft);
+        setTime(0.6);
+        setDialog(null);
+      } catch (failure) {
+        report(failure);
+      }
+    },
+    [platform, t, current, editor, setTime, setDialog, report],
+  );
+  const commands = useEditorCommands({
+    project,
+    selected,
+    playing,
+    canUndo: editor.canUndo,
+    canRedo: editor.canRedo,
+    timelineMode,
+    actions: {
+      togglePlayback,
+      undo: undoEdit,
+      redo: redoEdit,
+      importMedia: () => chooseMedia(),
+      importMusic: () => chooseMedia(true),
+      importFolder: () => folderInput.current?.click(),
+      addTitle: () => addTitleCard(),
+      exportMovie: () => {
+        pause();
+        setDialog("export");
+      },
+      sound: () => openPanel("sound"),
+      subtitles: () => openPanel("subtitles"),
+      filmTools: () => openPanel("film-tools"),
+      slideshow: () => {
+        pause();
+        setDialog("slideshow");
+      },
+      films: showProjects,
+      newFilm: () => setDialog("new"),
+      open: requestOpen,
+      save: savePortable,
+      settings: () => setDialog("settings"),
+      capture: () => setDialog("capture"),
+      help: () => setDialog("help"),
+      about: () => setDialog("about"),
+      timeline: setTimelineMode,
+      ratio: (ratio) => edit((value) => ({ ...value, ratio })),
+      tab: setInspectorTab,
+      transition: (transition) => editScene({ transition }),
+      sceneAction,
+      frame: () => setFraming(true),
+    },
+  });
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k" &&
+        !document.querySelector("dialog[open]")
+      ) {
+        event.preventDefault();
+        if (!busy) setPalette(true);
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [busy]);
+  const modal =
+    dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
+  const bulk = selectedIds.size > 1;
+  const panel = useMemo(() => {
+    if (dialog === "sound")
+      return (
+        <SoundDialog
+          project={project}
+          platform={platform}
+          time={time}
+          onChange={(next) => edit(() => next)}
+          onClose={modalClose}
+        />
+      );
+    if (dialog === "subtitles")
+      return (
+        <SubtitlesDialog
+          platform={platform}
+          project={project}
+          time={time}
+          onChange={(next) => edit(() => next)}
+          onClose={modalClose}
+        />
+      );
+    if (dialog === "film-tools" || (bulk && !dialog))
+      return (
+        <FilmTools
+          project={project}
+          selectedIds={selectedIds}
+          time={time}
+          timelineMode={timelineMode}
+          zoom={timelineZoom}
+          onTimeline={setTimelineMode}
+          onZoom={setTimelineZoom}
+          onChange={edit}
+          onSeek={setTime}
+          onClose={() => {
+            modalClose();
+            if (bulk && selected) selectScene(selected.id);
+          }}
+        />
+      );
+    return null;
+  }, [
+    dialog,
+    bulk,
+    project,
+    platform,
+    time,
+    edit,
+    modalClose,
+    selectedIds,
+    timelineMode,
+    timelineZoom,
+    setTime,
+    selected,
+    selectScene,
+  ]);
+  const home = dialog === "projects";
+  const locked = !!busy || !editor.loaded;
   return (
     <div
       className="editor-shell"
       data-testid="editor-shell"
       data-backend={platform.kind}
+      data-view={home ? "home" : "editor"}
+      data-sheet={panel ? "panel" : (sheet ?? undefined)}
+      data-frame={platform.windowFrame}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes("Files")) {
           event.preventDefault();
@@ -131,8 +315,10 @@ export function App() {
         }
       }}
       onDragEnter={(event) => {
-        if (event.dataTransfer.types.includes("Files") && !busy && !dialog)
+        if (event.dataTransfer.types.includes("Files") && !busy && !modal) {
+          setDropSummary(describeDrop(event.dataTransfer.items, t));
           setDragging(true);
+        }
       }}
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node))
@@ -142,7 +328,7 @@ export function App() {
         if (!event.dataTransfer.files.length) return;
         event.preventDefault();
         setDragging(false);
-        if (!busy && !dialog) importFiles(Array.from(event.dataTransfer.files));
+        if (!busy && !modal) importFiles(Array.from(event.dataTransfer.files));
       }}
     >
       <Header
@@ -150,232 +336,255 @@ export function App() {
         name={project.name}
         onName={(name) => {
           if (name !== current.current.present.name)
-            edit((project) => ({ ...project, name }));
+            edit((value) => ({ ...value, name }));
         }}
         status={editor.saveStatus}
         canUndo={editor.canUndo}
         canRedo={editor.canRedo}
-        busy={!!busy || !editor.loaded}
+        busy={locked}
         canExport={project.scenes.length > 0}
+        frame={platform.windowFrame}
+        exportProgress={running ? running.progress.fraction : null}
         onUndo={undoEdit}
         onRedo={redoEdit}
         onNew={() => setDialog("new")}
         onOpen={requestOpen}
         onSave={savePortable}
         onExport={() => {
-          setPlaying(false);
+          pause();
           setDialog("export");
         }}
         onHelp={() => setDialog("help")}
         onAbout={() => setDialog("about")}
         onProjects={showProjects}
-        onSound={() => {
-          setPlaying(false);
-          setDialog("sound");
-        }}
-        onSubtitles={() => {
-          setPlaying(false);
-          setDialog("subtitles");
-        }}
+        onSound={() => openPanel("sound")}
+        onSubtitles={() => openPanel("subtitles")}
         onSlideshow={() => {
-          setPlaying(false);
+          pause();
           setDialog("slideshow");
         }}
-        onFilmTools={() => setDialog("film-tools")}
+        onFilmTools={() => openPanel("film-tools")}
         onCapture={() => setDialog("capture")}
         onSettings={() => setDialog("settings")}
+        onCommands={() => setPalette(true)}
       />
-      <div className="app-body" inert={!!busy || !editor.loaded}>
-        <NavigationRail
-          mode={mode}
-          onMode={setMode}
-          onHelp={() => setDialog("help")}
-        />
-        <Library
-          mode={mode}
-          onMode={setMode}
-          project={project}
-          resources={resources}
-          busy={!!busy || !editor.loaded}
-          backend={platform.kind}
-          onImport={chooseMedia}
-          onFolder={() => folderInput.current?.click()}
+      {home ? (
+        <ProjectHome
+          platform={platform}
+          currentId={project.id}
+          onClose={modalClose}
+          onOpen={openSavedProject}
+          onNew={() => setDialog("new")}
+          onPortable={() => {
+            setDialog(null);
+            requestOpen();
+          }}
           onSlideshow={() => setDialog("slideshow")}
-          onReplace={replaceAsset}
-          onAdd={addMedia}
-          onTitle={addTitle}
-          onExample={showExample}
-          onHelp={() => setDialog("help")}
-          onMusic={changeMusic}
-          onSound={() => {
-            setPlaying(false);
-            setDialog("sound");
+          onTemplate={(theme) => {
+            void startTemplate(theme);
           }}
-          onSubtitles={() => {
-            setPlaying(false);
-            setDialog("subtitles");
+          onChanged={(changed) => {
+            if (changed.id === project.id) edit(() => changed);
+          }}
+          onDeleted={(id) => {
+            if (id === project.id) {
+              editor.replace(createProject());
+              setTime(0);
+            }
+          }}
+          onRestored={(restored) => {
+            editor.replace(restored);
+            setTime(0.6);
+            modalClose();
           }}
         />
-        <main className="workspace" aria-label={t("Film editor")}>
-          <div className="workspace-heading">
-            <div>
-              <span className="eyebrow">{t("A LITTLE FILM BY YOU")}</span>
-              <h1>
-                {project.scenes.length
-                  ? project.name
-                  : t("Make something worth keeping.")}
-              </h1>
-            </div>
-            <label className="aspect-select">
-              <span className="sr-only">{t("Aspect ratio")}</span>
-              <select
-                aria-label={t("Aspect ratio")}
-                value={project.ratio}
-                onChange={(event) =>
-                  edit((project) => ({
-                    ...project,
-                    ratio: event.target.value as Project["ratio"],
-                  }))
-                }
-              >
-                <option value="landscape">{t("16:9 \u00B7 Landscape")}</option>
-                <option value="portrait">{t("9:16 \u00B7 Portrait")}</option>
-                <option value="square">{t("1:1 \u00B7 Square")}</option>
-                <option value="classic">{t("4:3 \u00B7 Classic")}</option>
-                <option value="feed">{t("4:5 \u00B7 Social feed")}</option>
-                <option value="cinema">{t("2.35:1 \u00B7 Cinema")}</option>
-              </select>
-            </label>
-          </div>
-          <Preview
-            preferProxies={preferProxies}
+      ) : (
+        <div className="app-body" inert={locked}>
+          <Library
+            mode={mode}
+            onMode={setMode}
+            project={project}
+            resources={resources}
+            busy={locked}
+            backend={platform.kind}
+            onImport={chooseMedia}
+            onFolder={() => folderInput.current?.click()}
+            onSlideshow={() => {
+              pause();
+              setDialog("slideshow");
+            }}
+            onReplace={replaceAsset}
+            onAdd={addMedia}
+            onTitle={addTitleCard}
+            onMusic={changeMusic}
+            onSound={() => openPanel("sound")}
+            onSubtitles={() => openPanel("subtitles")}
+          />
+          <Stage
             project={project}
             platform={platform}
             resources={resources}
+            preferProxies={preferProxies}
             time={time}
+            total={total}
             playing={playing}
+            busy={locked}
             onTime={setTime}
             onPlaying={setPlaying}
+            onTogglePlayback={togglePlayback}
+            onStep={playbackStep}
+            onRatio={(ratio: Project["ratio"]) =>
+              edit((value) => ({ ...value, ratio }))
+            }
+            onImport={() => chooseMedia()}
+            onExample={showExample}
             report={report}
-          />
-          <div className="playback-controls">
-            <span className="time-code">
-              <strong>{formatTime(time)}</strong>
-              <span>{t("/")}</span>
-              {formatTime(total)}
-            </span>
-            <div className="transport">
-              <IconButton
-                icon={SkipBack}
-                label={t("Previous scene")}
-                disabled={!project.scenes.length}
-                onClick={() => playbackStep(-1)}
-              />
-              <IconButton
-                icon={playing ? Pause : Play}
-                label={t(playing ? "Pause" : "Play")}
-                className="play-button"
-                disabled={!project.scenes.length}
-                onClick={togglePlayback}
-              />
-              <IconButton
-                icon={SkipForward}
-                label={t("Next scene")}
-                disabled={!project.scenes.length}
-                onClick={() => playbackStep(1)}
-              />
-            </div>
-            <span className="preview-note">
-              {project.scenes.length
-                ? t("Preview")
-                : t("Your story starts here")}
-            </span>
-          </div>
-          <input
-            className="playhead"
-            aria-label={t("Playhead")}
-            type="range"
-            min="0"
-            max={total || 1}
-            step="0.01"
-            value={time}
-            disabled={!project.scenes.length}
-            onChange={(event) => {
-              setPlaying(false);
-              setTime(Number(event.target.value));
-            }}
-            style={
-              {
-                "--progress": `${total ? (time / total) * 100 : 0}%`,
-              } as CSSProperties
+            overlay={
+              selected && !playing ? (
+                <StageOverlay
+                  project={project}
+                  scene={selected}
+                  time={time}
+                  framing={framing}
+                  platform={platform}
+                  onChange={editScene}
+                  onFramingDone={() => setFraming(false)}
+                />
+              ) : null
             }
           />
-          {!project.scenes.length && (
-            <div className="workspace-invitation">
-              <button className="button primary" onClick={() => chooseMedia()}>
-                <ImagePlus size={16} />
-                {t("Bring in your moments")}
-              </button>
-              <span>{t("or drop photos and clips anywhere")}</span>
-            </div>
+          {panel ?? (
+            <Inspector
+              project={project}
+              scene={selected}
+              asset={
+                selected?.assetId ? project.assets[selected.assetId] : null
+              }
+              index={selectedIndex}
+              count={project.scenes.length}
+              resources={resources}
+              platform={platform}
+              time={time}
+              tab={inspectorTab}
+              onTab={setInspectorTab}
+              onChange={editScene}
+              onProject={edit}
+              onDelete={deleteSelected}
+              onDuplicate={duplicateSelected}
+              onSplit={splitSelected}
+              onMove={moveSelected}
+              onFrame={() => {
+                pause();
+                setFraming(true);
+                setSheet(null);
+              }}
+              report={report}
+              busy={!!busy}
+            />
           )}
-        </main>
-        <Inspector
-          scene={selected}
-          asset={selected?.assetId ? project.assets[selected.assetId] : null}
-          index={selectedIndex}
-          count={project.scenes.length}
-          onChange={editScene}
-          onDelete={deleteSelected}
-          onDuplicate={duplicateSelected}
-          onSplit={splitSelected}
-          onMove={moveSelected}
-          busy={!!busy}
-          onTools={() => {
-            setPlaying(false);
-            setDialog("scene-tools");
-          }}
-        />
-        <Storyboard
-          project={project}
-          resources={resources}
-          selected={selected?.id ?? null}
-          time={time}
-          playing={playing}
-          onSelect={selectScene}
-          selectedIds={selectedIds}
-          onAction={sceneAction}
-          timelineMode={timelineMode}
-          zoom={timelineZoom}
-          platform={platform}
-          onAudioChange={changeMusic}
-          onSeek={(at) => {
-            setPlaying(false);
-            setTime(at);
-          }}
-          onAddAsset={(id, afterId) => {
-            const asset = project.assets[id];
-            if (asset) addMedia(asset, afterId);
-          }}
-          onReorder={reorder}
-          onTitle={() => addTitle()}
-          onMusic={() => {
-            if (project.audioClips.length) {
-              setPlaying(false);
-              setDialog("sound");
-              return;
+          <Storyboard
+            project={project}
+            resources={resources}
+            selected={selected?.id ?? null}
+            time={time}
+            playing={playing}
+            onSelect={selectScene}
+            selectedIds={selectedIds}
+            onAction={sceneAction}
+            timelineMode={timelineMode}
+            onTimelineMode={setTimelineMode}
+            zoom={timelineZoom}
+            onZoom={setTimelineZoom}
+            platform={platform}
+            onAudioChange={changeMusic}
+            onSeek={(at) => {
+              pause();
+              setTime(at);
+            }}
+            onAddAsset={(id, afterId) => {
+              const asset = project.assets[id];
+              if (asset) addMedia(asset, afterId);
+            }}
+            onReorder={reorder}
+            onTitle={() => addTitleCard()}
+            onSceneChange={(id, changes) =>
+              edit((value) => changeScene(value, id, changes))
             }
-            setMode("music");
-            if (
-              !Object.values(project.assets).some(
-                (asset) => asset.kind === "audio",
+            onAllTransitions={(transition, transitionSeconds) =>
+              edit((value) =>
+                changeScenes(
+                  value,
+                  new Set(value.scenes.slice(0, -1).map((scene) => scene.id)),
+                  (scene) => ({ ...scene, transition, transitionSeconds }),
+                ),
               )
-            )
-              chooseMedia(true);
-          }}
-          busy={!!busy}
-        />
-      </div>
+            }
+            onMusic={() => {
+              if (project.audioClips.length) {
+                openPanel("sound");
+                return;
+              }
+              setMode("music");
+              setSheet("library");
+              if (
+                !Object.values(project.assets).some(
+                  (asset) => asset.kind === "audio",
+                )
+              )
+                chooseMedia(true);
+            }}
+            busy={!!busy}
+          />
+          <nav className="phone-tabs" aria-label={t("Editor sections")}>
+            {(
+              [
+                ["edit", "Edit", SlidersHorizontal],
+                ["media", "Media", Images],
+                ["sound", "Sound", Music2],
+                ["text", "Text", Type],
+              ] as const
+            ).map(([id, label, Icon]) => {
+              const pressed =
+                id === "edit"
+                  ? sheet === "edit"
+                  : id === "sound"
+                    ? dialog === "sound"
+                    : sheet === "library" &&
+                      mode === (id === "text" ? "titles" : "media");
+              return (
+                <button
+                  key={id}
+                  aria-pressed={pressed}
+                  onClick={() => {
+                    if (pressed) {
+                      if (id === "sound") modalClose();
+                      setSheet(null);
+                      return;
+                    }
+                    if (dialog && !modal) modalClose();
+                    if (id === "sound") openPanel("sound");
+                    else if (id === "edit") setSheet("edit");
+                    else {
+                      setMode(id === "text" ? "titles" : "media");
+                      setSheet("library");
+                    }
+                  }}
+                >
+                  <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+                  {t(label)}
+                </button>
+              );
+            })}
+          </nav>
+          {sheet && !panel && (
+            <button
+              className="sheet-scrim"
+              aria-label={t("Close sheet")}
+              onClick={() => setSheet(null)}
+            />
+          )}
+        </div>
+      )}
       <input
         hidden
         data-testid="media-input"
@@ -431,42 +640,43 @@ export function App() {
           if (file) openSelectedFile(file);
         }}
       />
-      {busy && (
-        <div className="busy-indicator" role="status">
-          <LoaderCircle size={16} className="spin" />
-          {busy}
-          {t("\u2026")}
-        </div>
-      )}
-      {message && !busy && (
-        <div className="busy-indicator success-notice" role="status">
-          <Check size={16} />
-          {message}
-          <IconButton
-            icon={X}
-            label={t("Dismiss notification")}
-            onClick={() => setMessage(null)}
-          />
-        </div>
-      )}
-      {dragging && (
-        <div className="drop-overlay">
-          <div>
-            <Plus size={36} />
-            <strong>{t("Drop a little life in.")}</strong>
-            <span>{t("Photos, clips, music. Your story.")}</span>
+      <div className="notices">
+        {busy && (
+          <div className="toast busy-indicator" role="status">
+            <LoaderCircle size={16} className="spin" aria-hidden="true" />
+            {busy}
+            {t("…")}
           </div>
-        </div>
-      )}
-      {error && (
-        <div className="error-notice" role="alert">
-          <CircleAlert size={18} />
-          <p>{error}</p>
-          <IconButton
-            icon={X}
-            label={t("Dismiss message")}
-            onClick={() => setError(null)}
-          />
+        )}
+        {message && !busy && (
+          <div className="toast success-notice" role="status">
+            <Check size={16} aria-hidden="true" />
+            <span>{message}</span>
+            <IconButton
+              icon={X}
+              label={t("Dismiss notification")}
+              onClick={() => setMessage(null)}
+            />
+          </div>
+        )}
+        {error && (
+          <div className="toast error-notice" role="alert">
+            <CircleAlert size={18} aria-hidden="true" />
+            <p>{error}</p>
+            <IconButton
+              icon={X}
+              label={t("Dismiss message")}
+              onClick={() => setError(null)}
+            />
+          </div>
+        )}
+      </div>
+      {dragging && (
+        <div className="drop-overlay" aria-hidden="true">
+          <div className="drop-card">
+            <strong>{dropSummary || t("Drop to add to your film")}</strong>
+            <span>{t("Photos, clips and music")}</span>
+          </div>
         </div>
       )}
       <EditorDialogs
@@ -476,6 +686,7 @@ export function App() {
         dialog={dialog}
         project={project}
         platform={platform}
+        resources={resources}
         onClose={modalClose}
         onSave={savePortable}
         onTransition={performTransition}
@@ -485,40 +696,18 @@ export function App() {
         platform={platform}
         onCancel={(id) => exports.queue.cancel(id)}
       />
-      {dialog === "scene-tools" && selected && (
-        <SceneTools
-          preferProxies={preferProxies}
-          project={project}
-          scene={selected}
-          platform={platform}
-          onChange={editScene}
-          onProject={edit}
-          onClose={modalClose}
-          report={report}
-        />
+      {palette && (
+        <CommandPalette commands={commands} onClose={() => setPalette(false)} />
       )}
       {dialog === "slideshow" && (
         <SlideshowDialog
           project={project}
           platform={platform}
+          resources={resources}
           onCreate={(draft) => {
             editor.replace(draft);
             setTime(0.6);
           }}
-          onClose={modalClose}
-        />
-      )}
-      {dialog === "film-tools" && (
-        <FilmTools
-          project={project}
-          selectedIds={selectedIds}
-          time={time}
-          timelineMode={timelineMode}
-          zoom={timelineZoom}
-          onTimeline={setTimelineMode}
-          onZoom={setTimelineZoom}
-          onChange={edit}
-          onSeek={setTime}
           onClose={modalClose}
         />
       )}
@@ -531,57 +720,13 @@ export function App() {
             setTimelineMode(preferences.timeline);
             setTimelineZoom(preferences.timelineZoom);
             setPreferProxies(preferences.proxyEditing);
-            edit((current) => ({ ...current, defaults: preferences.defaults }));
+            edit((value) => ({ ...value, defaults: preferences.defaults }));
           }}
           onClose={modalClose}
         />
       )}
       {dialog === "capture" && (
         <CaptureDialog onImport={importFiles} onClose={modalClose} />
-      )}
-      {dialog === "projects" && (
-        <ProjectHome
-          platform={platform}
-          onClose={modalClose}
-          onOpen={openSavedProject}
-          onNew={() => setDialog("new")}
-          onPortable={() => {
-            setDialog(null);
-            requestOpen();
-          }}
-          onChanged={(changed) => {
-            if (changed.id === project.id) edit(() => changed);
-          }}
-          onDeleted={(id) => {
-            if (id === project.id) {
-              editor.replace(createProject());
-              setTime(0);
-            }
-          }}
-          onRestored={(restored) => {
-            editor.replace(restored);
-            setTime(0.6);
-            modalClose();
-          }}
-        />
-      )}
-      {dialog === "sound" && (
-        <SoundDialog
-          project={project}
-          platform={platform}
-          time={time}
-          onChange={(next) => edit(() => next)}
-          onClose={modalClose}
-        />
-      )}
-      {dialog === "subtitles" && (
-        <SubtitlesDialog
-          platform={platform}
-          project={project}
-          time={time}
-          onChange={(next) => edit(() => next)}
-          onClose={modalClose}
-        />
       )}
     </div>
   );

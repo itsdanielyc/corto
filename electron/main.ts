@@ -9,6 +9,7 @@ import { handleMediaRequests, registerMediaScheme } from "./media-protocol";
 import { registerExportCommands } from "./export-ipc";
 import { writeAtomic } from "./atomic-file";
 import { configureCapture, projectOpenIntegration } from "./shell-integration";
+import { frameOptions, registerWindowChrome } from "./window-chrome";
 
 const testingWorkspace = testPreset("CORTO_WORKSPACE_ROOT");
 if (testingWorkspace) {
@@ -85,6 +86,7 @@ function createWindow(): void {
     title: "Corto",
     icon: join(import.meta.dirname, "../renderer/icon-512.png"),
     show: false,
+    ...frameOptions(),
     webPreferences: {
       preload: join(import.meta.dirname, "../preload/preload.cjs"),
       contextIsolation: true,
@@ -179,6 +181,7 @@ app.whenReady().then(() => {
   );
   configureCapture(() => mainWindow);
   ipcMain.handle(channels.platformInfo, () => platformInfo());
+  registerWindowChrome(() => mainWindow);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

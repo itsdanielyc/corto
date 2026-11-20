@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Project, Subtitle } from "../../contracts/project";
 import { parseSrt, serializeSrt, validateSubtitles } from "../domain/subtitles";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
-import { Modal } from "./primitives";
+import { Panel } from "./primitives";
 import { TimingField } from "./TimingField";
 import type { CortoPlatform } from "../platform/types";
 import { AutomaticCaptions } from "./AutomaticCaptions";
@@ -52,15 +52,13 @@ export function SubtitlesDialog({
       ),
     );
   return (
-    <Modal
+    <Panel
       title={t("Timed subtitles")}
       onClose={onClose}
       className="subtitles-dialog"
     >
       <p className="modal-introduction">
-        {t(
-          "Add speech captions or import an SRT file. Subtitles appear in preview and are burned into your exported movie.",
-        )}
+        {t("Type captions or import an SRT file.")}
       </p>
       <AutomaticCaptions
         project={project}
@@ -257,6 +255,6 @@ export function SubtitlesDialog({
           </p>
         )}
       </fieldset>
-    </Modal>
+    </Panel>
   );
 }

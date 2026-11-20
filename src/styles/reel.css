@@ -1,0 +1,538 @@
+/* The reel: scenes laid out on a light table, joins between them, sound below. */
+.storyboard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+  background: var(--table);
+}
+.reel-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.reel-view {
+  width: 200px;
+}
+.reel-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+}
+.selection-badge {
+  margin-left: 6px;
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.reel-zoom {
+  width: 140px;
+}
+.reel-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 20px;
+}
+.storyboard-strip {
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  min-width: 100%;
+  padding: 16px 0 10px;
+}
+.scene-slot {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  flex: none;
+  transition: transform var(--t-move) var(--ease);
+}
+.scene-slot.drop-target::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 0;
+  width: 3px;
+  height: 84px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+.scene-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  width: 140px;
+  padding: 0;
+  text-align: left;
+  border-radius: var(--radius-s);
+  transition: transform var(--t-fast) var(--ease);
+}
+.scene-card:hover {
+  transform: translateY(-2px);
+}
+.scene-card:active {
+  transform: translateY(0) scale(0.98);
+}
+.scene-card::after {
+  content: "";
+  position: absolute;
+  inset: -4px -4px auto;
+  height: calc(84px + 8px);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  opacity: 0;
+  transform: scale(0.97);
+  transition:
+    opacity var(--t-fast) var(--ease),
+    transform var(--t-base) var(--ease);
+  pointer-events: none;
+}
+.scene-card.selected::after {
+  opacity: 1;
+  transform: none;
+}
+.scene-card:focus-visible {
+  outline: none;
+}
+.scene-card:focus-visible::after {
+  opacity: 1;
+  transform: none;
+  border-style: dashed;
+}
+.scene-card.selected:focus-visible::after {
+  border-style: solid;
+  box-shadow:
+    0 0 0 2px var(--table),
+    0 0 0 4px var(--ink-3);
+}
+.scene-thumbnail {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 84px;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: #151517;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+.scene-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.title-thumbnail {
+  padding: 8px;
+  color: #fff;
+  text-align: center;
+}
+.title-thumbnail > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: pre-line;
+}
+.title-thumbnail .caption-classic {
+  font-size: 15px;
+}
+.title-thumbnail .caption-modern {
+  font-size: 12px;
+}
+.title-thumbnail .caption-minimal {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+}
+.thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(110deg, #1d1d20 30%, #2a2a2e 50%, #1d1d20 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.scene-number,
+.scene-duration,
+.caption-indicator {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: rgb(12 12 13 / 66%);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px);
+}
+.scene-number {
+  left: 5px;
+  top: 5px;
+  min-width: 20px;
+  justify-content: center;
+  padding: 0 5px;
+}
+.scene-duration {
+  right: 5px;
+  bottom: 5px;
+}
+.caption-indicator {
+  right: 5px;
+  top: 5px;
+  padding: 0 5px;
+}
+.scene-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: #fff;
+  transform-origin: left;
+}
+.scene-card.active-scene .scene-thumbnail {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 12%),
+    0 0 0 1px var(--ink-3);
+}
+.scene-name {
+  display: grid;
+  overflow: hidden;
+  padding: 0 2px;
+  color: var(--ink-2);
+  font-size: var(--fs-s);
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.scene-card.selected .scene-name {
+  color: var(--ink);
+}
+.scene-group {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+}
+
+/* Joins between scenes. */
+.seam {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 84px;
+}
+.seam-button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--ink-3);
+  transition:
+    transform var(--t-fast) var(--ease),
+    background var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+.seam-button:hover {
+  transform: scale(1.12);
+  color: var(--ink);
+}
+.seam-button.has-transition {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.seam.open .seam-button {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: none;
+}
+.seam-popover {
+  position: fixed;
+  z-index: 70;
+  display: grid;
+  gap: 12px;
+  width: 340px;
+  padding: 14px;
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  transform: translate(-50%, -100%);
+  animation: seam-pop var(--t-base) var(--ease);
+}
+@keyframes seam-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 8px)) scale(0.97);
+  }
+}
+.seam-popover-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.add-scene-card {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 84px;
+  margin-left: 20px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--radius-s);
+  color: var(--ink-3);
+  transition:
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+.add-scene-card:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.empty-storyboard {
+  display: flex;
+  gap: 24px;
+}
+.ghost-card {
+  width: 140px;
+  height: 84px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--radius-s);
+  opacity: 0.8;
+}
+.ghost-card:nth-child(3) {
+  opacity: 0.55;
+}
+.ghost-card:nth-child(4) {
+  opacity: 0.3;
+}
+
+/* Timeline view: widths follow time. */
+.timeline-mode .storyboard-strip {
+  padding-top: 6px;
+  padding-left: 2px;
+}
+.timeline-mode .scene-card {
+  width: 100%;
+  min-width: 0;
+}
+.timeline-mode .scene-thumbnail,
+.timeline-mode .seam {
+  height: 56px;
+}
+.timeline-mode .scene-card::after {
+  height: calc(56px + 8px);
+}
+.timeline-mode .scene-slot.drop-target::before {
+  height: 56px;
+}
+.timeline-mode .seam {
+  position: absolute;
+  right: -12px;
+  top: 0;
+}
+.timeline-mode .scene-number,
+.timeline-mode .caption-indicator {
+  display: none;
+}
+.timeline-mode .scene-name {
+  font-size: var(--fs-xs);
+}
+.timeline-ruler {
+  position: relative;
+  height: 26px;
+  border-bottom: 1px solid var(--line-2);
+  cursor: crosshair;
+}
+.timeline-ruler:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+.timeline-ruler > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 4px 0 0 4px;
+  border-left: 1px solid var(--line-2);
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-playhead {
+  position: absolute;
+  top: 2px;
+  z-index: 5;
+  width: 2px;
+  height: 200px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.timeline-playhead::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--ink);
+}
+.timeline-markers {
+  position: relative;
+  height: 22px;
+}
+.timeline-markers button {
+  position: absolute;
+  top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.sound-lanes-scroll {
+  margin: 6px 0 8px 2px;
+}
+.sound-lanes {
+  position: relative;
+}
+.sound-block {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+}
+.sound-block:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink-3);
+}
+.sound-block.voiceover {
+  background: color-mix(in srgb, var(--surface) 85%, var(--ink));
+}
+.sound-block .waveform {
+  position: absolute;
+  inset: 4px 0;
+  width: 100%;
+  height: calc(100% - 8px);
+  opacity: 0.35;
+  color: var(--ink);
+  fill: currentColor;
+}
+.sound-block > span {
+  position: relative;
+  padding: 0 10px;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.waveform-status {
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+/* Pinned to the block's end in the reel only; in the sound panel it flows with its row. */
+.sound-block .waveform-status {
+  position: absolute;
+  right: 8px;
+}
+
+/* The sound lane under the storyboard. */
+.music-lane {
+  padding: 0 20px 10px;
+}
+.soundtrack-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  overflow: hidden;
+  padding: 0 12px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  font-size: var(--fs-s);
+  font-weight: 560;
+  text-align: left;
+  transition:
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+.soundtrack-button:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.soundtrack-button.has-music {
+  border: 0;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+}
+.soundtrack-name {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+.soundtrack-button small {
+  position: relative;
+  z-index: 1;
+  color: var(--ink-3);
+  font-size: var(--fs-xs);
+}
+.music-pattern {
+  flex: 1;
+  height: 18px;
+  opacity: 0.35;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ink-3) 0 2px,
+    transparent 2px 5px
+  );
+  mask: linear-gradient(
+    180deg,
+    transparent 0 20%,
+    #000 20% 80%,
+    transparent 80%
+  );
+}
+.soundtrack-button:not(.has-music) .music-pattern {
+  display: none;
+}
+.scene-context-menu {
+  position: fixed;
+}

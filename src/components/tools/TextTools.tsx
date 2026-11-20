@@ -84,6 +84,65 @@ const TEMPLATES = {
     y: 0.88,
   },
 } as const;
+
+/** Distance kept between placed words and the frame edge, as a fraction of the frame. */
+const PLACEMENT_MARGIN = 0.06;
+const COLUMNS = ["left", "center", "right"] as const;
+const ROWS = [
+  ["top", 0.14],
+  ["middle", 0.5],
+  ["bottom", 0.86],
+] as const;
+
+/** Nine quick placements; dragging on the picture and the sliders stay available for anything else. */
+function PlacementGrid({
+  item,
+  onPlace,
+}: {
+  item: TextItem;
+  onPlace: (changes: Partial<TextItem>) => void;
+}) {
+  const t = useT();
+  const columnX = (column: (typeof COLUMNS)[number]) =>
+    column === "center"
+      ? 0.5
+      : column === "left"
+        ? PLACEMENT_MARGIN + item.width / 2
+        : 1 - PLACEMENT_MARGIN - item.width / 2;
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.02;
+  return (
+    <div className="placement-grid" role="group" aria-label={t("Place words")}>
+      {ROWS.flatMap(([row, y]) =>
+        COLUMNS.map((column) => {
+          const x = columnX(column);
+          const name =
+            row === "middle" && column === "center"
+              ? "Centre"
+              : `${row[0].toUpperCase()}${row.slice(1)} ${column === "center" ? "centre" : column}`;
+          return (
+            <button
+              key={`${row}-${column}`}
+              type="button"
+              aria-label={t(name)}
+              title={t(name)}
+              aria-pressed={near(item.x, x) && near(item.y, y)}
+              onClick={() =>
+                onPlace({
+                  x: Math.max(0, Math.min(1, x)),
+                  y,
+                  align: column,
+                })
+              }
+            >
+              <span aria-hidden="true" />
+            </button>
+          );
+        }),
+      )}
+    </div>
+  );
+}
+
 export function TextTools({
   scene,
   onChange,
@@ -247,6 +306,7 @@ export function TextTools({
             />
           </ToolSection>
           <ToolSection title={t("Placement & animation")}>
+            <PlacementGrid item={item} onPlace={update} />
             <Slider
               label={t("Text X position")}
               value={item.x}

@@ -66,9 +66,7 @@ test.describe("corto in the real shell", () => {
       win.getByRole("button", { name: "Import media", exact: true }),
     ).toBeVisible();
     // The badge proves the UI is talking to the main process, not the mock.
-    await expect(win.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(win.getByTestId("save-status")).toHaveText("Saved");
     // contextIsolation and the sandbox: the page sees the bridge, not Node.
     const exposed = await win.evaluate(() => ({
       bridge: typeof window.electronBridge,
@@ -102,11 +100,60 @@ test.describe("corto in the real shell", () => {
       "native",
     );
 
+    // The page leaves room for the window controls this system really has:
+    // what the preload reports must be the frame the main process built.
+    const frame = { win32: "windows", darwin: "mac", linux: "system" }[
+      main.os as "win32" | "darwin" | "linux"
+    ];
+    expect(await win.evaluate(() => window.electronBridge!.windowFrame)).toBe(
+      frame,
+    );
+    await expect(win.getByTestId("editor-shell")).toHaveAttribute(
+      "data-frame",
+      frame,
+    );
+
+    // The app shows its window on ready-to-show, after the first composited
+    // frame. A cold runner gets there later than the page becomes ready, and
+    // a window that is not showing yet cannot be captured ("Unable to capture
+    // screenshot"), so wait for the window rather than race it.
+    await expect
+      .poll(() =>
+        app.evaluate(
+          ({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0]?.isVisible() ?? false,
+        ),
+      )
+      .toBe(true);
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
     await win.screenshot({ path: file });
     console.log(`[e2e] screenshot saved: ${file}`);
+  });
+
+  test("the appearance channel changes the native theme and refuses anything but the three choices", async () => {
+    const nativeSource = () =>
+      app.evaluate(({ nativeTheme }) => nativeTheme.themeSource);
+    await win.evaluate(() => window.electronBridge!.setNativeTheme!("dark"));
+    expect(await nativeSource()).toBe("dark");
+    for (const malformed of [null, 7, "Light", ["light"], { theme: "light" }]) {
+      const outcome = await win.evaluate(
+        (value) =>
+          window.electronBridge!.setNativeTheme!(value as never).then(
+            () => "accepted",
+            (error: Error) => error.message,
+          ),
+        malformed,
+      );
+      expect(outcome, JSON.stringify(malformed)).toContain(
+        "Unknown appearance",
+      );
+    }
+    // A refused request changed nothing.
+    expect(await nativeSource()).toBe("dark");
+    await win.evaluate(() => window.electronBridge!.setNativeTheme!("system"));
+    expect(await nativeSource()).toBe("system");
   });
 
   test("logged no console errors (CSP violations, failed loads)", async () => {

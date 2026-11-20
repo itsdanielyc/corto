@@ -11,7 +11,7 @@ import {
 } from "../domain/audio";
 import { importMedia } from "../media/phone";
 import type { CortoPlatform } from "../platform/types";
-import { Modal } from "./primitives";
+import { Panel } from "./primitives";
 import { TimingField } from "./TimingField";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { SoundPack } from "./SoundPack";
@@ -134,15 +134,13 @@ export function SoundDialog({
     }
   };
   return (
-    <Modal
+    <Panel
       title={t("Sound & narration")}
       onClose={onClose}
       className="sound-dialog"
     >
       <p className="modal-introduction">
-        {t(
-          "Place songs and narration in your film. All times are seconds; anything beyond the film\u2019s end is left out of export.",
-        )}
+        {t("Times are in seconds. Sound past the end of the film is left out.")}
       </p>
       <fieldset disabled={busy} className="sound-controls">
         <SoundPack
@@ -344,6 +342,6 @@ export function SoundDialog({
           {error}
         </p>
       )}
-    </Modal>
+    </Panel>
   );
 }

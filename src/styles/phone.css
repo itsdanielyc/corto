@@ -1,0 +1,252 @@
+/* Narrower windows: the same layout, tighter; phones get tabs and sheets. */
+:root[data-theme="dark"] .about-lockup {
+  filter: invert(1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .about-lockup {
+    filter: invert(1);
+  }
+}
+
+@media (max-width: 1240px) {
+  :root {
+    --library-width: 248px;
+    --inspector-width: 300px;
+  }
+  .command-search {
+    width: 200px;
+  }
+}
+
+@media (max-width: 1060px) {
+  :root {
+    --library-width: 216px;
+    --inspector-width: 284px;
+  }
+  .command-search {
+    width: auto;
+  }
+  .command-search > span,
+  .command-search > kbd {
+    display: none;
+  }
+  .films-button > span {
+    display: none;
+  }
+  .stage-screen {
+    padding: 14px 14px 6px;
+  }
+  .stage-controls {
+    padding: 4px 14px 2px;
+  }
+}
+
+/* Phones and narrow browser windows. */
+@media (max-width: 759px) {
+  :root {
+    --titlebar: 52px;
+    --phone-tabs: 60px;
+  }
+  .app-header {
+    gap: 2px;
+    padding: 0 8px;
+  }
+  .app-header[data-frame="mac"],
+  .app-header[data-frame="windows"] {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .crumb-divider,
+  .save-state,
+  .history-actions,
+  .command-search {
+    display: none;
+  }
+  .project-name-wrap {
+    max-width: 46vw;
+  }
+  .export-button {
+    min-width: 0;
+    padding: 0 14px;
+  }
+  .app-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto var(--phone-tabs);
+    grid-template-areas:
+      "stage"
+      "reel"
+      "tabs";
+  }
+  .stage-screen {
+    padding: 10px 12px 4px;
+  }
+  .stage-controls {
+    padding: 0 12px;
+  }
+  .transport {
+    height: 50px;
+  }
+  .play-button {
+    width: 44px;
+    height: 44px;
+  }
+  .transport-buttons .stage-button {
+    display: none;
+  }
+  .empty-stage h1 {
+    font-size: var(--fs-xl);
+  }
+  .storyboard {
+    max-height: 40vh;
+  }
+  .reel-bar {
+    height: 44px;
+    padding: 0 10px;
+  }
+  .reel-view,
+  .reel-zoom {
+    display: none;
+  }
+  .reel-bar .button.quiet {
+    padding: 0 8px;
+    font-size: 0;
+  }
+  .reel-bar .button.quiet svg {
+    width: 18px;
+    height: 18px;
+  }
+  .reel-scroll {
+    padding: 0 12px;
+  }
+  .storyboard-strip {
+    padding: 12px 0 8px;
+  }
+  .scene-card {
+    width: 112px;
+  }
+  .scene-thumbnail,
+  .seam,
+  .ghost-card,
+  .add-scene-card {
+    height: 68px;
+  }
+  .scene-card::after {
+    height: calc(68px + 8px);
+  }
+  .ghost-card {
+    width: 112px;
+  }
+  .music-lane {
+    padding: 0 12px 8px;
+  }
+  .phone-tabs {
+    grid-area: tabs;
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .phone-tabs > button {
+    flex: 1;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 2px;
+    color: var(--ink-3);
+    font-size: var(--fs-xs);
+    font-weight: 560;
+  }
+  .phone-tabs > button[aria-pressed="true"] {
+    color: var(--ink);
+  }
+  /* Library, inspector and panels become sheets above the tabs. */
+  .media-library,
+  .inspector {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--phone-tabs) + env(safe-area-inset-bottom));
+    z-index: 60;
+    display: none;
+    max-height: 70vh;
+    max-height: 70dvh;
+    border: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: var(--shadow-sheet);
+    animation: sheet-up var(--t-sheet) var(--ease);
+  }
+  .media-library::before,
+  .inspector::before {
+    content: "";
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 2px;
+    background: var(--line-2);
+  }
+  .editor-shell[data-sheet="library"] .media-library,
+  .editor-shell[data-sheet="edit"] .inspector,
+  .editor-shell[data-sheet="panel"] .inspector {
+    display: flex;
+  }
+  .sheet-scrim {
+    position: fixed;
+    inset: 0 0 var(--phone-tabs);
+    z-index: 55;
+    display: block;
+    background: var(--scrim);
+    animation: fade-in var(--t-base) var(--ease);
+  }
+  .notices {
+    bottom: calc(var(--phone-tabs) + 16px);
+  }
+  .home-bar {
+    padding: 10px 14px 0;
+  }
+  .home-content {
+    padding: 16px 16px 48px;
+  }
+  .home-starts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .theme-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .preset-grid,
+  .slideshow-layout,
+  .settings-fields,
+  .shortcuts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .export-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .modal {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92dvh;
+    margin: auto auto 0;
+    border-radius: 16px 16px 0 0;
+  }
+  .modal[open] {
+    animation: sheet-up var(--t-sheet) var(--ease);
+  }
+  .export-tray {
+    left: 12px;
+    width: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .scene-actions .icon-button,
+  .seam-button {
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .add-media {
+    opacity: 1;
+    transform: none;
+  }
+}

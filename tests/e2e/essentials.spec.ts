@@ -105,22 +105,23 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     await page.getByLabel("Project name").fill("Phone memories");
     await page.getByLabel("Project name").press("Tab");
     await page
       .getByTestId("media-input")
       .setInputFiles(join(process.cwd(), "tests/fixtures/phone.heic"));
     await expect(page.getByTestId("scene-card")).toHaveCount(1);
+    await page.getByRole("tab", { name: "Timing", exact: true }).click();
     await number(page, "Duration (seconds)", "3");
     await page.getByTestId("media-input").setInputFiles(audiblePhone);
     await expect(page.getByTestId("scene-card")).toHaveCount(2);
     await page
       .getByRole("button", { name: "Add title card", exact: true })
       .click();
+    await page.getByRole("tab", { name: "Text", exact: true }).click();
     await page.getByLabel("On-screen title").fill("");
+    await page.getByRole("tab", { name: "Timing", exact: true }).click();
     await number(page, "Duration (seconds)", "3");
     await menu(page, "Sound & narration");
     await page
@@ -140,9 +141,11 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     await page
       .getByRole("button", { name: "Record narration", exact: true })
       .click();
+    // The recorder counts 3-2-1 first, so one recorded second is about four
+    // seconds away: allow for it rather than racing the default five.
     await expect(
-      page.getByRole("status").filter({ hasText: /Recording locally · 1s/ }),
-    ).toBeVisible();
+      page.getByRole("status").filter({ hasText: /Recording · 1s/ }),
+    ).toBeVisible({ timeout: 8000 });
     await page
       .getByRole("button", { name: "Stop and add narration", exact: true })
       .click();
@@ -152,7 +155,7 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       () => `${process.platform}-${process.arch}`,
     );
     await page.screenshot({ path: `artifacts/e2e/${platform}-sound.png` });
-    await page.getByLabel("Close dialog").click();
+    await page.getByLabel("Close panel").click();
     await menu(page, "Timed subtitles");
     await page.getByTestId("subtitle-input").setInputFiles({
       name: "memories.srt",
@@ -165,10 +168,8 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       "Together again",
     );
     await page.screenshot({ path: `artifacts/e2e/${platform}-subtitles.png` });
-    await page.getByLabel("Close dialog").click();
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await page.getByLabel("Close panel").click();
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     const project = await page.evaluate(() =>
       window.electronBridge!.loadProject(),
     );
@@ -193,7 +194,7 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
         exact: true,
       }),
     );
-    const completed = page.getByText("A little film. All yours.", {
+    const completed = page.getByText("Your film is ready", {
       exact: true,
     });
     await expect(completed).toBeVisible();
@@ -233,9 +234,7 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .getByRole("button", { name: "Open Phone memories", exact: true })
       .click();
     await expect(page.getByTestId("scene-card")).toHaveCount(3);
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     await page.reload();
     await expect(page.getByTestId("scene-card")).toHaveCount(3);
     expect(errors).toEqual([]);

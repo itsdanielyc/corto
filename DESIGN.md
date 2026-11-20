@@ -1,39 +1,62 @@
 <!-- keel:start -->
 # Corto interface decisions
 
-## Direction
-A quiet, light creative workspace with a graphite preview surround. Supplied black lockup on white; the original dark app icon in docks. No added brand colour. Photography provides colour; selection and primary actions use black/white. Rounded controls are restrained, borders subtle, shadows limited to floating menus and dialogs.
+## Direction: a light table and a screen (approved 2026-11-20)
+The film is the brightest thing in the room. Scenes are laid out on a light table (the reel) and judged on a dark screen (the stage). You change a moment on the moment itself: words and framing on the picture, transitions at the seam between two cards, everything else in a panel that follows the selection. Dialogs are only for starting a film (slideshow) and finishing one (export).
+
+- **Signature:** Corto's mark is the play button, the playhead and the slider thumb. Pressing play slides the triangle behind the pillar and a second pillar appears: pause.
+- **Colour:** monochrome on purpose; photographs supply colour. Ink is the accent (black in light, white in dark). Red appears only while recording.
+- **Copy:** the interface does not explain the product back to the user. No "kept on this device", "no watermark" or "made on your computer" reassurance lines; status says what happened ("Saved"), labels say what a control does.
+- Mockups: https://claude.ai/artifact/JD4SgZiTFmorEcpXGbyVEj (12 boards: editor, words, framing, sound, first launch, films, slideshow, export, palette, phone, window chrome, system).
+
+## Tokens
+Defined once in `src/styles/tokens.css`; components never hard-code colours.
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--canvas` | #F4F4F5 | #0E0E10 | window background |
+| `--surface` | #FFFFFF | #151517 | panels |
+| `--well` | #F1F1F3 | #1F1F23 | inputs, segmented controls |
+| `--table` | #ECECEE | #0A0A0B | the reel |
+| `--line` / `--line-2` | #E4E4E7 / #D4D4D8 | #26262A / #38383E | dividers / control borders |
+| `--ink` / `--ink-2` / `--ink-3` | #0F0F10 / #3F3F46 / #64646C | #F4F4F5 / #BCBCC3 / #8E8E97 | text levels; `--ink` is also the accent |
+| `--stage` | #0C0C0D | #000000 | around the picture |
+| `--record` | #E5484D | #E5484D | recording only |
+
+Theme follows the system by default; Settings offers System, Light and Dark. On desktop the choice also sets the native theme, so title-bar controls match.
+
+## Typography
+Inter (bundled, variable) for the interface; tabular numerals for every time. Text is sized for reading, not density:
+
+| Role | Size / weight |
+|---|---|
+| Smallest text anywhere (badges, card durations, keycaps) | 12px / 500 |
+| Secondary text, field labels | 13px / 500 |
+| Body, controls, menus | 14px / 450–500 |
+| Panel titles | 15px / 600 |
+| View titles (Films, dialogs) | 20–28px / 650, tracking −0.01em |
+
+No uppercase micro-labels. Film text styles keep their own bundled fonts (Manrope, Nunito, DM Serif Display, JetBrains Mono).
+
+## Geometry and motion
+Radii 6 / 8 / 12px; controls 32px tall (40px on touch); 1px borders; shadows only on floating things (menus, popovers, sheets). Selection is an inset ink ring.
+Easing `--ease` cubic-bezier(.22,1,.36,1) for arrivals, `--ease-io` (.65,0,.35,1) for moves. Durations: 120ms (press, hover), 200ms (panels, tabs), 240ms (cards moving), 340ms (sheets), 650ms (export premiere). Reduced motion keeps every state and drops the movement.
 
 ## Layout
-- Header: Corto lockup, editable project name, save state, undo/redo, project menu and Export movie.
-- Left: narrow navigation rail plus media library, search, import and explanatory local-storage footer.
-- Centre: project heading, aspect selector, large 16:9 canvas, playback and scrubber.
-- Right: selected scene timing, caption/title style, framing, transition and audio controls.
-- Bottom: horizontally scrollable storyboard with numbered thumbnails, durations and a real playhead; music lane below.
-- Empty state explains the next action and offers a clearly labelled example project. Example media never masquerades as imported personal content.
+- **Title bar:** mark (to Films), film name, save state, undo/redo, command search (Ctrl/⌘ K), more menu, Export. Draggable; macOS traffic lights inset, Windows caption buttons overlaid; Linux keeps the system frame.
+- **Library (left):** Media, Music and Text tabs; import, search, sort, tiles.
+- **Stage (centre):** the picture on `--stage`, time, previous / play / next, shape and full screen, then the mark-thumb scrubber.
+- **Inspector (right):** follows the selection. A scene shows Picture (Clip / Card), Text, Overlays and Timing tabs; nothing selected shows the film (shape, defaults, bulk edits); sound and subtitles open here too. Whatever opens here is exactly one column wide: sections stack, tiles shrink and long button names wrap, so nothing is cut off or scrolls sideways (`tests/ui/panel-layout.spec.ts`).
+- **Reel (bottom):** storyboard cards on the table, a transition control at every seam, a storyboard / timeline switch and the sound lane.
+- **Films:** a full window view with starts (empty film, slideshow, templates) and recent films; not a modal.
+- **Phone (< 760px):** title bar, stage, reel, bottom tabs (Edit, Media, Sound, Text) opening sheets.
 
-## Typography and accessibility
-Bundle a sans-serif font so layouts are stable offline. Use tabular numbers for time. Body copy is at least 13px; interactive targets at least 32px, larger on touch screens. Focus rings are visible, buttons have accessible names, field labels are persistent, modal focus is trapped and restored. Reduced-motion preference suppresses decorative animation. Avoid tooltips as the only explanation of destructive actions.
+## Accessibility and feedback (kept from v0.1)
+Controls 32px minimum (40px on touch), visible focus, persistent field labels, named icon buttons, trapped and restored modal focus, no tooltip-only explanations of destructive actions. Autosave reports actual completion or failure; export shows real progress with a cancel control and runs while editing; missing media and unsupported codecs say how to recover; cancelled saves and exports are quiet. Source media is never modified.
 
-## Small screens
-At narrow widths the library and inspector become explicit panels above a full-width preview. Essential storyboard, playback, import and export stay reachable. No forced desktop viewport or hidden overflow trap.
-
-## Feedback
-Autosave reports actual completion/failure. Export shows actual progress and a cancel control. Missing media and unsupported codecs explain how to recover. Save/export cancellations are quiet. Source photos and clips remain immutable. Every visible control either performs its named action or is disabled with an explanation.
-
-## Tool choice
-The Product Design router was inspected; it excludes ordinary implementation. This task uses its existing brand material and this decision log rather than introducing a separate design exploration/approval workflow.
-
-## v0.1.1
-- My films is reachable from the header/brand and project menu, with thumbnails and an explicit recovery-as-copy action.
-- Sound & narration and Timed subtitles use focused, keyboard-accessible panels. Persistent labels distinguish film time from original-source time; invalid edits explain their bounds.
-- Export choices name destinations, preserve the chosen aspect ratio and label size as an estimate. A sample uses the same export path.
-- Automatic slideshow creation and photo-presentation enhancements were explicitly declined. The scene editor, brand and photo-framing controls keep their existing scope.
-
-## Creator tools (current authorisation)
-- The user reopened slideshow and photo presentation in the Downloads audit. The existing quiet workspace remains the default; More scene tools opens picture, clip, text and overlay panels with a live composition preview.
-- Slideshow themes produce ordinary editable scenes in a separate film. Date sorting has explicit EXIF/file/name fallbacks; soundtrack fitting accounts for transition overlap.
-- Bulk actions name their selection scope. Ctrl/⌘ and Shift extend storyboard selection, with context-menu and keyboard equivalents. A proportional timeline is optional.
-- Project management keeps source files and restores versions as separate films. Optional models explain their download before use; media is processed locally.
-- Every output choice describes the real format and capability. Native staging is incremental; active exports own immutable snapshots.
+## Earlier decisions still in force
+- My films keeps thumbnails and recovery-as-copy; portable `.corto` copies remain the way to move a film.
+- Sound, subtitles and export distinguish film time from source time and explain invalid bounds.
+- Export choices name destinations, keep the film's aspect ratio and label size as an estimate; a five-second sample uses the same export path.
+- Slideshow themes produce ordinary editable scenes in a separate film. Optional models explain their download before use.
 <!-- keel:end -->

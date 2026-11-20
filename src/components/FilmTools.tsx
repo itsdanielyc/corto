@@ -7,7 +7,7 @@ import {
   sceneEffects,
 } from "../domain/editing";
 import { buildTimeline } from "../domain/timeline";
-import { Modal } from "./primitives";
+import { Panel } from "./primitives";
 import { Choice, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { MOTION_CHOICES, TRANSITION_CHOICES } from "./tools/PictureTools";
 export function FilmTools({
@@ -50,10 +50,10 @@ export function FilmTools({
       return changeScenes(current, ids, (scene) => update(scene, index++));
     });
   return (
-    <Modal
+    <Panel
       title={t("Film tools & bulk edits")}
       onClose={onClose}
-      className="slideshow-dialog"
+      className="film-tools"
     >
       <p className="modal-introduction">
         {selectedIds.size}
@@ -330,6 +330,6 @@ export function FilmTools({
           {t("Done")}
         </button>
       </div>
-    </Modal>
+    </Panel>
   );
 }

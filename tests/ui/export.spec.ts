@@ -8,6 +8,7 @@ import {
 } from "../helpers/movie-inspection";
 
 async function duration(page: Page, value: string) {
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill(value);
   await page.getByLabel("Duration (seconds)").press("Tab");
 }
@@ -58,18 +59,17 @@ for (const recordingMode of [
     await page
       .getByRole("button", { name: "Add title card", exact: true })
       .click();
+    await page.getByRole("tab", { name: "Text", exact: true }).click();
     await page.getByLabel("On-screen title").fill("Hello, family.");
     await duration(page, "0.5");
     await page
       .getByTestId("music-input")
       .setInputFiles(join(process.cwd(), "tests/fixtures/music.mp3"));
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     await page.getByRole("button", { name: "Export movie" }).click();
     if (
       await page
-        .getByText("For MP4 export, open this project in Corto for desktop.", {
+        .getByText("This browser cannot export MP4.", {
           exact: false,
         })
         .count()
@@ -87,7 +87,7 @@ for (const recordingMode of [
     const path = info.outputPath(file.suggestedFilename());
     await file.saveAs(path);
     await expect(
-      page.getByText("A little film. All yours.", { exact: true }),
+      page.getByText("Your film is ready", { exact: true }),
     ).toBeVisible();
     const movie = inspectMovie(path);
     expect(movie).toMatchObject(
@@ -115,7 +115,7 @@ test("a cancelled browser render produces no partial download and can be retried
   await page.getByRole("button", { name: "Export movie" }).click();
   if (
     await page
-      .getByText("For MP4 export, open this project in Corto for desktop.", {
+      .getByText("This browser cannot export MP4.", {
         exact: false,
       })
       .count()

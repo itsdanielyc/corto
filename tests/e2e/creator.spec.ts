@@ -51,11 +51,9 @@ test("real 4K60 native composition contains timed text and independently audible
         join(process.cwd(), "tests/fixtures/motion.mp4"),
       ]);
     await expect(page.getByTestId("scene-card")).toHaveCount(2);
+    await page.getByRole("tab", { name: "Timing", exact: true }).click();
     await page.getByLabel("Duration (seconds)").fill("1");
     await page.getByLabel("Duration (seconds)").press("Tab");
-    await page
-      .getByRole("button", { name: "More scene tools", exact: true })
-      .click();
     await page.getByRole("tab", { name: "Text", exact: true }).click();
     await page.getByRole("button", { name: "Heading", exact: true }).click();
     await page.getByLabel("Text item words").fill("FAMILY");
@@ -73,7 +71,6 @@ test("real 4K60 native composition contains timed text and independently audible
     await range(page, "Overlay X position", "0.15");
     await range(page, "Overlay Y position", "0.15");
     await range(page, "Overlay sound volume", "1");
-    await page.getByRole("button", { name: "Done", exact: true }).click();
     await page
       .getByRole("button", { name: "Export movie", exact: true })
       .click();
@@ -97,7 +94,7 @@ test("real 4K60 native composition contains timed text and independently audible
     );
     await expect(
       page.getByRole("heading", {
-        name: "A little film. All yours.",
+        name: "Your film is ready",
         exact: true,
       }),
     ).toBeVisible();

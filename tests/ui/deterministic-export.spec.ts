@@ -24,6 +24,7 @@ test("encodes a real MP4 locally when live MediaRecorder MP4 is unavailable", as
     .getByTestId("media-input")
     .setInputFiles(join(process.cwd(), "tests/fixtures/motion.mp4"));
   await expect(page.getByTestId("scene-card")).toHaveCount(1);
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill("0.5");
   await page.getByLabel("Duration (seconds)").press("Tab");
   await page.getByRole("button", { name: "Export movie", exact: true }).click();

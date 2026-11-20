@@ -73,6 +73,31 @@ Source: the v0.1.2 bug sweep (17 Nov 2026). Role: solo, one branch per batch.
 Ruling: the preview follows FFmpeg `xfade` for slide, push, zoom and blur rather than export following the preview, because the export is what people keep and the bundled native (6.1) and web (5.1) FFmpeg builds lack cover-style transitions. Cost if wrong: four preview animations change again.
 Ruling: the crossfade audio uses two streaming linear fades mixed together instead of `acrossfade`, which buffers its whole output until both inputs end. Same curve; cost if wrong: a level difference in crossfades, covered by the existing dissolve and audio-output tests.
 
+## Redesign: a light table and a screen (2026-11-20)
+Source: the approved mockups recorded in DESIGN.md. The user asked for readable text sizes, no reassurance subtext, a separate design branch and a PR. Role: solo, branch `design/redesign`. Framework, platforms, project schema and export paths are unchanged.
+
+| # | Slice | Done when | Levels | Status |
+|---|---|---|---|---|
+| 27 | Design system and shell | Tokens (light, dark, system), Inter, 12px text floor, title bar, library tabs, dark stage, mark play/pause, restyled controls; reassurance copy removed | L0/L4/L5 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 28 | Contextual inspector | Scene tools live in the inspector (Picture/Clip/Card, Text, Overlays, Timing); film settings, sound and subtitles open there; no Scene tools modal | L4 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 29 | Reel and seams | Transition picker at every seam; storyboard/timeline switch in the reel; sound lane restyled | L4 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 30 | On the picture | Text items drag on the preview; start and end framing set on the picture | L1/L4 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 31 | Start and finish | Films home view, first launch with drop count, slideshow steps, export sheet with progress in the title bar and a premiere, command palette | L4/L6 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 32 | Every platform | Phone layout with bottom tabs and sheets; macOS and Windows title bars; theme setting | L4/L5/L6 | on branch design/redesign; reviewed; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44809610640 on 57ddbdc |
+| 33 | Proof | New ARIA/geometry/pixel baselines from runners, CI on every target, ledger rows, PR | L0-L6 | pixel baselines from runners (snapshots 44808781291, looked at), CI on every target (44809610640, then 44811075320 on ca4fc78), ledger rows written, PR #22 reviewed and amended; not merged. Open: a look at the macOS traffic lights, and the Linux first-launch flake (the window is still hidden five seconds after the page is ready; passes on the one L6 retry) |
+
+Ruling: Linux keeps the system window frame instead of a drawn header bar — client-side decorations differ by compositor and cannot be checked from a Windows machine. Cost if wrong: Linux looks less integrated than macOS and Windows.
+Ruling: the theme preference is stored per device in local storage, not in the project or the preferences contract — it is presentation only. Cost if wrong: the choice does not travel with a portable copy, which it should not anyway.
+
+### Review of PR #22 (2026-11-20, reviewer pass on slices 27–33)
+Findings and fixes are in VERIFICATION.md under the same date. Decisions taken while reviewing:
+
+Ruling: the contract additions (`setNativeTheme`, `windowFrame`, `isThemeChoice`, `windowFrameFor`) stay in this PR instead of a contract PR of their own — one role, one branch, additive, and the only consumers are in the same change. Cost if wrong: none until a second role shares the repository.
+Ruling: the narration tests wait eight to ten seconds for "Recording · 1s" — the recorder now counts down three seconds on purpose, and the tests assert the countdown first. This is a product delay, not a widened timeout for a flaky test. Cost if wrong: a slower failure by a few seconds.
+Ruling: the appearance storage keeps the author's per-device ruling but moves from `src/components` to `src/platform/appearance.ts`, because components reach platform effects only through the platform boundary. Cost if wrong: one import path.
+Ruling: left for their own slices because main behaves the same — five English strings without Spanish (`Slideshow soundtrack`, `No music`, `Timeline ruler`, `Marker`, the template hint) and a typed duration that is not clamped to its limits. Cost if wrong: they stay as they are on main a little longer.
+Ruling: the finished-export notice still sits over the inspector heading for ten seconds (seen in the hosted Linux real-shell screenshot). It is dismissible and brief, so it is recorded as a design follow-up rather than changed in review. Cost if wrong: scene actions are covered for up to ten seconds after a background export.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

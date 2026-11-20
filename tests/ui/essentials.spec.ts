@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { settled } from "../helpers/settled";
 import { join } from "node:path";
 
 async function menu(page: import("@playwright/test").Page, name: string) {
@@ -25,6 +26,7 @@ test("an unsupported browser offers an accessible desktop-export fallback", asyn
     .getByRole("button", { name: "Add title card", exact: true })
     .click();
   await page.getByRole("button", { name: "Export movie", exact: true }).click();
+  await settled(page);
   const accessibility = await new AxeBuilder({ page })
     .include(".export-dialog")
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
@@ -43,14 +45,10 @@ test("multiple films resume and recovery keeps the latest edit", async ({
 }) => {
   await page.getByLabel("Project name").fill("First memory");
   await page.getByLabel("Project name").press("Tab");
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   await page.getByLabel("Project name").fill("Latest memory");
   await page.getByLabel("Project name").press("Tab");
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   await menu(page, "New film");
   await page
     .getByRole("button", { name: "Start new film", exact: true })
@@ -142,7 +140,7 @@ test("songs can be placed, trimmed and faded and subtitles round-trip as SRT", a
   await page.getByLabel("Sound 1 fade in").fill("0.3");
   await page.getByLabel("Sound 1 fade in").press("Tab");
   await page.getByLabel("Lower music under clip sound and narration").check();
-  await page.getByLabel("Close dialog").click();
+  await page.getByLabel("Close panel").click();
   await menu(page, "Timed subtitles");
   await page.getByTestId("subtitle-input").setInputFiles({
     name: "family.srt",
@@ -153,17 +151,15 @@ test("songs can be placed, trimmed and faded and subtitles round-trip as SRT", a
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export SRT", exact: true }).click();
   await (await download).saveAs(info.outputPath("family.srt"));
-  await page.getByLabel("Close dialog").click();
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await page.getByLabel("Close panel").click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   await page.reload();
   await menu(page, "Sound & narration");
   await expect(page.getByLabel("Sound 1 fade in")).toHaveValue("0.3");
   await expect(
     page.getByLabel("Lower music under clip sound and narration"),
   ).toBeChecked();
-  await page.getByLabel("Close dialog").click();
+  await page.getByLabel("Close panel").click();
   await menu(page, "Timed subtitles");
   await expect(page.getByLabel("Subtitle 1 text")).toHaveValue("Hello 家族");
 });
