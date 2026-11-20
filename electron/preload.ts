@@ -7,6 +7,15 @@ import { nativeChannels } from "../contracts/platform";
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
 const bridge: ElectronBridge = {
+  // Same mapping as electron/window-chrome.ts; the sandboxed preload cannot import Electron main APIs.
+  windowFrame:
+    process.platform === "darwin"
+      ? "mac"
+      : process.platform === "win32"
+        ? "windows"
+        : "system",
+  setNativeTheme: (theme) =>
+    ipcRenderer.invoke(nativeChannels.setNativeTheme, theme),
   platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
   loadProject: () => ipcRenderer.invoke(nativeChannels.loadProject),
   listProjects: () => ipcRenderer.invoke(nativeChannels.listProjects),

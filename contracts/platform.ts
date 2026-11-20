@@ -61,8 +61,18 @@ export interface MovieResult {
   location: "file" | "download";
 }
 
+/** How the window frame around Corto's title bar is drawn on this system. */
+export type WindowFrame = "mac" | "windows" | "system";
+/** The appearance the person chose; "system" follows the operating system. */
+export type ThemeChoice = "system" | "light" | "dark";
+export const THEME_CHOICES: readonly ThemeChoice[] = ["system", "light", "dark"];
+
 /** Narrow, typed preload API. The renderer never receives raw IPC or filesystem primitives. */
 export interface NativeBridge extends ProjectRepository, CreatorServices {
+  /** Set by the preload from the operating system; absent on older builds. */
+  readonly windowFrame?: WindowFrame;
+  /** Matches native window controls and menus to the chosen appearance. */
+  setNativeTheme?(theme: ThemeChoice): Promise<void>;
   platformInfo(): Promise<PlatformDetails>;
   putAsset(asset: MediaAsset, file: File): Promise<void>;
   importPhoneVideo(file: File): Promise<ImportedMedia>;
@@ -110,4 +120,5 @@ export const nativeChannels = {
   audioSamples: "corto:audio-samples",
   chooseExportDestination: "corto:choose-export-destination",
   releaseExportDestination: "corto:release-export-destination",
+  setNativeTheme: "corto:set-native-theme",
 } as const;

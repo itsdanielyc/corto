@@ -1,13 +1,13 @@
 import { useT } from "../i18n/locale";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  Check,
   Download,
   FolderOpen,
   LoaderCircle,
-  Monitor,
+  MessageCircle,
   Save,
-  ShieldCheck,
+  Smartphone,
+  Tv,
 } from "lucide-react";
 import type {
   ExportProgress,
@@ -16,6 +16,7 @@ import type {
 } from "../../contracts/platform";
 import { parseProject, type Project } from "../../contracts/project";
 import type { CortoPlatform } from "../platform/types";
+import type { MediaResources } from "../hooks/use-resources";
 import { filmDuration, formatTime, frameDimensions } from "../domain/timeline";
 import { selectedFilm } from "../domain/selected-film";
 import { browserRecordingFormat } from "../export/format";
@@ -34,11 +35,75 @@ const RATIO_LABELS = {
   feed: "4:5",
   cinema: "2.35:1",
 } as const;
+const PRESET_ICONS = {
+  tv: Tv,
+  phone: Smartphone,
+  small: MessageCircle,
+} as const;
+/** Bits per second budgeted for the soundtrack in size estimates. */
+const AUDIO_BITS = 192000;
 type RenderMovie = CortoPlatform["renderMovie"];
+
+/** Approximate encoded size for a duration and settings; labelled as an estimate in the UI. */
+function estimateBytes(
+  seconds: number,
+  format: Project["output"]["format"],
+  resolution: Project["output"]["resolution"],
+  quality: number,
+  preset?: keyof typeof EXPORT_PRESETS,
+) {
+  if (format === "wav") return seconds * 48000 * 2 * 2;
+  if (format === "m4a") return (seconds * AUDIO_BITS) / 8;
+  const videoBits =
+    exportBitrate({ resolution, preset }) *
+    (resolution === "2160p" ? 4 : 1) *
+    (0.35 + quality / 100);
+  return (seconds * (videoBits + AUDIO_BITS)) / 8;
+}
+const megabytes = (bytes: number) => (bytes / 1000000).toFixed(1);
+
+/** The film as it opens: the first scene's picture, or its title card. */
+function FilmPoster({
+  project,
+  resources,
+}: {
+  project: Project;
+  resources: MediaResources;
+}) {
+  const first = project.scenes[0];
+  const poster = first?.assetId ? resources[first.assetId]?.poster : undefined;
+  return (
+    <span
+      className="film-poster"
+      style={
+        {
+          aspectRatio: (() => {
+            const size = frameDimensions(project.ratio, "720p");
+            return `${size.width} / ${size.height}`;
+          })(),
+          background: first && !first.assetId ? first.background : undefined,
+        } as CSSProperties
+      }
+      aria-hidden="true"
+    >
+      {poster ? (
+        <img src={poster} alt="" draggable={false} />
+      ) : (
+        first?.caption && (
+          <span className={`caption-${first.captionStyle}`}>
+            {first.caption}
+          </span>
+        )
+      )}
+    </span>
+  );
+}
+
 /** Export choices create immutable requests; the application queue owns jobs after the dialog closes. */
 export function ExportDialog({
   project,
   platform,
+  resources = {},
   onClose,
   renderMovie,
   time = 0,
@@ -46,6 +111,7 @@ export function ExportDialog({
 }: {
   project: Project;
   platform: CortoPlatform;
+  resources?: MediaResources;
   onClose: () => void;
   renderMovie?: RenderMovie;
   time?: number;
@@ -90,16 +156,13 @@ export function ExportDialog({
             project.scenes.filter((scene) => selectedIds.has(scene.id)),
           )
         : total;
-  const videoBits =
-    exportBitrate({ resolution, preset }) *
-    (resolution === "2160p" ? 4 : 1) *
-    (0.35 + settings.quality / 100);
-  const estimatedBytes =
-    settings.format === "wav"
-      ? seconds * 48000 * 2 * 2
-      : settings.format === "m4a"
-        ? (seconds * 192000) / 8
-        : (seconds * (videoBits + 192000)) / 8;
+  const estimatedBytes = estimateBytes(
+    seconds,
+    settings.format,
+    resolution,
+    settings.quality,
+    preset,
+  );
   const choosePreset = (id: keyof typeof EXPORT_PRESETS) =>
     setSettings((previous) => ({
       ...previous,
@@ -169,9 +232,9 @@ export function ExportDialog({
   };
   return (
     <Modal
-      title={t(result ? "A little film. All yours." : "Make it a movie.")}
+      title={t(result ? "Your film is ready" : "Export")}
       onClose={close}
-      className="export-dialog"
+      className={`export-dialog ${result ? "premiere-dialog" : ""}`}
     >
       {!native && browser?.label === "WebM" && (
         <canvas
@@ -183,90 +246,90 @@ export function ExportDialog({
         />
       )}
       {result ? (
-        <div className="export-success">
-          <div className="success-symbol">
-            <Check size={28} />
+        <div className="premiere">
+          <div className="premiere-frame">
+            <FilmPoster project={project} resources={resources} />
           </div>
-          <h3>
-            {t("Ready for the big screen.")}
-            <br />
-            {t("Or the family group chat.")}
-          </h3>
-          <p>{result.fileName}</p>
-          <span>
-            {result.location === "file"
-              ? t("Saved to your chosen folder.")
-              : t("Your browser has started the download.")}{" "}
-            {t("No watermark, just your story.")}
-          </span>
-          {result.location === "file" && (
-            <button
-              className="button secondary"
-              onClick={() => {
-                void platform
-                  .revealExport()
-                  .catch((failure) => setError(String(failure)));
-              }}
-            >
-              <FolderOpen size={16} />
-              {t("Show in folder")}
+          <h3 className="premiere-name">{project.name}</h3>
+          <p className="premiere-meta">
+            <span>{result.fileName}</span>
+            <span>
+              {result.location === "file"
+                ? t("Saved")
+                : t("Download started")}
+            </span>
+          </p>
+          <div className="premiere-actions">
+            {result.location === "file" && (
+              <button
+                className="button secondary"
+                onClick={() => {
+                  void platform
+                    .revealExport()
+                    .catch((failure) => setError(String(failure)));
+                }}
+              >
+                <FolderOpen size={16} aria-hidden="true" />
+                {t("Show in folder")}
+              </button>
+            )}
+            <button className="button primary" onClick={onClose} autoFocus>
+              {t("Back to my film")}
             </button>
-          )}
-          <button className="button primary" onClick={onClose}>
-            {t("Back to my film")}
-          </button>
+          </div>
         </div>
       ) : (
         <>
-          <p className="modal-introduction">
-            {t("A birthday, a big adventure, an ordinary Sunday.")}
-            <br />
-            {t("Some moments deserve a replay.")}
-          </p>
           <div className="export-summary">
-            <Monitor size={23} />
+            <FilmPoster project={project} resources={resources} />
             <div>
               <strong>{project.name}</strong>
               <span>
                 {project.scenes.length}
-                {t(" scenes \u00B7 ")}
+                {t(" scenes · ")}
                 {formatTime(total)}
-                {t(" \u00B7")} {RATIO_LABELS[project.ratio]}
+                {t(" · ")}
+                {RATIO_LABELS[project.ratio]}
               </span>
             </div>
-            <span className="format-badge">{format ?? t("Unavailable")}</span>
+            <span className="badge format-badge">
+              {format ?? t("Unavailable")}
+            </span>
           </div>
           <fieldset className="export-options" disabled={!!progress}>
-            <legend>{t("Choose where to share")}</legend>
-            {(["tv", "phone", "small"] as const).map((id) => {
-              const option = EXPORT_PRESETS[id];
-              return (
-                <label
-                  key={id}
-                  className={
-                    settings.preset === id
-                      ? "resolution-option selected"
-                      : "resolution-option"
-                  }
-                >
-                  <input
-                    type="radio"
-                    name="resolution"
-                    value={id}
-                    checked={settings.preset === id}
-                    onChange={() => choosePreset(id)}
-                  />
-                  <div>
-                    <strong>
-                      {t(option.title)}
-                      <small>{option.resolution}</small>
-                    </strong>
+            <legend>{t("Where will it be watched?")}</legend>
+            <div className="preset-grid">
+              {(["tv", "phone", "small"] as const).map((id) => {
+                const option = EXPORT_PRESETS[id];
+                const Icon = PRESET_ICONS[id];
+                return (
+                  <label
+                    key={id}
+                    className={
+                      settings.preset === id
+                        ? "resolution-option selected"
+                        : "resolution-option"
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="resolution"
+                      value={id}
+                      checked={settings.preset === id}
+                      onChange={() => choosePreset(id)}
+                    />
+                    <Icon size={20} strokeWidth={1.6} aria-hidden="true" />
+                    <strong>{t(option.title)}</strong>
                     <span>{t(option.subtitle)}</span>
-                  </div>
-                  <span className="radio-visual" />
-                </label>
-              );
-            })}
+                    <small>
+                      {option.resolution}
+                      {settings.format === "mp4" &&
+                        ` · ~${megabytes(estimateBytes(seconds, "mp4", presetResolution(id), id === "small" ? 50 : 70, id))} MB`}
+                    </small>
+                  </label>
+                );
+              })}
+            </div>
             <OutputOptions
               settings={settings}
               onChange={setSettings}
@@ -287,45 +350,34 @@ export function ExportDialog({
             {settings.format === "mp4" && (
               <>
                 {dimensions.width}
-                {t(" \u00D7 ")}
+                {t(" × ")}
                 {dimensions.height}
-                {t(" \u00B7")}{" "}
+                {t(" · ")}
                 {settings.fps === "source"
                   ? t("source frame rate")
-                  : `${settings.fps} fps`}{" "}
-                {t("\u00B7")}{" "}
+                  : `${settings.fps} fps`}
+                {t(" · ")}
               </>
             )}
             {settings.format === "mp4"
-              ? t("Local H.264 + AAC encoding")
+              ? t("H.264 video, AAC sound")
               : settings.format === "gif"
                 ? t("Animated GIF · up to 960 pixels, 15 fps")
                 : settings.format === "wav"
                   ? t("Uncompressed PCM audio")
                   : t("AAC audio")}
-          </p>
-          <p className="dialog-note">
+            <br />
             {t("Estimated size: about ")}
-            {(estimatedBytes / 1000000).toFixed(1)}
-            {t(" MB. Actual size varies with the scenes.")}
+            {megabytes(estimatedBytes)}
+            {t(" MB")}
             {settings.format === "gif" &&
-              " GIF sizes vary considerably with movement."}{" "}
-            {t("Aspect ratio stays ")}
-            {project.ratio}
-            {t(".")}
+              t(" (GIF sizes vary a lot with movement)")}
           </p>
-          {!native && format && (
-            <div className="web-export-note">
-              {t(
-                "Your movie is encoded on this device. No upload is needed. Large source files and long jobs work best in the desktop app.",
-              )}
-            </div>
-          )}
           {!format && (
-            <div>
+            <div className="export-fallback">
               <p className="inline-error">
                 {t(
-                  "For MP4 export, open this project in Corto for desktop. Save a portable copy to take your media and edits with you.",
+                  "This browser cannot export MP4. Open the film in Corto for desktop: save a portable copy to take your media and edits with you.",
                 )}
               </p>
               <button
@@ -336,16 +388,16 @@ export function ExportDialog({
                     .catch((failure) => setError(String(failure)));
                 }}
               >
-                <Save size={15} />
+                <Save size={15} aria-hidden="true" />
                 {t("Save portable project")}
               </button>
             </div>
           )}
           {progress ? (
             <div className="export-progress">
-              <div>
-                <LoaderCircle className="spin" size={17} />
-                <span>{progress.message}</span>
+              <div className="export-progress-label">
+                <LoaderCircle className="spin" size={16} aria-hidden="true" />
+                <span>{t(progress.message)}</span>
                 <strong>
                   {Math.round(progress.fraction * 100)}
                   {t("%")}
@@ -356,7 +408,7 @@ export function ExportDialog({
                 value={progress.fraction}
                 aria-label={t("Movie export progress")}
               />
-              <div className="tool-button-row">
+              <div className="modal-actions">
                 <button
                   className="button secondary"
                   onClick={() => abort.current?.abort()}
@@ -371,33 +423,33 @@ export function ExportDialog({
               </div>
             </div>
           ) : (
-            <button
-              className="button primary export-start"
-              disabled={
-                !format ||
-                !project.scenes.length ||
-                (rangeMode === "selection" && !selectedIds.size)
-              }
-              onClick={() => {
-                void start();
-              }}
-            >
-              <Download size={17} />
-              {t("Export ")}
-              {format ?? t("movie")}
-            </button>
-          )}
-          {!progress && (
-            <button
-              className="text-button sample-export"
-              disabled={!format}
-              title={t("Starts at the current playhead")}
-              onClick={() => {
-                void start(true);
-              }}
-            >
-              {t("Export 5-second sample at playhead")}
-            </button>
+            <div className="export-actions">
+              <button
+                className="text-button sample-export"
+                disabled={!format}
+                title={t("Starts at the current playhead")}
+                onClick={() => {
+                  void start(true);
+                }}
+              >
+                {t("Export 5-second sample at playhead")}
+              </button>
+              <button
+                className="button primary export-start"
+                disabled={
+                  !format ||
+                  !project.scenes.length ||
+                  (rangeMode === "selection" && !selectedIds.size)
+                }
+                onClick={() => {
+                  void start();
+                }}
+              >
+                <Download size={16} aria-hidden="true" />
+                {t("Export ")}
+                {format ?? t("movie")}
+              </button>
+            </div>
           )}
         </>
       )}
@@ -406,10 +458,6 @@ export function ExportDialog({
           {t(error)}
         </p>
       )}
-      <div className="export-privacy">
-        <ShieldCheck size={14} />
-        {t("Made on your device. Kept off the cloud.")}
-      </div>
     </Modal>
   );
 }

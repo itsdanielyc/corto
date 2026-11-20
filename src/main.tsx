@@ -1,13 +1,15 @@
 import { createRoot } from "react-dom/client";
+import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
 import "@fontsource/dm-serif-display/latin-400.css";
 import "@fontsource-variable/nunito";
 import "@fontsource-variable/jetbrains-mono";
 import { App } from "./App";
 import { LocaleProvider } from "./i18n/locale";
+import { applyTheme, loadTheme } from "./components/theme";
 import "./editor.css";
-import "./styles/essentials.css";
 
+applyTheme(loadTheme());
 const root = document.getElementById("root");
 if (!root) throw new Error("Corto could not find its application root");
 createRoot(root).render(

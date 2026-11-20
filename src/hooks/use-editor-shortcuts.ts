@@ -1,5 +1,8 @@
 import { useEffect, type RefObject } from "react";
-import type { EditorDialog } from "../components/EditorDialogs";
+import {
+  PANEL_DIALOGS,
+  type EditorDialog,
+} from "../components/EditorDialogs";
 
 interface EditorShortcutsProperties {
   state: RefObject<{ busy: string | null; dialog: EditorDialog }>;
@@ -29,9 +32,10 @@ export function useEditorShortcuts({
 }: EditorShortcutsProperties) {
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      // Side panels (sound, subtitles, bulk edits) keep the editor live; real dialogs do not.
       if (
         ui.current.busy ||
-        ui.current.dialog ||
+        (ui.current.dialog && !PANEL_DIALOGS.has(ui.current.dialog)) ||
         document.querySelector("dialog[open]")
       )
         return;

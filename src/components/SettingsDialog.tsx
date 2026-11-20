@@ -6,7 +6,8 @@ import type { UpdateInformation } from "../../contracts/services";
 import type { CortoPlatform } from "../platform/types";
 import { Modal } from "./primitives";
 import { Choice, Colour, Numeric, Toggle, ToolSection } from "./tools/Fields";
-import { TRANSITION_CHOICES } from "./tools/PictureTools";
+import { TRANSITION_CHOICES } from "./tools/choice-lists";
+import { loadTheme, saveTheme } from "./theme";
 export function SettingsDialog({
   project,
   platform,
@@ -29,6 +30,7 @@ export function SettingsDialog({
   const [update, setUpdate] = useState<UpdateInformation | null>(null);
   const [checked, setChecked] = useState(false);
   const [ready, setReady] = useState(!platform.loadPreferences);
+  const [theme, setTheme] = useState(loadTheme);
   useEffect(() => {
     let cancelled = false;
     void platform
@@ -73,6 +75,22 @@ export function SettingsDialog({
     >
       {!ready && !error && <p role="status">{t("Loading saved settings…")}</p>}
       <fieldset className="slideshow-layout settings-fields" disabled={!ready}>
+        <ToolSection title={t("Appearance")}>
+          <Choice
+            label={t("Appearance")}
+            value={theme}
+            options={[
+              ["system", "Match the system"],
+              ["light", "Light"],
+              ["dark", "Dark"],
+            ]}
+            onChange={(choice) => {
+              setTheme(choice);
+              saveTheme(choice);
+              void platform.setNativeTheme?.(choice);
+            }}
+          />
+        </ToolSection>
         <ToolSection title={t("New scenes")}>
           <Numeric
             label={t("Default photo duration")}
@@ -195,7 +213,7 @@ export function SettingsDialog({
             />
             <p className="dialog-note">
               {t(
-                "Checking contacts GitHub for public release information. Your projects and media stay on this device.",
+                "Checking contacts GitHub for public release information only.",
               )}
             </p>
             <button

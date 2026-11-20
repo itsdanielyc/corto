@@ -1,10 +1,12 @@
 import { useT } from "../i18n/locale";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import packageInfo from "../../package.json";
 import { ExportDialog } from "./ExportDialog";
 import { Modal } from "./primitives";
 import type { Project } from "../../contracts/project";
 import type { CortoPlatform } from "../platform/types";
+import type { MediaResources } from "../hooks/use-resources";
+import { shortcutLabel } from "./shortcut-label";
 export type EditorDialog =
   | "new"
   | "open"
@@ -14,16 +16,22 @@ export type EditorDialog =
   | "projects"
   | "sound"
   | "subtitles"
-  | "scene-tools"
   | "slideshow"
   | "film-tools"
   | "settings"
   | "capture"
   | null;
+/** Dialogs that sit beside the film as panels rather than blocking it. */
+export const PANEL_DIALOGS: ReadonlySet<EditorDialog> = new Set([
+  "sound",
+  "subtitles",
+  "film-tools",
+]);
 interface EditorDialogsProperties {
   dialog: EditorDialog;
   project: Project;
   platform: CortoPlatform;
+  resources: MediaResources;
   onClose: () => void;
   onSave: () => void;
   onTransition: () => void;
@@ -31,11 +39,28 @@ interface EditorDialogsProperties {
   time?: number;
   selectedIds?: ReadonlySet<string>;
 }
+const SHORTCUTS: readonly (readonly [string, string])[] = [
+  ["Play / pause", "Space"],
+  ["Search or run a command", shortcutLabel("K")],
+  ["Undo", shortcutLabel("Z")],
+  ["Redo", shortcutLabel("Z", true)],
+  ["Save a portable copy", shortcutLabel("S")],
+  ["Open a project", shortcutLabel("O")],
+  ["Delete selected scene", "Delete"],
+  ["Move selected scene", "Alt ← / →"],
+  ["Split scene", "S"],
+  ["Duplicate scene", shortcutLabel("D")],
+  ["Copy / cut / paste scenes", `${shortcutLabel("C")} / X / V`],
+  ["Select all scenes", shortcutLabel("A")],
+  ["First / last frame", "Home / End"],
+  ["Step one frame", "← / →"],
+];
 /** Present project, help and export dialogs without owning editing or persistence state. */
 export function EditorDialogs({
   dialog,
   project,
   platform,
+  resources,
   onClose,
   onSave,
   onTransition,
@@ -52,11 +77,10 @@ export function EditorDialogs({
             dialog === "new" ? "Start a new film?" : "Open another project?",
           )}
           onClose={onClose}
+          className="confirm-dialog"
         >
           <p className="modal-introduction">
-            {t(
-              "Your current film will stay in My films on this device. Save a portable copy for a backup or another computer.",
-            )}
+            {t("This film stays in Films.")}
           </p>
           <div className="modal-actions">
             <button className="button secondary" onClick={onClose}>
@@ -72,26 +96,10 @@ export function EditorDialogs({
         </Modal>
       )}
       {dialog === "help" && (
-        <Modal title={t("A few helpful shortcuts.")} onClose={onClose}>
-          <p className="modal-introduction">
-            {t("Keep your hands on the story.")}
-          </p>
+        <Modal title={t("Keyboard shortcuts")} onClose={onClose}>
           <dl className="shortcuts">
-            {[
-              ["Play / pause", "Space"],
-              ["Undo", "⌘ / Ctrl Z"],
-              ["Redo", "⌘ / Ctrl Shift Z"],
-              ["Save a portable copy", "⌘ / Ctrl S"],
-              ["Open a project", "⌘ / Ctrl O"],
-              ["Delete selected scene", "Delete"],
-              ["Move selected scene", "Alt ← / →"],
-              ["Split / duplicate scene", "S / ⌘ Ctrl D"],
-              ["Copy / cut / paste scenes", "⌘ Ctrl C / X / V"],
-              ["Select all scenes", "⌘ Ctrl A"],
-              ["First / last frame", "Home / End"],
-              ["Step one frame", "← / →"],
-            ].map(([label, key]) => (
-              <div key={t(label)}>
+            {SHORTCUTS.map(([label, key]) => (
+              <div key={label}>
                 <dt>{t(label)}</dt>
                 <dd>
                   <kbd>{key}</kbd>
@@ -101,41 +109,38 @@ export function EditorDialogs({
           </dl>
           <p className="help-note">
             {t(
-              "Drag scenes to reorder them. Your latest edits save locally. Use a portable copy to move a project to another device.",
+              "Drag scenes to reorder them. Drag words and framing on the picture.",
             )}
           </p>
         </Modal>
       )}
       {dialog === "about" && (
         <Modal
-          title={t("Small films. Lasting memories.")}
+          title={t("About Corto")}
           onClose={onClose}
           className="about-dialog"
         >
           <img
+            className="about-lockup"
             src={`${import.meta.env.BASE_URL}brand/corto-lockup-black.svg`}
             alt="Corto"
           />
           <p className="modal-introduction">
-            {t("Corto by miille \u00B7 ")}
+            {t("Corto by miille · ")}
             {packageInfo.version}
-            <br />
-            {t("A home for your photos, clips, music and stories.")}
           </p>
-          <p>
-            <ShieldCheck size={16} />
-            {t("No account. No uploads. No watermark.")}
-          </p>
-          <p className="help-note">
-            {t(
-              "Desktop and web encode movies locally. Browser codec budgets apply to large films. Browser storage can be cleared by your browser; keep a portable .corto copy of films you want to preserve.",
-            )}
-          </p>
+          {platform.kind !== "native" && (
+            <p className="help-note">
+              {t(
+                "Browsers can clear their storage. Keep a portable .corto copy of films you want to preserve.",
+              )}
+            </p>
+          )}
           <details>
             <summary>{t("Example media & acknowledgements")}</summary>
-            <p>
+            <p className="help-note">
               {t(
-                "Photography: Finge Holden, Dawid Tkocz and Roger Benz, used under the Unsplash License. \u201CQuiet morning\u201D is original CC0 music. Corto uses Electron, React, Manrope, DM Serif Display, Lucide and FFmpeg; third-party notices and source information ship with the desktop application.",
+                "Photography: Finge Holden, Dawid Tkocz and Roger Benz, used under the Unsplash License. “Quiet morning” is original CC0 music. Corto uses Electron, React, Inter, Manrope, DM Serif Display, Lucide and FFmpeg; third-party notices and source information ship with the desktop application.",
               )}
             </p>
           </details>
@@ -146,7 +151,7 @@ export function EditorDialogs({
             className="text-button"
           >
             {t("Source code & releases")}
-            <ArrowRight size={14} />
+            <ArrowUpRight size={14} aria-hidden="true" />
           </a>
         </Modal>
       )}
@@ -154,6 +159,7 @@ export function EditorDialogs({
         <ExportDialog
           project={project}
           platform={platform}
+          resources={resources}
           onClose={onClose}
           renderMovie={renderMovie}
           time={time}

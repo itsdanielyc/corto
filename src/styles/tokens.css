@@ -1,0 +1,125 @@
+/*
+ * Corto design tokens. Every colour, size and timing in the interface comes
+ * from here (see DESIGN.md). Light is the default; dark applies when the
+ * system asks for it (unless the person chose Light) or when they chose Dark.
+ */
+:root {
+  color-scheme: light;
+  --canvas: #f4f4f5;
+  --surface: #ffffff;
+  --well: #f1f1f3;
+  --well-2: #e8e8eb;
+  --table: #ececee;
+  --line: #e4e4e7;
+  --line-2: #d4d4d8;
+  --ink: #0f0f10;
+  --ink-2: #3f3f46;
+  --ink-3: #6b6b74;
+  --on-ink: #ffffff;
+  --hover: rgb(15 15 16 / 5%);
+  --press: rgb(15 15 16 / 9%);
+  --stage: #0c0c0d;
+  --stage-2: #18181b;
+  --stage-ink: #f4f4f5;
+  --stage-ink-2: #a1a1aa;
+  --stage-line: rgb(255 255 255 / 12%);
+  --record: #e5484d;
+  --danger: #c4373c;
+  --success: #2f7d4f;
+  --scrim: rgb(9 9 11 / 46%);
+  --shadow-pop:
+    0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px -4px rgb(0 0 0 / 14%),
+    0 0 0 1px rgb(0 0 0 / 5%);
+  --shadow-sheet: 0 24px 64px -12px rgb(0 0 0 / 28%), 0 0 0 1px rgb(0 0 0 / 6%);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink);
+
+  --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --fs-xs: 12px;
+  --fs-s: 13px;
+  --fs-m: 14px;
+  --fs-l: 15px;
+  --fs-xl: 20px;
+  --fs-xxl: 28px;
+
+  --radius-s: 6px;
+  --radius: 8px;
+  --radius-l: 12px;
+  --control: 32px;
+  --control-touch: 40px;
+
+  --titlebar: 48px;
+  --library-width: 284px;
+  --inspector-width: 320px;
+  --reel-height: 244px;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --t-move: 240ms;
+  --t-sheet: 340ms;
+  --t-reveal: 650ms;
+}
+
+/* Dark: an authored palette, not an inversion. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #0e0e10;
+    --surface: #151517;
+    --well: #1f1f23;
+    --well-2: #2a2a2f;
+    --table: #0a0a0b;
+    --line: #26262a;
+    --line-2: #38383e;
+    --ink: #f4f4f5;
+    --ink-2: #bcbcc3;
+    --ink-3: #8e8e97;
+    --on-ink: #0f0f10;
+    --hover: rgb(255 255 255 / 6%);
+    --press: rgb(255 255 255 / 11%);
+    --stage: #000000;
+    --stage-2: #111113;
+    --danger: #f2686c;
+    --success: #5cc18a;
+    --scrim: rgb(0 0 0 / 62%);
+    --shadow-pop:
+      0 1px 2px rgb(0 0 0 / 40%), 0 10px 28px -4px rgb(0 0 0 / 60%),
+      0 0 0 1px rgb(255 255 255 / 8%);
+    --shadow-sheet:
+      0 24px 64px -12px rgb(0 0 0 / 70%), 0 0 0 1px rgb(255 255 255 / 9%);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0e0e10;
+  --surface: #151517;
+  --well: #1f1f23;
+  --well-2: #2a2a2f;
+  --table: #0a0a0b;
+  --line: #26262a;
+  --line-2: #38383e;
+  --ink: #f4f4f5;
+  --ink-2: #bcbcc3;
+  --ink-3: #8e8e97;
+  --on-ink: #0f0f10;
+  --hover: rgb(255 255 255 / 6%);
+  --press: rgb(255 255 255 / 11%);
+  --stage: #000000;
+  --stage-2: #111113;
+  --danger: #f2686c;
+  --success: #5cc18a;
+  --scrim: rgb(0 0 0 / 62%);
+  --shadow-pop:
+    0 1px 2px rgb(0 0 0 / 40%), 0 10px 28px -4px rgb(0 0 0 / 60%),
+    0 0 0 1px rgb(255 255 255 / 8%);
+  --shadow-sheet:
+    0 24px 64px -12px rgb(0 0 0 / 70%), 0 0 0 1px rgb(255 255 255 / 9%);
+}
+
+@media (pointer: coarse) {
+  :root {
+    --control: 40px;
+  }
+}
