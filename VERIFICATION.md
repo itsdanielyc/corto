@@ -314,3 +314,12 @@ Review changes without a test level of their own: the appearance storage moved f
 ### Unverified after hosted proof
 - Whether waiting for the window removes the startup screenshot flake: it needs twenty clean first attempts on Linux, and the flake still has no issue and no quarantine.
 - The macOS traffic lights themselves, panel layout below 760 px, the launch-time caption colours, Linux GNOME/KDE frames, screen readers, real phones and touch: as listed under "Unverified after review".
+
+| Date (UTC) | Level | Claim | Platforms | Evidence |
+|---|---|---|---|---|
+| 2026-11-20 20:32 | L0-L6 hosted | The final code on the branch passes every required CI job on all declared desktop targets and the production web build | linux-x64; windows-x64; macos-arm64; macos-x64 (integration, e2e); production web / offline | [CI 44811075320](https://github.com/itsdanielyc/corto/actions/runs/44811075320) on ca4fc78: unit, production web 2 passed, ui x3 each 41 passed and 2 skipped, integration x4, e2e x4 and contact sheet successful. e2e passed on the first attempt on windows-latest, macos-latest and macos-15-intel (9 passed each); ubuntu-latest passed on its single allowed L6 retry (8 passed, 1 flaky): next row. |
+| 2026-11-20 20:32 | L6 finding | Waiting for the window did not remove the Linux startup flake; it showed what the flake is. On the first launch on the Linux runner the window is still hidden five seconds after the page is ready; on the relaunch it shows within half a second | linux-x64 (hosted) | In CI 44811075320 the first attempt no longer fails at the capture but at the new wait in `tests/e2e/app.spec.ts`: `Expected: true Received: false … Timeout 5000ms exceeded while waiting on the predicate` (`BrowserWindow.isVisible()`), after the page's own assertions passed in 82 ms; the retry passed in 436 ms. So "Unable to capture screenshot" was a hidden window, and the app's `ready-to-show` arrives late or not at all on a cold start under that runner's display. Seventh Linux occurrence. The cause is in how `electron/main.ts` shows the window, which predates the redesign and was not changed in review. |
+
+### Unverified after the final run
+- The Linux startup flake is diagnosed, not fixed: whether `ready-to-show` is late or never fires there, and whether a person on Linux can see the same delay, is not known. It still has no issue and is not quarantined; it passes only through the one retry L6 allows.
+- Everything else as listed under "Unverified after review".
