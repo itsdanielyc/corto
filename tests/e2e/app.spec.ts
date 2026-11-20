@@ -113,6 +113,18 @@ test.describe("corto in the real shell", () => {
       frame,
     );
 
+    // The app shows its window on ready-to-show, after the first composited
+    // frame. A cold runner gets there later than the page becomes ready, and
+    // a window that is not showing yet cannot be captured ("Unable to capture
+    // screenshot"), so wait for the window rather than race it.
+    await expect
+      .poll(() =>
+        app.evaluate(
+          ({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0]?.isVisible() ?? false,
+        ),
+      )
+      .toBe(true);
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
