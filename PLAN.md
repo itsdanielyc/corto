@@ -78,12 +78,12 @@ Source: the approved mockups recorded in DESIGN.md. The user asked for readable 
 
 | # | Slice | Done when | Levels | Status |
 |---|---|---|---|---|
-| 27 | Design system and shell | Tokens (light, dark, system), Inter, 12px text floor, title bar, library tabs, dark stage, mark play/pause, restyled controls; reassurance copy removed | L0/L4/L5 | open |
-| 28 | Contextual inspector | Scene tools live in the inspector (Picture/Clip/Card, Text, Overlays, Timing); film settings, sound and subtitles open there; no Scene tools modal | L4 | open |
-| 29 | Reel and seams | Transition picker at every seam; storyboard/timeline switch in the reel; sound lane restyled | L4 | open |
-| 30 | On the picture | Text items drag on the preview; start and end framing set on the picture | L1/L4 | open |
-| 31 | Start and finish | Films home view, first launch with drop count, slideshow steps, export sheet with progress in the title bar and a premiere, command palette | L4/L6 | open |
-| 32 | Every platform | Phone layout with bottom tabs and sheets; macOS and Windows title bars; theme setting | L4/L5/L6 | open |
+| 27 | Design system and shell | Tokens (light, dark, system), Inter, 12px text floor, title bar, library tabs, dark stage, mark play/pause, restyled controls; reassurance copy removed | L0/L4/L5 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
+| 28 | Contextual inspector | Scene tools live in the inspector (Picture/Clip/Card, Text, Overlays, Timing); film settings, sound and subtitles open there; no Scene tools modal | L4 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
+| 29 | Reel and seams | Transition picker at every seam; storyboard/timeline switch in the reel; sound lane restyled | L4 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
+| 30 | On the picture | Text items drag on the preview; start and end framing set on the picture | L1/L4 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
+| 31 | Start and finish | Films home view, first launch with drop count, slideshow steps, export sheet with progress in the title bar and a premiere, command palette | L4/L6 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
+| 32 | Every platform | Phone layout with bottom tabs and sheets; macOS and Windows title bars; theme setting | L4/L5/L6 | done on branch design/redesign; local L0-L6 green; hosted CI pending |
 | 33 | Proof | New ARIA/geometry/pixel baselines from runners, CI on every target, ledger rows, PR | L0-L6 | open |
 
 Ruling: Linux keeps the system window frame instead of a drawn header bar — client-side decorations differ by compositor and cannot be checked from a Windows machine. Cost if wrong: Linux looks less integrated than macOS and Windows.

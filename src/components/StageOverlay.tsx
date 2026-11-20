@@ -11,7 +11,8 @@ import {
 import { ArrowLeftRight, Check } from "lucide-react";
 import type { Project, Scene, TextItem } from "../../contracts/project";
 import { buildTimeline, frameDimensions } from "../domain/timeline";
-import { cameraEndpoints, type CameraPose } from "../domain/composition";
+import { cameraEndpoints } from "../domain/composition";
+import { frameGeometry, type FrameRect } from "../domain/framing";
 import { layoutText } from "../preview/text";
 import type { CortoPlatform } from "../platform/types";
 
@@ -20,8 +21,6 @@ const SNAP = 0.02;
 /** Keyboard nudges: arrow keys move 1%, Shift+arrow 5%. */
 const NUDGE = 0.01;
 const NUDGE_LARGE = 0.05;
-/** The camera never zooms beyond what the export allows. */
-const ZOOM_LIMITS = { min: 1, max: 6 } as const;
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -230,51 +229,6 @@ function WordsLayer({
 
 /* -------------------------------------------------------------- framing */
 
-/** A camera pose as a rectangle in fractions of the oriented photo. */
-interface FrameRect {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
-/**
- * Converts between camera poses (focus + zoom, see mediaPlacement) and the
- * rectangle of the photo they show. Frame fraction at zoom 1 is
- * target / (photo × cover scale); focus is the share of the spare space
- * left of (or above) the frame.
- */
-function frameGeometry(
-  photoWidth: number,
-  photoHeight: number,
-  targetWidth: number,
-  targetHeight: number,
-  fit: Scene["fit"],
-) {
-  const scale = (fit === "cover" ? Math.max : Math.min)(
-    targetWidth / photoWidth,
-    targetHeight / photoHeight,
-  );
-  const baseWidth = targetWidth / (photoWidth * scale);
-  const baseHeight = targetHeight / (photoHeight * scale);
-  const toRect = (pose: CameraPose): FrameRect => {
-    const width = baseWidth / pose.zoom;
-    const height = baseHeight / pose.zoom;
-    return {
-      width,
-      height,
-      left: (1 - width) * pose.focusX,
-      top: (1 - height) * pose.focusY,
-    };
-  };
-  const toPose = (rect: FrameRect): CameraPose => ({
-    zoom: clamp(baseWidth / rect.width, ZOOM_LIMITS.min, ZOOM_LIMITS.max),
-    focusX: rect.width < 1 ? clamp(rect.left / (1 - rect.width), 0, 1) : 0.5,
-    focusY: rect.height < 1 ? clamp(rect.top / (1 - rect.height), 0, 1) : 0.5,
-  });
-  return { toRect, toPose };
-}
-
 function FramingLayer({
   project,
   scene,
@@ -360,29 +314,7 @@ function FramingLayer({
       },
     });
   };
-  const constrain = (rect: FrameRect): FrameRect => {
-    const minimum = geometry.toRect({
-      focusX: 0.5,
-      focusY: 0.5,
-      zoom: ZOOM_LIMITS.max,
-    });
-    const maximum = geometry.toRect({
-      focusX: 0.5,
-      focusY: 0.5,
-      zoom: ZOOM_LIMITS.min,
-    });
-    const width = clamp(rect.width, minimum.width, maximum.width);
-    const height = (width / maximum.width) * maximum.height;
-    const centreX = rect.left + rect.width / 2;
-    const centreY = rect.top + rect.height / 2;
-    const left =
-      width < 1 ? clamp(centreX - width / 2, 0, 1 - width) : (1 - width) / 2;
-    const top =
-      height < 1
-        ? clamp(centreY - height / 2, 0, 1 - height)
-        : (1 - height) / 2;
-    return { left, top, width, height };
-  };
+  const constrain = geometry.constrain;
   const pointerRect = (event: ReactPointerEvent): FrameRect | null => {
     const state = grab.current;
     if (!state) return null;

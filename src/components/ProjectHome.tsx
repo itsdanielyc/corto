@@ -150,7 +150,7 @@ export function ProjectHome({
                 <Plus size={22} strokeWidth={1.6} aria-hidden="true" />
               </span>
               <strong>{t("New film")}</strong>
-              <small>{t("Start empty")}</small>
+              <small aria-hidden="true">{t("Start empty")}</small>
             </button>
             <button
               className="start-card start-slideshow"
@@ -160,7 +160,7 @@ export function ProjectHome({
                 <Sparkles size={20} strokeWidth={1.6} aria-hidden="true" />
               </span>
               <strong>{t("Slideshow")}</strong>
-              <small>{t("From your photos")}</small>
+              <small aria-hidden="true">{t("From your photos")}</small>
             </button>
             {(Object.keys(THEMES) as TemplateTheme[]).map((theme) => (
               <button
@@ -170,6 +170,7 @@ export function ProjectHome({
                 onClick={() => onTemplate(theme)}
               >
                 <span
+                  aria-hidden="true"
                   className={`start-art template-art caption-${THEMES[theme].style}`}
                   style={{ background: THEMES[theme].background }}
                   data-light={THEMES[theme].background === "#e8e5dd"}

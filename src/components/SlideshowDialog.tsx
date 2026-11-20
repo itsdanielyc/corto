@@ -141,7 +141,7 @@ export function SlideshowDialog({
       onClose={onClose}
       className="slideshow-dialog"
     >
-      <ol className="stepper" aria-label={t("Slideshow steps")}>
+      <ol className="step-list" aria-label={t("Slideshow steps")}>
         {steps.map((name, index) => (
           <li key={name}>
             <button

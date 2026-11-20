@@ -347,176 +347,177 @@ function SceneInspector(properties: InspectorProperties & { scene: Scene }) {
           {t(operations.operationError)}
         </p>
       )}
-      <fieldset
+      <div
         className="inspector-body"
         role="tabpanel"
         aria-label={t(tabs.find(([id]) => id === active)![1])}
-        disabled={operations.busy}
         key={`${scene.id}-${active}`}
       >
-        {active === "look" && asset && (
-          <>
-            <MotionSection
-              scene={scene}
-              asset={asset}
-              poster={poster}
-              onChange={onChange}
-              onFrame={properties.onFrame}
-            />
-            <ColourSection
-              project={project}
-              scene={scene}
-              asset={asset}
-              poster={poster}
-              platform={platform}
-              onChange={onChange}
-              report={report}
-            />
-            {asset.kind === "image" && (
-              <ToolSection title={t("Cut-out")}>
-                <BackgroundRemoval
-                  scene={scene}
-                  asset={asset}
-                  platform={platform}
-                  onChange={properties.onProject}
-                />
-              </ToolSection>
-            )}
-            <details className="fine-controls section-details">
-              <summary>{t("Behind the picture")}</summary>
-              <BackgroundSection
+        <fieldset className="inspector-fields" disabled={operations.busy}>
+          {active === "look" && asset && (
+            <>
+              <MotionSection
+                scene={scene}
+                asset={asset}
+                poster={poster}
+                onChange={onChange}
+                onFrame={properties.onFrame}
+              />
+              <ColourSection
                 project={project}
                 scene={scene}
                 asset={asset}
+                poster={poster}
+                platform={platform}
                 onChange={onChange}
-                title="Background"
+                report={report}
               />
-            </details>
-            <div className="inspector-footer-actions">
-              <button
-                className="button quiet"
-                onClick={() => {
-                  void operations.saveFrame().catch(report);
-                }}
-              >
-                {t("Save composed frame as PNG")}
-              </button>
-            </div>
-          </>
-        )}
-        {active === "look" && !asset && (
-          <BackgroundSection
-            project={project}
-            scene={scene}
-            asset={null}
-            onChange={onChange}
-            title="Card"
-          />
-        )}
-        {active === "clip" && asset?.kind === "video" && (
-          <>
-            <ToolSection title={t("Original sound")}>
-              <label className="range-label">
-                {t("Clip volume")}
-                <span>
-                  {Math.round(scene.volume * 100)}
-                  {t("%")}
-                </span>
-                <input
-                  aria-label={t("Clip volume")}
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={Math.round(scene.volume * 100)}
-                  style={
-                    {
-                      "--progress": `${Math.min(100, scene.volume * 100)}%`,
-                    } as CSSProperties
-                  }
-                  onChange={(event) =>
-                    onChange({ volume: Number(event.target.value) / 100 })
-                  }
-                />
-              </label>
-            </ToolSection>
-            <VideoTools
-              scene={scene}
-              asset={asset}
-              busy={operations.busy}
-              onChange={onChange}
-              onOperation={(operation) => {
-                void operations.process(operation).catch(report);
-              }}
-            />
-          </>
-        )}
-        {active === "text" && (
-          <>
-            <WordsSection scene={scene} onChange={onChange} />
-            <TextTools scene={scene} onChange={onChange} />
-          </>
-        )}
-        {active === "overlays" && (
-          <OverlayTools project={project} scene={scene} onChange={onChange} />
-        )}
-        {active === "timing" && (
-          <>
-            <ToolSection title={t("Length")}>
-              <SecondsField
-                stepper
-                value={scene.duration}
-                label={t("Duration (seconds)")}
-                minimum={LIMITS.minimumSceneSeconds}
-                maximum={
-                  asset?.kind === "video" && !scene.loop
-                    ? Math.min(
-                        LIMITS.sceneSeconds,
-                        (asset.duration - scene.start) / scene.speed,
-                      )
-                    : LIMITS.sceneSeconds
-                }
-                onCommit={(duration) => onChange({ duration })}
-              />
-              {asset?.kind === "video" && (
-                <SecondsField
-                  value={scene.start}
-                  label={t("Start in source (seconds)")}
-                  minimum={0}
-                  maximum={Math.max(
-                    0,
-                    asset.duration - LIMITS.minimumSceneSeconds * scene.speed,
-                  )}
-                  onCommit={(start) =>
-                    onChange({
-                      start,
-                      duration: Math.min(
-                        scene.duration,
-                        (asset.duration - start) / scene.speed,
-                      ),
-                    })
-                  }
-                />
+              {asset.kind === "image" && (
+                <ToolSection title={t("Cut-out")}>
+                  <BackgroundRemoval
+                    scene={scene}
+                    asset={asset}
+                    platform={platform}
+                    onChange={properties.onProject}
+                  />
+                </ToolSection>
               )}
-              <button
-                className="button secondary split-button"
-                onClick={properties.onSplit}
-                disabled={
-                  properties.busy ||
-                  scene.duration < LIMITS.minimumSceneSeconds * 2
-                }
-              >
-                <Scissors size={15} aria-hidden="true" />
-                {t("Split scene at the playhead")}
-              </button>
-            </ToolSection>
-            <TransitionSection
+              <details className="fine-controls section-details">
+                <summary>{t("Behind the picture")}</summary>
+                <BackgroundSection
+                  project={project}
+                  scene={scene}
+                  asset={asset}
+                  onChange={onChange}
+                  title="Background"
+                />
+              </details>
+              <div className="inspector-footer-actions">
+                <button
+                  className="button quiet"
+                  onClick={() => {
+                    void operations.saveFrame().catch(report);
+                  }}
+                >
+                  {t("Save composed frame as PNG")}
+                </button>
+              </div>
+            </>
+          )}
+          {active === "look" && !asset && (
+            <BackgroundSection
+              project={project}
               scene={scene}
-              isLast={properties.index === properties.count - 1}
+              asset={null}
               onChange={onChange}
+              title="Card"
             />
-          </>
-        )}
-      </fieldset>
+          )}
+          {active === "clip" && asset?.kind === "video" && (
+            <>
+              <ToolSection title={t("Original sound")}>
+                <label className="range-label">
+                  {t("Clip volume")}
+                  <span>
+                    {Math.round(scene.volume * 100)}
+                    {t("%")}
+                  </span>
+                  <input
+                    aria-label={t("Clip volume")}
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(scene.volume * 100)}
+                    style={
+                      {
+                        "--progress": `${Math.min(100, scene.volume * 100)}%`,
+                      } as CSSProperties
+                    }
+                    onChange={(event) =>
+                      onChange({ volume: Number(event.target.value) / 100 })
+                    }
+                  />
+                </label>
+              </ToolSection>
+              <VideoTools
+                scene={scene}
+                asset={asset}
+                busy={operations.busy}
+                onChange={onChange}
+                onOperation={(operation) => {
+                  void operations.process(operation).catch(report);
+                }}
+              />
+            </>
+          )}
+          {active === "text" && (
+            <>
+              <WordsSection scene={scene} onChange={onChange} />
+              <TextTools scene={scene} onChange={onChange} />
+            </>
+          )}
+          {active === "overlays" && (
+            <OverlayTools project={project} scene={scene} onChange={onChange} />
+          )}
+          {active === "timing" && (
+            <>
+              <ToolSection title={t("Length")}>
+                <SecondsField
+                  stepper
+                  value={scene.duration}
+                  label={t("Duration (seconds)")}
+                  minimum={LIMITS.minimumSceneSeconds}
+                  maximum={
+                    asset?.kind === "video" && !scene.loop
+                      ? Math.min(
+                          LIMITS.sceneSeconds,
+                          (asset.duration - scene.start) / scene.speed,
+                        )
+                      : LIMITS.sceneSeconds
+                  }
+                  onCommit={(duration) => onChange({ duration })}
+                />
+                {asset?.kind === "video" && (
+                  <SecondsField
+                    value={scene.start}
+                    label={t("Start in source (seconds)")}
+                    minimum={0}
+                    maximum={Math.max(
+                      0,
+                      asset.duration - LIMITS.minimumSceneSeconds * scene.speed,
+                    )}
+                    onCommit={(start) =>
+                      onChange({
+                        start,
+                        duration: Math.min(
+                          scene.duration,
+                          (asset.duration - start) / scene.speed,
+                        ),
+                      })
+                    }
+                  />
+                )}
+                <button
+                  className="button secondary split-button"
+                  onClick={properties.onSplit}
+                  disabled={
+                    properties.busy ||
+                    scene.duration < LIMITS.minimumSceneSeconds * 2
+                  }
+                >
+                  <Scissors size={15} aria-hidden="true" />
+                  {t("Split scene at the playhead")}
+                </button>
+              </ToolSection>
+              <TransitionSection
+                scene={scene}
+                isLast={properties.index === properties.count - 1}
+                onChange={onChange}
+              />
+            </>
+          )}
+        </fieldset>
+      </div>
       {operations.busy && (
         <div className="inspector-busy" role="status">
           <span>{t("Working on this clip…")}</span>

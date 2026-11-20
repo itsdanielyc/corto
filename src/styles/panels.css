@@ -63,6 +63,10 @@
 .inspector-body {
   animation: rise-in var(--t-base) var(--ease);
 }
+.inspector-fields {
+  display: block;
+  min-width: 0;
+}
 .inspector-error {
   margin: 8px 12px 0;
 }
@@ -329,6 +333,41 @@ img.look-art {
     inset 0 0 0 1px rgb(0 0 0 / 14%),
     0 0 0 2px var(--surface),
     0 0 0 4px var(--ink);
+}
+
+/* Nine placements for words. */
+.placement-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  gap: 4px;
+  padding: 4px;
+  justify-self: start;
+  border-radius: var(--radius);
+  background: var(--well);
+}
+.placement-grid button {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  border-radius: 5px;
+  transition: background var(--t-fast) var(--ease);
+}
+.placement-grid button:hover {
+  background: var(--hover);
+}
+.placement-grid button span {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-2);
+  transition: background var(--t-fast) var(--ease);
+}
+.placement-grid button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.placement-grid button[aria-pressed="true"] span {
+  background: var(--ink);
 }
 
 /* Seconds with steppers. */
