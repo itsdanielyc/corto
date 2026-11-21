@@ -11,7 +11,7 @@ import {
 } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import type { PlatformInfo } from "../../electron/bridge";
@@ -126,7 +126,22 @@ test.describe("corto in the real shell", () => {
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
-    await win.screenshot({ path: file });
+    await win.evaluate(() => document.fonts.ready.then(() => undefined));
+    // A visible X11 window can still have no frame to capture. Subscribe
+    // before requesting a repaint so the artifact is a presented frame.
+    const png = await app.evaluate(({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0].webContents;
+      return new Promise<string>((resolve) => {
+        contents.beginFrameSubscription(false, (image) => {
+          if (image.isEmpty()) return;
+          const frame = image.toPNG().toString("base64");
+          contents.endFrameSubscription();
+          resolve(frame);
+        });
+        contents.invalidate();
+      });
+    });
+    await writeFile(file, Buffer.from(png, "base64"));
     if (main.os === "darwin") {
       // Page screenshots exclude the native title-bar controls. Capture just
       // Corto's WindowServer window so the traffic lights can be reviewed.
