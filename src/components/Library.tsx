@@ -76,6 +76,7 @@ function LibraryTabs({
       aria-label={t("Library")}
       onKeyDown={(event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
         const index = TABS.findIndex((tab) => tab.id === mode);
         const next =
           TABS[

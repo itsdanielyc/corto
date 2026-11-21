@@ -1,18 +1,68 @@
-import { expect, test, type Page } from "@playwright/test";
-import { savedBrowserProject } from "../helpers/browser-project";
+import { expect, test } from "@playwright/test";
+import { openExampleFilm, savedBrowserProject } from "../helpers/browser-project";
 
-async function example(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Try an example" }).click();
-  await expect(page.getByTestId("scene-card")).toHaveCount(4);
-  await expect(page.getByTestId("preview-status")).toHaveText("Ready");
-  await expect(page.getByTestId("save-status")).toHaveText("Saved");
-}
+test("Escape discards a project rename and typed scene timing respects its bounds", async ({
+  page,
+}) => {
+  await openExampleFilm(page);
+  const name = page.getByLabel("Project name");
+  const original = await name.inputValue();
+  await name.fill("Discard this rename");
+  await name.press("Escape");
+  await expect.soft(name).toHaveValue(original);
+  await page.getByRole("tab", { name: "Timing" }).click();
+  const duration = page.getByLabel("Duration (seconds)");
+  for (const [typed, bound] of [
+    ["-2", "min"],
+    ["99999", "max"],
+  ]) {
+    await duration.fill(typed);
+    await duration.press("Enter");
+    await expect
+      .soft(duration)
+      .toHaveValue((await duration.getAttribute(bound))!);
+  }
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("keyboard edits leave the playhead in place and Space activates the focused control", async ({
+  page,
+}) => {
+  await openExampleFilm(page);
+  const playhead = page.getByRole("slider", { name: "Playhead" });
+  const startTime = await playhead.inputValue();
+  await page
+    .getByRole("tab", { name: "Picture", exact: true })
+    .press("ArrowRight");
+  await expect.soft(playhead).toHaveValue(startTime);
+  const heading = page.getByRole("button", { name: "Heading", exact: true });
+  await heading.press("Space");
+  await expect(page.getByLabel("Text item words")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Play", exact: true }),
+  ).toBeVisible();
+});
+
+test("the words command opens the selected scene from a different phone sheet", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openExampleFilm(page);
+  await page.getByRole("button", { name: "Sound", exact: true }).click();
+  await page.keyboard.press("ControlOrMeta+k");
+  const search = page.getByRole("combobox", { name: "Search commands" });
+  await search.fill("Add words to this scene");
+  await search.press("Enter");
+  await expect(
+    page.getByRole("tab", { name: "Text", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("On-screen title")).toBeInViewport();
+});
 
 test("a transition picked at the join between two scenes is saved, and can apply to every join", async ({
   page,
 }) => {
-  await example(page);
+  await openExampleFilm(page);
   await page
     .getByRole("button", { name: /^Transition after scene 1:/ })
     .click();
@@ -39,7 +89,7 @@ test("a transition picked at the join between two scenes is saved, and can apply
 test("the command palette finds a command by a few letters and runs it from the keyboard", async ({
   page,
 }) => {
-  await example(page);
+  await openExampleFilm(page);
   await page.keyboard.press("ControlOrMeta+k");
   const search = page.getByRole("combobox", { name: "Search commands" });
   await expect(search).toBeFocused();
@@ -57,7 +107,7 @@ test("the command palette finds a command by a few letters and runs it from the 
 test("start and end framing set on the picture become a custom camera move", async ({
   page,
 }) => {
-  await example(page);
+  await openExampleFilm(page);
   await page
     .getByRole("button", { name: "Set start and end on the picture" })
     .click();
@@ -83,7 +133,7 @@ test("start and end framing set on the picture become a custom camera move", asy
 test("picking a frame or having a drag cancelled leaves the camera move as it was", async ({
   page,
 }) => {
-  await example(page);
+  await openExampleFilm(page);
   await page
     .getByRole("button", { name: "Set start and end on the picture" })
     .click();
@@ -114,7 +164,11 @@ test("picking a frame or having a drag cancelled leaves the camera move as it wa
     .poll(async () => (await start.boundingBox())!.x)
     .toBeLessThan(before.x - 4);
   // A touch scroll, a system gesture or a lost capture ends a drag like this.
-  await start.dispatchEvent("pointercancel");
+  await start.dispatchEvent("pointercancel", {
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true,
+  });
   await page.mouse.move(centre.x - 30, centre.y - 20, { steps: 3 });
   await page.mouse.up();
   const after = (await start.boundingBox())!;
@@ -127,7 +181,7 @@ test("picking a frame or having a drag cancelled leaves the camera move as it wa
 test("words are moved where they appear on the picture, by keyboard as well as by dragging", async ({
   page,
 }) => {
-  await example(page);
+  await openExampleFilm(page);
   await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByRole("button", { name: "Heading", exact: true }).click();
   const handle = page.getByRole("button", { name: /^Move words: / });
@@ -139,6 +193,18 @@ test("words are moved where they appear on the picture, by keyboard as well as b
     .toBe(1);
   const before = (await savedBrowserProject(page)).scenes[0].textItems[0];
   await handle.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(
+      async () => (await savedBrowserProject(page)).scenes[0].textItems[0].x,
+    )
+    .toBeCloseTo(before.x + 0.01, 5);
+  await handle.click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  expect(
+    (await savedBrowserProject(page)).scenes[0].textItems[0].x,
+  ).toBeCloseTo(before.x + 0.01, 5);
+  await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("Shift+ArrowRight");
   await expect
     .poll(
@@ -157,6 +223,35 @@ test("words are moved where they appear on the picture, by keyboard as well as b
       async () => (await savedBrowserProject(page)).scenes[0].textItems[0].y,
     )
     .toBeGreaterThan(before.y + 0.05);
+});
+
+test("dragging a framing corner straight inwards zooms the photo", async ({
+  page,
+}) => {
+  await openExampleFilm(page);
+  await page
+    .getByRole("button", { name: "Set start and end on the picture" })
+    .click();
+  const frame = page.getByRole("button", { name: /^Start frame\./ });
+  await frame.press("+");
+  await expect
+    .poll(
+      async () => (await savedBrowserProject(page)).scenes[0].transform.zoom,
+    )
+    .toBeGreaterThan(1);
+  const zoom = (await savedBrowserProject(page)).scenes[0].transform.zoom;
+  const box = (await page.locator(".frame-corner").boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 16, y, { steps: 4 });
+  await page.mouse.up();
+  await expect
+    .poll(
+      async () => (await savedBrowserProject(page)).scenes[0].transform.zoom,
+    )
+    .toBeGreaterThan(zoom);
 });
 
 test("the chosen appearance applies at once and survives a reload", async ({

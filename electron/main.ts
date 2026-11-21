@@ -85,7 +85,8 @@ function createWindow(): void {
     minHeight: 680,
     title: "Corto",
     icon: join(import.meta.dirname, "../renderer/icon-512.png"),
-    show: false,
+    // A themed window can be shown even before a cold compositor paints it.
+    show: true,
     ...frameOptions(),
     webPreferences: {
       preload: join(import.meta.dirname, "../preload/preload.cjs"),
@@ -123,7 +124,6 @@ function createWindow(): void {
       });
   });
   win.webContents.on("will-navigate", (event) => event.preventDefault());
-  win.once("ready-to-show", () => win.show());
   // Links open in the system browser, never inside the app window.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://")) void shell.openExternal(url);

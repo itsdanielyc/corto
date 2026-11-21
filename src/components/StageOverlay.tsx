@@ -95,6 +95,7 @@ function WordsLayer({
     snapY: boolean;
   } | null>(null);
   const start = useRef<{
+    pointerId: number;
     pointerX: number;
     pointerY: number;
     x: number;
@@ -124,7 +125,18 @@ function WordsLayer({
   const position = (
     event: ReactPointerEvent<HTMLElement>,
   ): { x: number; y: number; snapX: boolean; snapY: boolean } | null => {
-    if (!start.current) return null;
+    if (!start.current || event.pointerId !== start.current.pointerId)
+      return null;
+    if (
+      event.clientX === start.current.pointerX &&
+      event.clientY === start.current.pointerY
+    )
+      return {
+        x: start.current.x,
+        y: start.current.y,
+        snapX: false,
+        snapY: false,
+      };
     let x = clamp(
       start.current.x + (event.clientX - start.current.pointerX) / frame.width,
       0,
@@ -154,6 +166,11 @@ function WordsLayer({
     event.stopPropagation();
     const [dx, dy] = delta[event.key];
     move(item.id, clamp(item.x + dx, 0, 1), clamp(item.y + dy, 0, 1));
+  };
+  const cancelDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    if (start.current?.pointerId !== event.pointerId) return;
+    start.current = null;
+    setDrag(null);
   };
   return (
     <div
@@ -188,8 +205,10 @@ function WordsLayer({
             }}
             onKeyDown={(event) => keyboard(event, item)}
             onPointerDown={(event) => {
+              if (event.button !== 0 || !event.isPrimary) return;
               event.currentTarget.setPointerCapture(event.pointerId);
               start.current = {
+                pointerId: event.pointerId,
                 pointerX: event.clientX,
                 pointerY: event.clientY,
                 x: item.x,
@@ -209,15 +228,14 @@ function WordsLayer({
             }}
             onPointerUp={(event) => {
               const next = position(event);
+              if (!next) return;
               start.current = null;
               setDrag(null);
-              if (next && (next.x !== item.x || next.y !== item.y))
+              if (next.x !== item.x || next.y !== item.y)
                 move(item.id, next.x, next.y);
             }}
-            onPointerCancel={() => {
-              start.current = null;
-              setDrag(null);
-            }}
+            onPointerCancel={cancelDrag}
+            onLostPointerCapture={cancelDrag}
           >
             {drag?.id === item.id && (
               <span className="words-ghost">{item.text}</span>
@@ -251,6 +269,7 @@ function FramingLayer({
   const [end, setEnd] = useState<"from" | "to">("from");
   const [live, setLive] = useState<FrameRect | null>(null);
   const grab = useRef<{
+    pointerId: number;
     mode: "move" | "size";
     pointerX: number;
     pointerY: number;
@@ -332,7 +351,11 @@ function FramingLayer({
         left: state.rect.left + dx,
         top: state.rect.top + dy,
       });
-    const grow = Math.max(dx, (dy * state.rect.width) / state.rect.height);
+    const horizontalFromHeight = (dy * state.rect.width) / state.rect.height;
+    const grow =
+      Math.abs(dx) >= Math.abs(horizontalFromHeight)
+        ? dx
+        : horizontalFromHeight;
     return constrain({
       left: state.rect.left - grow,
       top: state.rect.top - (grow * state.rect.height) / state.rect.width,
@@ -344,10 +367,12 @@ function FramingLayer({
   /** Pointer handlers for moving a frame (its body) or resizing it (its corner). */
   const dragHandlers = (which: "from" | "to", mode: "move" | "size") => ({
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      if (event.button !== 0 || !event.isPrimary) return;
       if (mode === "move") setEnd(which);
       event.stopPropagation();
       event.currentTarget.setPointerCapture(event.pointerId);
       grab.current = {
+        pointerId: event.pointerId,
         mode,
         pointerX: event.clientX,
         pointerY: event.clientY,
@@ -355,10 +380,11 @@ function FramingLayer({
       };
     },
     onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
-      const next = pointerRect(event);
-      if (next) setLive(next);
+      if (grab.current?.pointerId === event.pointerId)
+        setLive(pointerRect(event));
     },
     onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+      if (grab.current?.pointerId !== event.pointerId) return;
       const next = pointerRect(event);
       grab.current = null;
       setLive(null);
@@ -366,11 +392,14 @@ function FramingLayer({
     },
     // The system can take a gesture away (a touch scroll, a lost capture).
     // The frame then returns to where it was and nothing is saved.
-    onPointerCancel: () => {
-      grab.current = null;
-      setLive(null);
-    },
+    onPointerCancel: cancelDrag,
+    onLostPointerCapture: cancelDrag,
   });
+  function cancelDrag(event: ReactPointerEvent<HTMLElement>) {
+    if (grab.current?.pointerId !== event.pointerId) return;
+    grab.current = null;
+    setLive(null);
+  }
   const nudge = (event: ReactKeyboardEvent, which: "from" | "to") => {
     const rect = rects[which];
     const step = event.shiftKey ? NUDGE_LARGE : NUDGE;

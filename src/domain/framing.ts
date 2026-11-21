@@ -46,8 +46,8 @@ export function frameGeometry(
   };
   const toPose = (rect: FrameRect): CameraPose => ({
     zoom: clamp(baseWidth / rect.width, ZOOM_LIMITS.min, ZOOM_LIMITS.max),
-    focusX: rect.width < 1 ? clamp(rect.left / (1 - rect.width), 0, 1) : 0.5,
-    focusY: rect.height < 1 ? clamp(rect.top / (1 - rect.height), 0, 1) : 0.5,
+    focusX: rect.width === 1 ? 0.5 : clamp(rect.left / (1 - rect.width), 0, 1),
+    focusY: rect.height === 1 ? 0.5 : clamp(rect.top / (1 - rect.height), 0, 1),
   });
   /** Keeps a dragged frame the right shape, inside the photo and within zoom limits. */
   const constrain = (rect: FrameRect): FrameRect => {
@@ -64,12 +64,18 @@ export function frameGeometry(
     return {
       width,
       height,
-      left:
-        width < 1 ? clamp(centreX - width / 2, 0, 1 - width) : (1 - width) / 2,
-      top:
-        height < 1
-          ? clamp(centreY - height / 2, 0, 1 - height)
-          : (1 - height) / 2,
+      // A contained photo can be smaller than its frame along one axis.
+      // Its focus then spans a negative offset up to zero.
+      left: clamp(
+        centreX - width / 2,
+        Math.min(0, 1 - width),
+        Math.max(0, 1 - width),
+      ),
+      top: clamp(
+        centreY - height / 2,
+        Math.min(0, 1 - height),
+        Math.max(0, 1 - height),
+      ),
     };
   };
   return { toRect, toPose, constrain };

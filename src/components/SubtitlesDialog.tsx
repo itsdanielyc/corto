@@ -18,7 +18,7 @@ export function SubtitlesDialog({
 }: {
   project: Project;
   time: number;
-  onChange: (project: Project) => void;
+  onChange: (update: (project: Project) => Project) => void;
   onClose: () => void;
   platform: CortoPlatform;
 }) {
@@ -39,7 +39,7 @@ export function SubtitlesDialog({
       const subtitles = validateSubtitles(
         [...cues].sort((a, b) => a.start - b.start),
       );
-      onChange({ ...project, subtitles });
+      onChange((current) => ({ ...current, subtitles }));
       setError("");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
@@ -51,6 +51,11 @@ export function SubtitlesDialog({
         cue.id === id ? { ...cue, ...changes } : cue,
       ),
     );
+  const changeStyle = (changes: Partial<Project["subtitleStyle"]>) =>
+    onChange((current) => ({
+      ...current,
+      subtitleStyle: { ...current.subtitleStyle, ...changes },
+    }));
   return (
     <Panel
       title={t("Timed subtitles")}
@@ -78,54 +83,29 @@ export function SubtitlesDialog({
               ["mono", "Monospace"],
               ["rounded", "Rounded"],
             ]}
-            onChange={(font) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, font },
-              })
-            }
+            onChange={(font) => changeStyle({ font })}
           />
           <Slider
             label={t("Subtitle size")}
             value={project.subtitleStyle.size}
             min={0.02}
             max={0.12}
-            onChange={(size) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, size },
-              })
-            }
+            onChange={(size) => changeStyle({ size })}
           />
           <Colour
             label={t("Subtitle text colour")}
             value={project.subtitleStyle.colour}
-            onChange={(colour) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, colour },
-              })
-            }
+            onChange={(colour) => changeStyle({ colour })}
           />
           <Colour
             label={t("Subtitle box colour")}
             value={project.subtitleStyle.boxColour}
-            onChange={(boxColour) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, boxColour },
-              })
-            }
+            onChange={(boxColour) => changeStyle({ boxColour })}
           />
           <Slider
             label={t("Subtitle box opacity")}
             value={project.subtitleStyle.boxOpacity}
-            onChange={(boxOpacity) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, boxOpacity },
-              })
-            }
+            onChange={(boxOpacity) => changeStyle({ boxOpacity })}
           />
           <Choice
             label={t("Subtitle position")}
@@ -135,12 +115,7 @@ export function SubtitlesDialog({
               ["middle", "Middle"],
               ["bottom", "Bottom"],
             ]}
-            onChange={(position) =>
-              onChange({
-                ...project,
-                subtitleStyle: { ...project.subtitleStyle, position },
-              })
-            }
+            onChange={(position) => changeStyle({ position })}
           />
         </div>
       </details>

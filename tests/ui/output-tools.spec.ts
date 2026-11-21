@@ -100,3 +100,53 @@ test("exports a bounded animated GIF and an actual audio-only WAV", async ({
       .click();
   }
 });
+
+test("a waiting background export can be cancelled independently of the running film", async ({
+  page,
+}) => {
+  await photo(page);
+  // Hold the real encoder download to keep one job running while the next is queued.
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/ffmpeg-core.wasm", async (route) => {
+    await ready;
+    await route.continue();
+  });
+  const queueExport = async (name: string) => {
+    const title = page.getByLabel("Project name");
+    await title.fill(name);
+    await title.press("Tab");
+    await page
+      .getByRole("button", { name: "Export movie", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Export MP4", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Continue editing while exporting" })
+      .click();
+  };
+  try {
+    await queueExport("In progress");
+    await queueExport("Waiting film");
+    const cancelWaiting = page.getByRole("button", {
+      name: "Cancel queued export Waiting film",
+    });
+    await expect(cancelWaiting).toBeVisible();
+    await cancelWaiting.click();
+    await expect(cancelWaiting).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Cancel queued export In progress" }),
+    ).toBeVisible();
+    const movie = page.waitForEvent("download");
+    release();
+    expect((await movie).suggestedFilename()).toBe("In progress.mp4");
+    const notice = page.getByRole("complementary", { name: "Export queue" });
+    await expect(notice.getByText("In progress.mp4")).toBeVisible();
+    const heading = (await page.locator(".inspector-heading").boundingBox())!;
+    const tray = (await notice.boundingBox())!;
+    expect(tray.y + tray.height).toBeLessThanOrEqual(heading.y);
+  } finally {
+    release();
+  }
+});

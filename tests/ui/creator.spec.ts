@@ -4,6 +4,36 @@ import { settled } from "../helpers/settled";
 import { join } from "node:path";
 import { savedBrowserProject } from "../helpers/browser-project";
 
+test("slideshow timing counts photos and uses the fitted duration from the chosen theme song", async ({
+  page,
+}) => {
+  await photos(page);
+  await page
+    .getByTestId("media-input")
+    .setInputFiles("tests/fixtures/motion.mp4");
+  await expect(page.getByTestId("scene-card")).toHaveCount(3);
+  await menu(page, "Make a slideshow");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByLabel("Slideshow opening title").fill("A short opening");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByLabel("Slideshow soundtrack").selectOption("theme");
+  await page.getByLabel("Fit photos to the soundtrack").check();
+  const summary = page.locator(".slideshow-summary");
+  await expect(summary).toContainText("2 photos");
+  await expect(summary).toContainText(/about \d+(\.\d+)? s each/);
+  const seconds = Number(
+    /about ([\d.]+)/.exec((await summary.textContent())!)![1],
+  );
+  await page.getByRole("button", { name: "Create editable draft" }).click();
+  await expect(page.getByLabel("Project name")).toHaveValue("A short opening");
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const draft = await savedBrowserProject(page);
+  const photo = draft.scenes.find(
+    (scene) => scene.assetId && draft.assets[scene.assetId].kind === "image",
+  );
+  expect(seconds).toBeCloseTo(photo!.duration, 1);
+});
+
 async function photos(page: Page) {
   await page.goto("/");
   await page

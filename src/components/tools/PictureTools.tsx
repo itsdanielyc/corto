@@ -2,7 +2,8 @@ import { useT } from "../../i18n/locale";
 import { FlipHorizontal2, FlipVertical2, Frame, RotateCw } from "lucide-react";
 import type { MediaAsset, Project, Scene } from "../../../contracts/project";
 import type { CortoPlatform } from "../../platform/types";
-import { Choice, Colour, Slider, Toggle, ToolSection } from "./Fields";
+import { Choice, Colour, Slider, ToolSection } from "./Fields";
+import { changeScene } from "../../domain/project";
 import { autoAdjustments } from "../../domain/colour";
 import { MediaPool } from "../../preview/media-pool";
 import { LookTiles, MotionTiles, TransitionTiles } from "./Choices";
@@ -160,8 +161,11 @@ export function ColourSection({
   poster,
   platform,
   onChange,
+  onProject,
   report,
-}: PictureProperties) {
+}: PictureProperties & {
+  onProject: (update: (project: Project) => Project) => void;
+}) {
   const t = useT();
   if (!asset) return null;
   const enhance = async () => {
@@ -172,11 +176,16 @@ export function ColourSection({
       canvas.width = canvas.height = 64;
       const context = canvas.getContext("2d", { willReadFrequently: true })!;
       context.drawImage(media, 0, 0, 64, 64);
-      onChange({
-        adjustments: {
-          ...scene.adjustments,
-          ...autoAdjustments(context.getImageData(0, 0, 64, 64).data),
-        },
+      const adjustments = autoAdjustments(
+        context.getImageData(0, 0, 64, 64).data,
+      );
+      onProject((current) => {
+        if (current.id !== project.id) return current;
+        const original = current.scenes.find((item) => item.id === scene.id);
+        if (original?.assetId !== asset.id) return current;
+        return changeScene(current, original.id, {
+          adjustments: { ...original.adjustments, ...adjustments },
+        });
       });
     } finally {
       pool.dispose();
@@ -391,26 +400,5 @@ export function TransitionSection({
         />
       )}
     </ToolSection>
-  );
-}
-
-/** Kept for callers that still want every picture section in one column. */
-export function PictureTools(properties: PictureProperties) {
-  return (
-    <>
-      <MotionSection {...properties} />
-      <ColourSection {...properties} />
-      <BackgroundSection
-        {...properties}
-        title={properties.asset ? "Background" : "Card"}
-      />
-      <ToolSection title="Title shade">
-        <Toggle
-          label="Shade picture behind the simple title"
-          checked={properties.scene.captionShade}
-          onChange={(captionShade) => properties.onChange({ captionShade })}
-        />
-      </ToolSection>
-    </>
   );
 }

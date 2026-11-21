@@ -667,7 +667,7 @@ export function useEditorController() {
     seekByKey,
   });
 
-  const modalClose = () => setDialog(null);
+  const modalClose = useCallback(() => setDialog(null), []);
   return {
     platform,
     error,

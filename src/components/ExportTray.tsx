@@ -1,6 +1,13 @@
 import { useT } from "../i18n/locale";
 import { useEffect, useState } from "react";
-import { Check, CircleAlert, FolderOpen, LoaderCircle, X } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  Clock,
+  FolderOpen,
+  LoaderCircle,
+  X,
+} from "lucide-react";
 import type { MovieJobState } from "../export/queue";
 import type { CortoPlatform } from "../platform/types";
 import { IconButton } from "./primitives";
@@ -50,39 +57,42 @@ export function ExportTray({
     return () => window.clearTimeout(timer);
   }, [doneIds]);
   if (!pending.length && !finished.length) return null;
-  const active = pending.find((job) => job.status === "running");
-  const queued = pending.length - (active ? 1 : 0);
+  const latestFile = jobs
+    .filter((job) => job.status === "done" && job.result?.location === "file")
+    .at(-1);
   return (
     <aside className="export-tray" aria-label={t("Export queue")}>
-      {active && (
-        <div className="export-job running">
-          <LoaderCircle size={15} className="spin" aria-hidden="true" />
+      {pending.map((job) => (
+        <div className={`export-job ${job.status}`} key={job.id}>
+          {job.status === "running" ? (
+            <LoaderCircle size={15} className="spin" aria-hidden="true" />
+          ) : (
+            <Clock size={15} aria-hidden="true" />
+          )}
           <div>
-            <strong>{active.name}</strong>
-            <span>{t(active.progress.message)}</span>
-            <progress
-              max={1}
-              value={active.progress.fraction}
-              aria-label={t("Background export progress")}
-            />
+            <strong>{job.name}</strong>
+            <span>{t(job.progress.message)}</span>
+            {job.status === "running" && (
+              <progress
+                max={1}
+                value={job.progress.fraction}
+                aria-label={t("Background export progress")}
+              />
+            )}
           </div>
-          <span className="export-percent">
-            {Math.round(active.progress.fraction * 100)}
-            {t("%")}
-          </span>
+          {job.status === "running" && (
+            <span className="export-percent">
+              {Math.round(job.progress.fraction * 100)}
+              {t("%")}
+            </span>
+          )}
           <IconButton
             icon={X}
-            label={t(`Cancel queued export ${active.name}`)}
-            onClick={() => onCancel(active.id)}
+            label={t(`Cancel queued export ${job.name}`)}
+            onClick={() => onCancel(job.id)}
           />
         </div>
-      )}
-      {queued > 0 && (
-        <p className="export-queued">
-          {queued}
-          {t(queued === 1 ? " more export waiting" : " more exports waiting")}
-        </p>
-      )}
+      ))}
       {finished.map((job) => (
         <div className={`export-job ${job.status}`} key={job.id}>
           {job.status === "done" ? (
@@ -98,17 +108,15 @@ export function ExportTray({
                 : (job.error ?? t("The export could not finish"))}
             </span>
           </div>
-          {job.status === "done" &&
-            platform.kind === "native" &&
-            job.result?.location === "file" && (
-              <IconButton
-                icon={FolderOpen}
-                label={t("Show latest export in folder")}
-                onClick={() => {
-                  void platform.revealExport();
-                }}
-              />
-            )}
+          {platform.kind === "native" && job.id === latestFile?.id && (
+            <IconButton
+              icon={FolderOpen}
+              label={t("Show latest export in folder")}
+              onClick={() => {
+                void platform.revealExport();
+              }}
+            />
+          )}
           <IconButton
             icon={X}
             label={t("Dismiss")}

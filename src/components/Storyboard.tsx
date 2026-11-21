@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import { Music2, Plus, Type } from "lucide-react";
+import { createPortal } from "react-dom";
 import type { Project, Scene } from "../../contracts/project";
 import {
   buildTimeline,
@@ -27,8 +28,8 @@ import { Slider } from "./tools/Fields";
 
 /** Smallest and largest timeline scale, in pixels per second. */
 const ZOOM_RANGE = { min: 4, max: 200 } as const;
-/** Width of the transition picker; matches .seam-popover in reel.css. */
-const POPOVER_WIDTH = 340;
+/** Keep the transition picker clear of the viewport edges and its trigger. */
+const POPOVER_GAP = 12;
 
 interface StoryboardProperties {
   project: Project;
@@ -93,21 +94,36 @@ function Seam({
   // The reel scrolls sideways and clips its content, so the picker is placed
   // in viewport coordinates above the join, kept inside the window.
   useLayoutEffect(() => {
-    if (!open || !trigger.current) return;
+    const button = trigger.current;
+    const picker = popover.current;
+    if (!open || !button || !picker) return;
     const place = () => {
-      const bounds = trigger.current!.getBoundingClientRect();
-      const half = POPOVER_WIDTH / 2 + 12;
+      const bounds = button.getBoundingClientRect();
       setAnchor({
         left: Math.max(
-          half,
-          Math.min(window.innerWidth - half, bounds.left + bounds.width / 2),
+          POPOVER_GAP,
+          Math.min(
+            window.innerWidth - picker.offsetWidth - POPOVER_GAP,
+            bounds.left + (bounds.width - picker.offsetWidth) / 2,
+          ),
         ),
-        top: bounds.top - 10,
+        top: Math.max(
+          POPOVER_GAP,
+          bounds.top - POPOVER_GAP - picker.offsetHeight,
+        ),
       });
     };
     place();
+    const observer = new ResizeObserver(place);
+    observer.observe(picker);
+    const reel = button.closest(".reel-scroll");
+    reel?.addEventListener("scroll", place);
     window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    return () => {
+      observer.disconnect();
+      reel?.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+    };
   }, [open]);
   const placed = !!anchor;
   useEffect(() => {
@@ -157,51 +173,55 @@ function Seam({
       >
         <TransitionGlyph transition={scene.transition} size={14} />
       </button>
-      {open && (
-        <div
-          ref={popover}
-          className="seam-popover"
-          role="dialog"
-          aria-label={label}
-          style={anchor ?? { visibility: "hidden" }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.stopPropagation();
-              onClose();
-              trigger.current?.focus();
-            }
-          }}
-        >
-          <TransitionTiles
-            value={scene.transition}
-            onChange={(transition) => onChange({ transition })}
-          />
-          {scene.transition !== "cut" && (
-            <Slider
-              label={t("Transition duration")}
-              value={scene.transitionSeconds}
-              min={0}
-              max={5}
-              step={0.05}
-              onChange={(transitionSeconds) => onChange({ transitionSeconds })}
-            />
-          )}
-          <div className="seam-popover-actions">
-            <button className="text-button" onClick={onAll}>
-              {t("Use for every join")}
-            </button>
-            <button
-              className="button secondary"
-              onClick={() => {
+      {open &&
+        createPortal(
+          <div
+            ref={popover}
+            className="seam-popover"
+            role="dialog"
+            aria-label={label}
+            style={anchor ?? { visibility: "hidden" }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.stopPropagation();
                 onClose();
                 trigger.current?.focus();
-              }}
-            >
-              {t("Done")}
-            </button>
-          </div>
-        </div>
-      )}
+              }
+            }}
+          >
+            <TransitionTiles
+              value={scene.transition}
+              onChange={(transition) => onChange({ transition })}
+            />
+            {scene.transition !== "cut" && (
+              <Slider
+                label={t("Transition duration")}
+                value={scene.transitionSeconds}
+                min={0}
+                max={5}
+                step={0.05}
+                onChange={(transitionSeconds) =>
+                  onChange({ transitionSeconds })
+                }
+              />
+            )}
+            <div className="seam-popover-actions">
+              <button className="text-button" onClick={onAll}>
+                {t("Use for every join")}
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => {
+                  onClose();
+                  trigger.current?.focus();
+                }}
+              >
+                {t("Done")}
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </span>
   );
 }

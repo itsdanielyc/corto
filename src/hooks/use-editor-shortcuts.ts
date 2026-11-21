@@ -31,6 +31,7 @@ export function useEditorShortcuts({
     const key = (event: KeyboardEvent) => {
       // Side panels (sound, subtitles, bulk edits) keep the editor live; real dialogs do not.
       if (
+        event.defaultPrevented ||
         ui.current.busy ||
         (ui.current.dialog && !PANEL_DIALOGS.has(ui.current.dialog)) ||
         document.querySelector("dialog[open]")
@@ -55,6 +56,11 @@ export function useEditorShortcuts({
         event.preventDefault();
         redoEdit();
       } else if (!editable && event.code === "Space") {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("button, summary, a[href]")
+        )
+          return;
         event.preventDefault();
         if (!event.repeat) togglePlayback();
       } else if (

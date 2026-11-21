@@ -108,7 +108,11 @@ function SecondsField({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => {
-            if (draft.trim()) onCommit(Number(draft));
+            const parsed = Number(draft);
+            if (draft.trim() && Number.isFinite(parsed)) {
+              const bounded = clamp(parsed);
+              if (bounded !== value) onCommit(bounded);
+            }
             setDraft(format(value));
           }}
           onKeyDown={(event) => {
@@ -317,6 +321,7 @@ function SceneInspector(properties: InspectorProperties & { scene: Scene }) {
         aria-label={t("Scene tool categories")}
         onKeyDown={(event) => {
           if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
           const index = tabs.findIndex(([id]) => id === active);
           const next =
             tabs[
@@ -370,6 +375,7 @@ function SceneInspector(properties: InspectorProperties & { scene: Scene }) {
                 poster={poster}
                 platform={platform}
                 onChange={onChange}
+                onProject={properties.onProject}
                 report={report}
               />
               {asset.kind === "image" && (

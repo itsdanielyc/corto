@@ -1,8 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openExampleFilm } from "../helpers/browser-project";
 import { settled } from "../helpers/settled";
 
-/** The inspector column is narrowest just above the phone layout and widest on a desktop window. */
+/** Phone sheets, a compact desktop and the default desktop window. */
 const WINDOW_SIZES = [
+  { width: 320, height: 568 },
+  { width: 390, height: 844 },
   { width: 1024, height: 700 },
   { width: 1440, height: 900 },
 ] as const;
@@ -74,19 +77,14 @@ async function outsidePanel(page: Page, selector: string): Promise<string[]> {
   });
 }
 
-async function example(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Try an example" }).click();
-  await expect(page.getByTestId("scene-card")).toHaveCount(4);
-  await expect(page.getByTestId("save-status")).toHaveText("Saved");
-}
-
 for (const size of WINDOW_SIZES) {
   test(`every scene tool stays inside the inspector at ${size.width} px`, async ({
     page,
   }) => {
     await page.setViewportSize(size);
-    await example(page);
+    await openExampleFilm(page);
+    const editSheet = page.getByRole("button", { name: "Edit", exact: true });
+    if (await editSheet.isVisible()) await editSheet.click();
     for (const tab of SCENE_TABS) {
       await page.getByRole("tab", { name: tab, exact: true }).click();
       // Give the Text and Overlays tabs their per-item controls.
@@ -100,9 +98,19 @@ for (const size of WINDOW_SIZES) {
           .click();
       expect.soft(await outsidePanel(page, ".inspector-body"), tab).toEqual([]);
     }
+    if (await editSheet.isVisible()) await editSheet.click();
     await page.getByTestId("scene-card").last().click();
+    if (await editSheet.isVisible()) await editSheet.click();
+    await page.getByRole("tab", { name: "Card", exact: true }).click();
     expect
       .soft(await outsidePanel(page, ".inspector-body"), "Card")
+      .toEqual([]);
+    await page
+      .getByTestId("media-input")
+      .setInputFiles("tests/fixtures/motion.mp4");
+    await page.getByRole("tab", { name: "Clip", exact: true }).click();
+    expect
+      .soft(await outsidePanel(page, ".inspector-body"), "Clip")
       .toEqual([]);
   });
 
@@ -110,7 +118,7 @@ for (const size of WINDOW_SIZES) {
     page,
   }) => {
     await page.setViewportSize(size);
-    await example(page);
+    await openExampleFilm(page);
     for (const panel of SIDE_PANELS) {
       await page
         .getByRole("button", { name: "Project actions", exact: true })
@@ -129,3 +137,19 @@ for (const size of WINDOW_SIZES) {
     }
   });
 }
+
+test("the transition picker and its actions stay on a small phone screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openExampleFilm(page);
+  await page
+    .getByRole("button", { name: /^Transition after scene 1:/ })
+    .click();
+  const picker = page.getByRole("dialog", { name: "Transition after scene 1" });
+  await expect(picker).toBeInViewport({ ratio: 1 });
+  await picker.getByRole("radio", { name: "Cross dissolve" }).click();
+  await expect(picker.getByRole("button", { name: "Done" })).toBeInViewport({
+    ratio: 1,
+  });
+});

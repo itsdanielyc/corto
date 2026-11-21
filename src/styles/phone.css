@@ -233,10 +233,6 @@
   .modal[open] {
     animation: sheet-up var(--t-sheet) var(--ease);
   }
-  .export-tray {
-    left: 12px;
-    width: auto;
-  }
 }
 
 @media (pointer: coarse) {

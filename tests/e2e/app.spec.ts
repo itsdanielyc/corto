@@ -114,10 +114,7 @@ test.describe("corto in the real shell", () => {
       frame,
     );
 
-    // The app shows its window on ready-to-show, after the first composited
-    // frame. A cold runner gets there later than the page becomes ready, and
-    // a window that is not showing yet cannot be captured ("Unable to capture
-    // screenshot"), so wait for the window rather than race it.
+    // Renderer readiness alone does not prove the OS has shown the window.
     await expect
       .poll(() =>
         app.evaluate(
@@ -139,7 +136,11 @@ test.describe("corto in the real shell", () => {
       const windowId = /^window:(\d+):/.exec(source)?.[1];
       if (!windowId) throw new Error(`Unrecognised window source: ${source}`);
       execFileSync("/usr/sbin/screencapture", [
-        "-x", "-o", "-l", windowId, join(dir, `mac-window-${main.arch}.png`),
+        "-x",
+        "-o",
+        "-l",
+        windowId,
+        join(dir, `mac-window-${main.arch}.png`),
       ]);
     }
     console.log(`[e2e] screenshot saved: ${file}`);

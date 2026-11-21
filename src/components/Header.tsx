@@ -68,6 +68,7 @@ function ProjectName({
 }) {
   const t = useT();
   const [draft, setDraft] = useState(name);
+  const discardOnBlur = useRef(false);
   useEffect(() => setDraft(name), [name]);
   return (
     <span className="project-name-wrap" data-value={draft || " "}>
@@ -80,10 +81,14 @@ function ProjectName({
         spellCheck={false}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => onName(draft.trim() || "Untitled film")}
+        onBlur={() => {
+          if (!discardOnBlur.current) onName(draft.trim() || "Untitled film");
+          discardOnBlur.current = false;
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
           if (event.key === "Escape") {
+            discardOnBlur.current = true;
             setDraft(name);
             event.currentTarget.blur();
           }
@@ -173,6 +178,7 @@ export function Header(properties: HeaderProperties) {
       <div className="header-spacer" />
       <button
         className="command-search"
+        disabled={properties.busy}
         onClick={properties.onCommands}
         aria-label={t("Search commands")}
         aria-keyshortcuts="Control+K Meta+K"

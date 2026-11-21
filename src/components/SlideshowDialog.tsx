@@ -1,10 +1,12 @@
 import { useT } from "../i18n/locale";
-import { useState } from "react";
-import type { Project } from "../../contracts/project";
+import { useEffect, useMemo, useState } from "react";
+import type { MediaAsset, Project } from "../../contracts/project";
 import {
   buildSlideshow,
   buildProjectTemplate,
   projectTemplateCaptions,
+  slideshowPhotoSeconds,
+  sortMedia,
   THEMES,
   type SlideshowOptions,
 } from "../domain/slideshow";
@@ -16,8 +18,44 @@ import { bundledSoundFile } from "../media/bundled-sounds";
 import { inspectFile } from "../media/import";
 import { addAsset } from "../domain/project";
 import type { MediaResources } from "../hooks/use-resources";
+import { useDraftRequest } from "../hooks/use-draft-request";
 /** Below this many seconds per photo a slideshow starts to feel rushed. */
 const QUICK_PHOTO_SECONDS = 2.5;
+
+/** Read the actual bundled recording once for both the duration preview and the draft. */
+function useThemeSoundtrack(id: string | null) {
+  const [track, setTrack] = useState<{
+    id: string;
+    file: File;
+    asset: MediaAsset;
+  } | null>(null);
+  const [failure, setFailure] = useState<{
+    id: string;
+    message: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    const controller = new AbortController();
+    const load = async () => {
+      const file = await bundledSoundFile(id, controller.signal);
+      const { asset } = await inspectFile(file);
+      if (!controller.signal.aborted) setTrack({ id, file, asset });
+    };
+    setFailure(null);
+    void load().catch((error: unknown) => {
+      if (!controller.signal.aborted)
+        setFailure({
+          id,
+          message: error instanceof Error ? error.message : String(error),
+        });
+    });
+    return () => controller.abort();
+  }, [id]);
+  return {
+    track: track?.id === id ? track : null,
+    error: failure?.id === id ? failure.message : null,
+  };
+}
 export function SlideshowDialog({
   project,
   platform,
@@ -59,31 +97,68 @@ export function SlideshowDialog({
   const song = project.audioClips.find(
     (clip) => clip.role === "music" && clip.assetId === musicId,
   );
-  const music = musicId ? project.assets[musicId] : null;
+  const themeMusic = useThemeSoundtrack(
+    musicId === "theme" ? THEMES[theme].music : null,
+  );
+  const music =
+    musicId === "theme" ? themeMusic.track?.asset : project.assets[musicId];
   const musicOffset = song?.offset ?? 0;
+  const moments = useMemo(
+    () =>
+      sortMedia(
+        Array.from(selected, (id) => project.assets[id]).filter(
+          (asset) => !!asset,
+        ),
+        order,
+      ),
+    [selected, project.assets, order],
+  );
+  const photoCount = moments.filter((asset) => asset.kind === "image").length;
+  const fitSeconds =
+    fit && photoCount > 0 && music ? music.duration - musicOffset : undefined;
+  const timing = useMemo(() => {
+    try {
+      return {
+        seconds: slideshowPhotoSeconds(moments, {
+          theme,
+          title,
+          seconds,
+          fitSeconds,
+        }),
+        error: null,
+      };
+    } catch (failure) {
+      return {
+        seconds: null,
+        error: failure instanceof Error ? failure.message : String(failure),
+      };
+    }
+  }, [moments, theme, title, seconds, fitSeconds]);
+  const beginDraft = useDraftRequest();
   const create = async () => {
+    if (musicId === "theme" && !themeMusic.track) return;
+    const signal = beginDraft();
     setBusy(true);
     setError(null);
     try {
       let source = project;
-      let selectedMusic = music;
-      if (musicId === "theme") {
-        const file = await bundledSoundFile(THEMES[theme].music);
-        const { asset } = await inspectFile(file);
+      if (themeMusic.track) {
+        const { asset, file } = themeMusic.track;
         await platform.putAsset(asset, file);
+        signal.throwIfAborted();
         source = addAsset(source, asset);
-        selectedMusic = asset;
       }
       const analysis =
-        beats && selectedMusic && !template
-          ? await soundAnalysis(platform, source, selectedMusic)
+        beats && music && !template
+          ? await soundAnalysis(platform, source, music)
           : null;
+      signal.throwIfAborted();
       const draft = template
         ? buildProjectTemplate(
             { ...source, id: crypto.randomUUID() },
             theme,
             title,
-            selectedMusic?.id ?? null,
+            music?.id ?? null,
           )
         : buildSlideshow(
             { ...source, id: crypto.randomUUID() },
@@ -95,14 +170,11 @@ export function SlideshowDialog({
               motion,
               dateCaptions: dates,
               title,
-              fitSeconds:
-                fit && selectedMusic
-                  ? selectedMusic.duration - musicOffset
-                  : undefined,
+              fitSeconds,
               beats: analysis?.beats
                 .filter((beat) => beat >= musicOffset)
                 .map((beat) => beat - musicOffset),
-              musicAssetId: selectedMusic?.id ?? null,
+              musicAssetId: music?.id ?? null,
               musicOffset,
             },
           );
@@ -115,26 +187,26 @@ export function SlideshowDialog({
         );
       if (project.scenes.length || Object.keys(project.assets).length)
         await platform.saveProject(project);
+      signal.throwIfAborted();
       onCreate(draft);
       onClose();
     } catch (failure) {
+      if (signal.aborted) return;
       setError(
         failure instanceof Error
           ? failure.message
           : "The slideshow could not be created",
       );
     } finally {
-      setBusy(false);
+      if (!signal.aborted) setBusy(false);
     }
   };
   const steps = ["Photos", "Mood", "Music"] as const;
   const last = step === steps.length - 1;
-  const soundtrack = musicId === "theme" ? null : music;
-  const photoCount = template ? 0 : selected.size;
-  const perPhoto =
-    fit && soundtrack && photoCount
-      ? (soundtrack.duration - musicOffset) / photoCount
-      : seconds;
+  const readingTrack = musicId === "theme" && !themeMusic.track;
+  const perPhoto = readingTrack && fit ? null : timing.seconds;
+  const message =
+    error || themeMusic.error || (!template && last ? timing.error : null);
   return (
     <Modal
       title={t("Make a slideshow")}
@@ -340,7 +412,7 @@ export function SlideshowDialog({
               ]}
               onChange={setMusicId}
             />
-            {(music || musicId === "theme") && !template && (
+            {musicId && !template && photoCount > 0 && (
               <>
                 <Toggle
                   label={t("Fit photos to the soundtrack")}
@@ -354,7 +426,7 @@ export function SlideshowDialog({
                 />
               </>
             )}
-            {!template && photoCount > 0 && (
+            {!template && photoCount > 0 && perPhoto !== null && (
               <p className="slideshow-summary">
                 {photoCount}
                 {t(photoCount === 1 ? " photo" : " photos")}
@@ -363,19 +435,22 @@ export function SlideshowDialog({
                 {t(" s each")}
               </p>
             )}
-            {!template && photoCount > 0 && perPhoto < QUICK_PHOTO_SECONDS && (
-              <p className="inline-error slideshow-warning">
-                {t(
-                  "That is quick for a slideshow. Choose fewer photos, or a longer song.",
-                )}
-              </p>
-            )}
+            {!template &&
+              photoCount > 0 &&
+              perPhoto !== null &&
+              perPhoto < QUICK_PHOTO_SECONDS && (
+                <p className="inline-error slideshow-warning">
+                  {t(
+                    "That is quick for a slideshow. Choose fewer photos, or a longer song.",
+                  )}
+                </p>
+              )}
           </div>
         )}
       </div>
-      {error && (
+      {message && (
         <p role="alert" className="inline-error">
-          {error}
+          {t(message)}
         </p>
       )}
       <div className="modal-actions">
@@ -394,7 +469,11 @@ export function SlideshowDialog({
         {last ? (
           <button
             className="button primary"
-            disabled={(!template && !selected.size) || busy}
+            disabled={
+              (!template && (!selected.size || !!timing.error)) ||
+              readingTrack ||
+              busy
+            }
             onClick={() => {
               void create();
             }}

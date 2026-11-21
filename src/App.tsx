@@ -20,6 +20,7 @@ import { StageOverlay } from "./components/StageOverlay";
 import { Storyboard } from "./components/Storyboard";
 import { IconButton } from "./components/primitives";
 import { useEditorController } from "./hooks/use-editor-controller";
+import { useDraftRequest } from "./hooks/use-draft-request";
 import { EditorDialogs } from "./components/EditorDialogs";
 import { ProjectHome, type TemplateTheme } from "./components/ProjectHome";
 import { SoundDialog } from "./components/SoundDialog";
@@ -155,12 +156,30 @@ export function App() {
     },
     [addTitle],
   );
+  const openSceneTool = (tab: InspectorTab) => {
+    if (selected && selectedIds.size > 1) selectScene(selected.id);
+    setDialog(null);
+    setFraming(false);
+    setInspectorTab(tab);
+    setSheet("edit");
+  };
+  const openFraming = () => {
+    pause();
+    if (selected && selectedIds.size > 1) selectScene(selected.id);
+    setDialog(null);
+    setSheet(null);
+    setFraming(true);
+  };
+  const beginTemplate = useDraftRequest(dialog);
   const startTemplate = useCallback(
     async (theme: TemplateTheme) => {
+      const signal = beginTemplate();
       try {
-        const file = await bundledSoundFile(THEMES[theme].music);
+        const file = await bundledSoundFile(THEMES[theme].music, signal);
         const { asset } = await inspectFile(file);
+        signal.throwIfAborted();
         await platform.putAsset(asset, file);
+        signal.throwIfAborted();
         const draft = buildProjectTemplate(
           { ...addAsset(createProject(), asset), id: crypto.randomUUID() },
           theme,
@@ -175,14 +194,15 @@ export function App() {
         const present = current.current.present;
         if (present.scenes.length || Object.keys(present.assets).length)
           await platform.saveProject(present);
+        signal.throwIfAborted();
         editor.replace(draft);
         setTime(0.6);
         setDialog(null);
       } catch (failure) {
-        report(failure);
+        if (!signal.aborted) report(failure);
       }
     },
-    [platform, t, current, editor, setTime, setDialog, report],
+    [beginTemplate, platform, t, current, editor, setTime, setDialog, report],
   );
   const commands = useEditorCommands({
     project,
@@ -220,10 +240,10 @@ export function App() {
       about: () => setDialog("about"),
       timeline: setTimelineMode,
       ratio: (ratio) => edit((value) => ({ ...value, ratio })),
-      tab: setInspectorTab,
+      tab: openSceneTool,
       transition: (transition) => editScene({ transition }),
       sceneAction,
-      frame: () => setFraming(true),
+      frame: openFraming,
     },
   });
   useEffect(() => {
@@ -234,12 +254,12 @@ export function App() {
         !document.querySelector("dialog[open]")
       ) {
         event.preventDefault();
-        if (!busy) setPalette(true);
+        if (!busy && editor.loaded) setPalette(true);
       }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [busy]);
+  }, [busy, editor.loaded]);
   const modal =
     dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
   const bulk = selectedIds.size > 1;
@@ -257,10 +277,11 @@ export function App() {
     if (dialog === "subtitles")
       return (
         <SubtitlesDialog
+          key={project.id}
           platform={platform}
           project={project}
           time={time}
-          onChange={(next) => edit(() => next)}
+          onChange={edit}
           onClose={modalClose}
         />
       );
@@ -368,6 +389,11 @@ export function App() {
         onSettings={() => setDialog("settings")}
         onCommands={() => setPalette(true)}
       />
+      <ExportTray
+        jobs={exports.jobs}
+        platform={platform}
+        onCancel={(id) => exports.queue.cancel(id)}
+      />
       {home ? (
         <ProjectHome
           platform={platform}
@@ -473,11 +499,7 @@ export function App() {
               onDuplicate={duplicateSelected}
               onSplit={splitSelected}
               onMove={moveSelected}
-              onFrame={() => {
-                pause();
-                setFraming(true);
-                setSheet(null);
-              }}
+              onFrame={openFraming}
               report={report}
               busy={!!busy}
             />
@@ -690,11 +712,6 @@ export function App() {
         onClose={modalClose}
         onSave={savePortable}
         onTransition={performTransition}
-      />
-      <ExportTray
-        jobs={exports.jobs}
-        platform={platform}
-        onCancel={(id) => exports.queue.cancel(id)}
       />
       {palette && (
         <CommandPalette commands={commands} onClose={() => setPalette(false)} />

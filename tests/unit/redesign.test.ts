@@ -103,6 +103,27 @@ describe("framing on the picture", () => {
     expect(parses(ZOOM_LIMITS.min - 0.01)).toBe(false);
     expect(parses(ZOOM_LIMITS.max + 0.01)).toBe(false);
   });
+
+  it("preserves off-centre framing when fitting a letterboxed or pillarboxed photo", () => {
+    for (const [width, height] of [
+      [1000, 2000],
+      [3000, 1000],
+    ]) {
+      const fit = frameGeometry(
+        width,
+        height,
+        film.width,
+        film.height,
+        "contain",
+      );
+      const pose = { focusX: 0.17, focusY: 0.83, zoom: 1.1 };
+      const rect = fit.toRect(pose);
+      const restored = fit.toPose(fit.constrain(rect));
+      expect(restored.focusX).toBeCloseTo(pose.focusX);
+      expect(restored.focusY).toBeCloseTo(pose.focusY);
+      expect(restored.zoom).toBeCloseTo(pose.zoom);
+    }
+  });
 });
 
 describe("appearance across the native boundary", () => {
