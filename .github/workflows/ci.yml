@@ -35,9 +35,13 @@ on:
         type: choice
         options: ["0", "30", "20"]
         default: "0"
+      repeat_linux_startup:
+        description: Check 30 fresh Linux windows without retries
+        type: boolean
+        default: false
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ inputs.native_export_repetitions || '0' }}-${{ inputs.local_models && 'models' || 'normal' }}
+  group: ci-${{ github.ref }}-${{ inputs.native_export_repetitions || '0' }}-${{ inputs.local_models && 'models' || 'normal' }}-${{ inputs.repeat_linux_startup && 'startup' || 'normal' }}
   cancel-in-progress: true
 
 permissions:
@@ -285,6 +289,12 @@ jobs:
 
       - name: Build the app
         run: npm run build
+
+      - name: Repeat first-window visibility and capture without retries
+        if: runner.os == 'Linux' && inputs.repeat_linux_startup
+        env:
+          NO_AT_BRIDGE: "1"
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" npm run test:e2e -- tests/e2e/app.spec.ts --grep "saves a screenshot" --repeat-each=30 --retries=0
 
       - name: Real-shell E2E (Playwright Electron, Linux under xvfb-run)
         shell: bash

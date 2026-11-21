@@ -10,6 +10,7 @@ import {
   type Page,
 } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -129,6 +130,18 @@ test.describe("corto in the real shell", () => {
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
     await win.screenshot({ path: file });
+    if (main.os === "darwin") {
+      // Page screenshots exclude the native title-bar controls. Capture just
+      // Corto's WindowServer window so the traffic lights can be reviewed.
+      const source = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].getMediaSourceId(),
+      );
+      const windowId = /^window:(\d+):/.exec(source)?.[1];
+      if (!windowId) throw new Error(`Unrecognised window source: ${source}`);
+      execFileSync("/usr/sbin/screencapture", [
+        "-x", "-o", "-l", windowId, join(dir, `mac-window-${main.arch}.png`),
+      ]);
+    }
     console.log(`[e2e] screenshot saved: ${file}`);
   });
 
