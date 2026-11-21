@@ -16,6 +16,7 @@ import {
 import { completeNativeExport } from "../helpers/native-export";
 
 async function duration(page: Page, value: string) {
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill(value);
   await page.getByLabel("Duration (seconds)").press("Tab");
 }
@@ -57,14 +58,13 @@ test("a real user can import, trim, title, save, reopen and export an MP4 in the
     await page
       .getByRole("button", { name: "Add title card", exact: true })
       .click();
+    await page.getByRole("tab", { name: "Text", exact: true }).click();
     await page.getByLabel("On-screen title").fill("Hello, family.");
     await duration(page, "0.5");
     await page
       .getByTestId("music-input")
       .setInputFiles(join(process.cwd(), "tests/fixtures/music.mp3"));
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     await page.getByRole("button", { name: "Project actions" }).click();
     await page.getByRole("menuitem", { name: "Save portable copy" }).click();
     await expect(
@@ -126,7 +126,7 @@ test("a real user can import, trim, title, save, reopen and export an MP4 in the
       page.getByRole("button", { name: "Export MP4", exact: true }),
     );
     await expect(
-      page.getByText("A little film. All yours.", { exact: true }),
+      page.getByText("Your film is ready", { exact: true }),
     ).toBeVisible();
     const movie = inspectMovie(output);
     expect(movie).toMatchObject({ width: 1280, height: 720, audio: true });

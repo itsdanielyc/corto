@@ -1,9 +1,8 @@
 import { useT } from "../i18n/locale";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   Check,
-  ChevronDown,
-  Download,
+  CircleHelp,
   FilePlus2,
   FolderOpen,
   Keyboard,
@@ -11,11 +10,16 @@ import {
   MoreHorizontal,
   Redo2,
   Save,
+  Search,
   Undo2,
-  CircleHelp,
 } from "lucide-react";
 import type { SaveStatus } from "../hooks/use-project";
 import { IconButton } from "./primitives";
+import { CortoMark } from "./PlayMark";
+import { shortcutLabel } from "./shortcut-label";
+
+import type { WindowFrame } from "../../contracts/platform";
+
 interface HeaderProperties {
   projectId: string;
   name: string;
@@ -25,6 +29,9 @@ interface HeaderProperties {
   canRedo: boolean;
   busy: boolean;
   canExport: boolean;
+  frame: WindowFrame;
+  /** Fraction of the running background export, or null when none runs. */
+  exportProgress: number | null;
   onUndo: () => void;
   onRedo: () => void;
   onNew: () => void;
@@ -40,14 +47,18 @@ interface HeaderProperties {
   onFilmTools: () => void;
   onSettings: () => void;
   onCapture: () => void;
+  onCommands: () => void;
 }
+
+/** Status words only: what happened, not where the film lives. */
 const statusLabels: Record<SaveStatus, string> = {
-  loading: "Opening local project",
+  loading: "Opening",
   pending: "Unsaved changes",
-  saving: "Saving locally",
-  saved: "Saved on this device",
-  error: "Local save unavailable",
+  saving: "Saving",
+  saved: "Saved",
+  error: "Not saved",
 };
+
 function ProjectName({
   name,
   onName,
@@ -57,26 +68,58 @@ function ProjectName({
 }) {
   const t = useT();
   const [draft, setDraft] = useState(name);
+  const discardOnBlur = useRef(false);
   useEffect(() => setDraft(name), [name]);
   return (
-    <input
-      className="project-name"
-      aria-label={t("Project name")}
-      disabled={disabled}
-      maxLength={80}
-      value={draft}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => onName(draft.trim() || "Untitled film")}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") event.currentTarget.blur();
-        if (event.key === "Escape") {
-          setDraft(name);
-          event.currentTarget.blur();
-        }
-      }}
-    />
+    <span className="project-name-wrap" data-value={draft || " "}>
+      <input
+        className="project-name"
+        aria-label={t("Project name")}
+        disabled={disabled}
+        maxLength={80}
+        size={1}
+        spellCheck={false}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          if (!discardOnBlur.current) onName(draft.trim() || "Untitled film");
+          discardOnBlur.current = false;
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape") {
+            discardOnBlur.current = true;
+            setDraft(name);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+    </span>
   );
 }
+
+function SaveState({ status }: { status: SaveStatus }) {
+  const t = useT();
+  return (
+    <span
+      className={`save-state ${status === "error" ? "save-error" : ""}`}
+      data-status={status}
+      data-testid="save-status"
+      aria-live="polite"
+    >
+      {status === "saved" ? (
+        <Check size={13} aria-hidden="true" />
+      ) : status === "saving" || status === "loading" ? (
+        <LoaderCircle size={13} className="spin" aria-hidden="true" />
+      ) : (
+        <span className="status-dot" aria-hidden="true" />
+      )}
+      {t(statusLabels[status])}
+    </span>
+  );
+}
+
+/** The title bar: where you are, whether it is saved, and the way out (Export). */
 export function Header(properties: HeaderProperties) {
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,6 +138,9 @@ export function Header(properties: HeaderProperties) {
     };
     document.addEventListener("pointerdown", pointer);
     document.addEventListener("keydown", keyboard);
+    menu.current
+      ?.querySelector<HTMLElement>("[role=menuitem]")
+      ?.focus({ preventScroll: true });
     return () => {
       document.removeEventListener("pointerdown", pointer);
       document.removeEventListener("keydown", keyboard);
@@ -105,23 +151,21 @@ export function Header(properties: HeaderProperties) {
     trigger.current?.focus();
     callback();
   };
+  const exporting = properties.exportProgress !== null;
   return (
-    <header className="app-header">
-      <a
-        className="brand"
-        href="#"
-        aria-label={t("Corto home")}
-        onClick={(event) => {
-          event.preventDefault();
-          properties.onProjects();
-        }}
+    <header className="app-header" data-frame={properties.frame}>
+      <button
+        className="films-button"
+        aria-label={t("My films")}
+        disabled={properties.busy}
+        onClick={properties.onProjects}
       >
-        <img
-          src={`${import.meta.env.BASE_URL}brand/corto-lockup-black.svg`}
-          alt="Corto"
-        />
-      </a>
-      <div className="header-divider" />
+        <CortoMark className="films-mark" />
+        <span>{t("Films")}</span>
+      </button>
+      <span className="crumb-divider" aria-hidden="true">
+        /
+      </span>
       <div className="project-heading">
         <ProjectName
           key={properties.projectId}
@@ -129,30 +173,19 @@ export function Header(properties: HeaderProperties) {
           onName={properties.onName}
           disabled={properties.busy}
         />
-        <span
-          className={`save-state ${properties.status === "error" ? "save-error" : ""}`}
-          data-testid="save-status"
-          aria-live="polite"
-        >
-          {properties.status === "saved" ? (
-            <Check size={12} />
-          ) : properties.status === "saving" ||
-            properties.status === "loading" ? (
-            <LoaderCircle size={12} className="spin" />
-          ) : (
-            <span className="status-dot" />
-          )}
-          {t(statusLabels[properties.status])}
-        </span>
+        <SaveState status={properties.status} />
       </div>
       <div className="header-spacer" />
       <button
-        className="button secondary my-films-button"
+        className="command-search"
         disabled={properties.busy}
-        onClick={properties.onProjects}
+        onClick={properties.onCommands}
+        aria-label={t("Search commands")}
+        aria-keyshortcuts="Control+K Meta+K"
       >
-        <FolderOpen size={16} />
-        {t("My films")}
+        <Search size={15} aria-hidden="true" />
+        <span>{t("Search or run a command")}</span>
+        <kbd>{shortcutLabel("K")}</kbd>
       </button>
       <div className="history-actions">
         <IconButton
@@ -168,45 +201,91 @@ export function Header(properties: HeaderProperties) {
           onClick={properties.onRedo}
         />
       </div>
-      <div className="header-divider" />
       <div className="project-menu-wrap" ref={menu}>
         <button
           ref={trigger}
           className="icon-button"
           aria-label={t("Project actions")}
+          title={t("Project actions")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           disabled={properties.busy}
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          <MoreHorizontal size={20} />
+          <MoreHorizontal size={18} aria-hidden="true" />
         </button>
         {menuOpen && (
           <div
             className="project-menu"
             role="menu"
             aria-label={t("Project actions")}
+            onKeyDown={(event) => {
+              if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
+              event.preventDefault();
+              const items = Array.from(
+                event.currentTarget.querySelectorAll<HTMLElement>(
+                  "[role=menuitem]:not(:disabled)",
+                ),
+              ).filter((item) => item.getClientRects().length > 0);
+              const index = items.indexOf(
+                document.activeElement as HTMLElement,
+              );
+              const next =
+                (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
+                items.length;
+              items[next]?.focus();
+            }}
           >
             <button role="menuitem" onClick={action(properties.onProjects)}>
-              <FolderOpen />
+              <FolderOpen aria-hidden="true" />
               {t("My films")}
             </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              onClick={action(properties.onCommands)}
+            >
+              <Search aria-hidden="true" />
+              {t("Search commands")}
+            </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              disabled={!properties.canUndo}
+              onClick={action(properties.onUndo)}
+            >
+              <Undo2 aria-hidden="true" />
+              {t("Undo")}
+            </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              disabled={!properties.canRedo}
+              onClick={action(properties.onRedo)}
+            >
+              <Redo2 aria-hidden="true" />
+              {t("Redo")}
+            </button>
             <button role="menuitem" onClick={action(properties.onNew)}>
-              <FilePlus2 />
+              <FilePlus2 aria-hidden="true" />
               {t("New film")}
             </button>
             <button role="menuitem" onClick={action(properties.onOpen)}>
-              <FolderOpen />
+              <FolderOpen aria-hidden="true" />
               {t("Open project")}
-              <span>{t("\u2318 / Ctrl O")}</span>
+              <span className="menu-shortcut">{shortcutLabel("O")}</span>
             </button>
             <button role="menuitem" onClick={action(properties.onSave)}>
-              <Save />
+              <Save aria-hidden="true" />
               {t("Save portable copy")}
-              <span>{t("\u2318 / Ctrl S")}</span>
+              <span className="menu-shortcut">{shortcutLabel("S")}</span>
             </button>
+            <hr />
             <button role="menuitem" onClick={action(properties.onSound)}>
               {t("Sound & narration")}
+            </button>
+            <button role="menuitem" onClick={action(properties.onSubtitles)}>
+              {t("Timed subtitles")}
             </button>
             <button role="menuitem" onClick={action(properties.onSlideshow)}>
               {t("Make a slideshow")}
@@ -217,32 +296,38 @@ export function Header(properties: HeaderProperties) {
             <button role="menuitem" onClick={action(properties.onCapture)}>
               {t("Record camera or screen")}
             </button>
+            <hr />
             <button role="menuitem" onClick={action(properties.onSettings)}>
               {t("Settings & defaults")}
             </button>
-            <button role="menuitem" onClick={action(properties.onSubtitles)}>
-              {t("Timed subtitles")}
-            </button>
-            <hr />
             <button role="menuitem" onClick={action(properties.onHelp)}>
-              <Keyboard />
+              <Keyboard aria-hidden="true" />
               {t("Keyboard shortcuts")}
             </button>
             <button role="menuitem" onClick={action(properties.onAbout)}>
-              <CircleHelp />
+              <CircleHelp aria-hidden="true" />
               {t("About Corto")}
             </button>
           </div>
         )}
       </div>
       <button
-        className="button primary export-button"
+        className={`button primary export-button ${exporting ? "exporting" : ""}`}
         disabled={!properties.canExport || properties.busy}
         onClick={properties.onExport}
+        aria-label={t("Export movie")}
+        style={
+          exporting
+            ? ({
+                "--export-progress": `${Math.round((properties.exportProgress ?? 0) * 100)}%`,
+              } as CSSProperties)
+            : undefined
+        }
       >
-        <Download size={16} />
-        {t("Export movie")}
-        <ChevronDown size={14} />
+        <span>{t("Export")}</span>
+        {exporting && (
+          <span className="export-button-progress" aria-hidden="true" />
+        )}
       </button>
     </header>
   );

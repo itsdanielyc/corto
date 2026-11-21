@@ -35,9 +35,13 @@ on:
         type: choice
         options: ["0", "30", "20"]
         default: "0"
+      repeat_linux_startup:
+        description: Check 30 fresh Linux windows without retries
+        type: boolean
+        default: false
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ inputs.native_export_repetitions || '0' }}-${{ inputs.local_models && 'models' || 'normal' }}
+  group: ci-${{ github.ref }}-${{ inputs.native_export_repetitions || '0' }}-${{ inputs.local_models && 'models' || 'normal' }}-${{ inputs.repeat_linux_startup && 'startup' || 'normal' }}
   cancel-in-progress: true
 
 permissions:
@@ -118,7 +122,7 @@ jobs:
             playwright-report
             test-results
   unit:
-    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ !inputs.local_models && !inputs.repeat_linux_startup && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: unit
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -134,7 +138,7 @@ jobs:
       - run: npm run test:unit
 
   web:
-    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ !inputs.local_models && !inputs.repeat_linux_startup && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: production web / offline
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -161,7 +165,7 @@ jobs:
           retention-days: 7
 
   integration:
-    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ !inputs.local_models && !inputs.repeat_linux_startup && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: integration (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -179,7 +183,7 @@ jobs:
       - run: npm run test:integration
 
   ui:
-    if: ${{ !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ !inputs.local_models && !inputs.repeat_linux_startup && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     name: ui (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -251,11 +255,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-          - macos-15-intel
+        os: ${{ fromJSON(inputs.repeat_linux_startup && '["ubuntu-latest"]' || '["ubuntu-latest","windows-latest","macos-latest","macos-15-intel"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -286,7 +286,14 @@ jobs:
       - name: Build the app
         run: npm run build
 
+      - name: Repeat first-window visibility and capture without retries
+        if: runner.os == 'Linux' && inputs.repeat_linux_startup
+        env:
+          NO_AT_BRIDGE: "1"
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" npm run test:e2e -- tests/e2e/app.spec.ts --grep "renders the main window|saves a screenshot" --repeat-each=30 --retries=0
+
       - name: Real-shell E2E (Playwright Electron, Linux under xvfb-run)
+        if: ${{ !inputs.repeat_linux_startup }}
         shell: bash
         env:
           CI: "1"
@@ -313,7 +320,7 @@ jobs:
   sheet:
     name: contact sheet
     needs: [e2e]
-    if: ${{ always() && !inputs.local_models && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
+    if: ${{ always() && !inputs.local_models && !inputs.repeat_linux_startup && (!inputs.native_export_repetitions || inputs.native_export_repetitions == '0') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

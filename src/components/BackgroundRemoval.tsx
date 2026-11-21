@@ -99,7 +99,7 @@ export function BackgroundRemoval({
         {t(" data (")}
         {LOCAL_MODELS.background.licence}
         {t(
-          "). Your photo stays on this device. The editable transparent copy is up to 4K; the original stays in the library.",
+          "). The cut-out is a new copy up to 4K; the original photo is kept.",
         )}
       </p>
       {progress ? (

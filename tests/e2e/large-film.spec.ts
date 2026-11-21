@@ -33,9 +33,7 @@ test("exports all 500 photos with exact cumulative timing and the final photo in
         join(process.cwd(), "tests/fixtures/blue.png"),
       ]);
     await expect(page.getByTestId("scene-card")).toHaveCount(2);
-    await expect(page.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
     await page.evaluate(async () => {
       const bridge = window.electronBridge!;
       const project = (await bridge.loadProject())!;

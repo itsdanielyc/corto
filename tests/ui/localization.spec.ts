@@ -15,6 +15,7 @@ test("Spanish settings persist while personal project names and captions remain 
   await expect(page.getByTestId("scene-card")).toHaveCount(1);
   await page.getByLabel("Project name").fill("Family album — original name");
   await page.getByLabel("Project name").press("Tab");
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("Keep these exact words");
   await page.evaluate(async () => {
     const path = "/src/platform/browser-repository.ts";
@@ -53,9 +54,7 @@ test("Spanish settings persist while personal project names and captions remain 
   await expect(page.getByLabel("Título en pantalla")).toHaveValue(
     "Keep these exact words",
   );
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Guardado en este dispositivo",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Guardado");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await expect(

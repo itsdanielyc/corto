@@ -2,11 +2,14 @@
 // and nothing else: no ipcRenderer, no Node.
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { channels, type ElectronBridge } from "./bridge";
-import { nativeChannels } from "../contracts/platform";
+import { nativeChannels, windowFrameFor } from "../contracts/platform";
 
 const MAX_FALLBACK_BYTES = 64 * 1024 ** 2;
 
 const bridge: ElectronBridge = {
+  windowFrame: windowFrameFor(process.platform),
+  setNativeTheme: (theme) =>
+    ipcRenderer.invoke(nativeChannels.setNativeTheme, theme),
   platformInfo: () => ipcRenderer.invoke(channels.platformInfo),
   loadProject: () => ipcRenderer.invoke(nativeChannels.loadProject),
   listProjects: () => ipcRenderer.invoke(nativeChannels.listProjects),

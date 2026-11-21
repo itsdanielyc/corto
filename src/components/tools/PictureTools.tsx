@@ -1,115 +1,114 @@
 import { useT } from "../../i18n/locale";
+import { FlipHorizontal2, FlipVertical2, Frame, RotateCw } from "lucide-react";
 import type { MediaAsset, Project, Scene } from "../../../contracts/project";
 import type { CortoPlatform } from "../../platform/types";
-import { Choice, Colour, Slider, Toggle, ToolSection } from "./Fields";
+import { Choice, Colour, Slider, ToolSection } from "./Fields";
+import { changeScene } from "../../domain/project";
 import { autoAdjustments } from "../../domain/colour";
 import { MediaPool } from "../../preview/media-pool";
-export const MOTION_CHOICES = [
-  ["none", "Still"],
-  ["zoom-in", "Slow zoom in"],
-  ["zoom-out", "Slow zoom out"],
-  ["pan-left", "Pan left"],
-  ["pan-right", "Pan right"],
-  ["pan-up", "Pan up"],
-  ["pan-down", "Pan down"],
-  ["custom", "Custom start / end"],
-] as const;
-export const TRANSITION_CHOICES = [
-  ["cut", "Straight cut"],
-  ["fade", "Fade through black"],
-  ["dissolve", "Cross dissolve"],
-  ["fade-white", "Fade through white"],
-  ["wipe-left", "Wipe left"],
-  ["wipe-right", "Wipe right"],
-  ["slide-left", "Slide left"],
-  ["slide-right", "Slide right"],
-  ["push-up", "Push up"],
-  ["zoom", "Gentle zoom"],
-  ["blur", "Soft blur"],
-] as const;
-export function PictureTools({
-  project,
-  scene,
-  asset,
-  platform,
-  onChange,
-  report,
-}: {
+import { LookTiles, MotionTiles, TransitionTiles } from "./Choices";
+export { MOTION_CHOICES, TRANSITION_CHOICES } from "./choice-lists";
+
+interface PictureProperties {
   project: Project;
   scene: Scene;
   asset: MediaAsset | null;
+  poster?: string;
   platform: CortoPlatform;
   onChange: (changes: Partial<Scene>) => void;
   report: (error: unknown) => void;
-}) {
+  /** Opens start/end framing directly on the stage picture. */
+  onFrame?: () => void;
+}
+
+/** Fill or fit: the one framing decision every photo needs. */
+export function FitChoice({
+  scene,
+  onChange,
+}: Pick<PictureProperties, "scene" | "onChange">) {
+  const t = useT();
+  return (
+    <div className="segmented" role="group" aria-label={t("Picture framing")}>
+      <button
+        type="button"
+        aria-pressed={scene.fit === "cover"}
+        onClick={() => onChange({ fit: "cover" })}
+      >
+        {t("Fill frame")}
+      </button>
+      <button
+        type="button"
+        aria-pressed={scene.fit === "contain"}
+        onClick={() => onChange({ fit: "contain" })}
+      >
+        {t("Fit whole image")}
+      </button>
+    </div>
+  );
+}
+
+/** Camera movement, orientation and the precise (non-drag) framing values. */
+export function MotionSection({
+  scene,
+  asset,
+  poster,
+  onChange,
+  onFrame,
+}: Pick<
+  PictureProperties,
+  "scene" | "asset" | "poster" | "onChange" | "onFrame"
+>) {
   const t = useT();
   const transform = (changes: Partial<Scene["transform"]>) =>
     onChange({ transform: { ...scene.transform, ...changes } });
-  const enhance = async () => {
-    if (!asset) return;
-    const pool = new MediaPool();
-    try {
-      const media = await pool.get(asset, await platform.assetUrl(asset.id));
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = 64;
-      const context = canvas.getContext("2d", { willReadFrequently: true })!;
-      context.drawImage(media, 0, 0, 64, 64);
-      onChange({
-        adjustments: {
-          ...scene.adjustments,
-          ...autoAdjustments(context.getImageData(0, 0, 64, 64).data),
-        },
-      });
-    } finally {
-      pool.dispose();
-    }
-  };
+  if (!asset) return null;
   return (
-    <>
-      {asset && (
-        <ToolSection title={t("Framing & movement")}>
-          <div className="tool-button-row">
-            <button
-              className="button secondary"
-              onClick={() =>
-                transform({
-                  rotation: ((scene.transform.rotation + 90) %
-                    360) as Scene["transform"]["rotation"],
-                })
-              }
-            >
-              {t("Rotate 90\u00B0")}
-            </button>
-            <button
-              className="button secondary"
-              aria-pressed={scene.transform.flipX}
-              onClick={() => transform({ flipX: !scene.transform.flipX })}
-            >
-              {t("Flip horizontal")}
-            </button>
-            <button
-              className="button secondary"
-              aria-pressed={scene.transform.flipY}
-              onClick={() => transform({ flipY: !scene.transform.flipY })}
-            >
-              {t("Flip vertical")}
-            </button>
-          </div>
-          <Choice
-            label={t("Motion")}
-            value={scene.transform.motion}
-            options={MOTION_CHOICES}
-            onChange={(motion) => transform({ motion })}
-          />
-          <Choice
-            label={t("Fit")}
-            value={scene.fit}
-            options={[
-              ["cover", "Fill / crop"],
-              ["contain", "Show whole picture"],
-            ]}
-            onChange={(fit) => onChange({ fit })}
-          />
+    <ToolSection title={t("Framing & movement")}>
+      <FitChoice scene={scene} onChange={onChange} />
+      <MotionTiles
+        value={scene.transform.motion}
+        poster={poster}
+        onChange={(motion) => transform({ motion })}
+      />
+      {onFrame && asset.kind === "image" && (
+        <button className="button secondary wide" onClick={onFrame}>
+          <Frame size={16} aria-hidden="true" />
+          {t("Set start and end on the picture")}
+        </button>
+      )}
+      <div className="tool-button-row orientation-row">
+        <button
+          className="button secondary"
+          onClick={() =>
+            transform({
+              rotation: ((scene.transform.rotation + 90) %
+                360) as Scene["transform"]["rotation"],
+            })
+          }
+        >
+          <RotateCw size={15} aria-hidden="true" />
+          {t("Rotate 90°")}
+        </button>
+        <button
+          className="button secondary"
+          aria-pressed={scene.transform.flipX}
+          onClick={() => transform({ flipX: !scene.transform.flipX })}
+        >
+          <FlipHorizontal2 size={15} aria-hidden="true" />
+          <span className="sr-only">{t("Flip horizontal")}</span>
+        </button>
+        <button
+          className="button secondary"
+          aria-pressed={scene.transform.flipY}
+          onClick={() => transform({ flipY: !scene.transform.flipY })}
+        >
+          <FlipVertical2 size={15} aria-hidden="true" />
+          <span className="sr-only">{t("Flip vertical")}</span>
+        </button>
+      </div>
+      <details className="fine-controls">
+        <summary>{t("Exact framing")}</summary>
+        <div className="tool-fields">
           <Slider
             label={t("Crop focus X")}
             value={scene.transform.focusX}
@@ -148,86 +147,88 @@ export function PictureTools({
               />
             </>
           )}
-        </ToolSection>
-      )}
-      <ToolSection title={t("Background")}>
-        <Choice
-          label={t("Background treatment")}
-          value={scene.backdrop.kind}
-          options={[
-            ["solid", "Solid colour"],
-            ["gradient", "Gradient"],
-            ["photo", "Photo background"],
-            ...(asset ? [["blur", "Blurred picture"] as const] : []),
-          ]}
-          onChange={(kind) =>
-            onChange({ backdrop: { ...scene.backdrop, kind } })
+        </div>
+      </details>
+    </ToolSection>
+  );
+}
+
+/** Looks first (what most people want), then the individual adjustments. */
+export function ColourSection({
+  project,
+  scene,
+  asset,
+  poster,
+  platform,
+  onChange,
+  onProject,
+  report,
+}: PictureProperties & {
+  onProject: (update: (project: Project) => Project) => void;
+}) {
+  const t = useT();
+  if (!asset) return null;
+  const enhance = async () => {
+    const pool = new MediaPool();
+    try {
+      const media = await pool.get(asset, await platform.assetUrl(asset.id));
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 64;
+      const context = canvas.getContext("2d", { willReadFrequently: true })!;
+      context.drawImage(media, 0, 0, 64, 64);
+      const adjustments = autoAdjustments(
+        context.getImageData(0, 0, 64, 64).data,
+      );
+      onProject((current) => {
+        if (current.id !== project.id) return current;
+        const original = current.scenes.find((item) => item.id === scene.id);
+        if (original?.assetId !== asset.id) return current;
+        return changeScene(current, original.id, {
+          adjustments: { ...original.adjustments, ...adjustments },
+        });
+      });
+    } finally {
+      pool.dispose();
+    }
+  };
+  return (
+    <ToolSection title={t("Look")}>
+      <LookTiles
+        value={scene.adjustments.look}
+        poster={poster}
+        onChange={(look) =>
+          onChange({ adjustments: { ...scene.adjustments, look } })
+        }
+      />
+      <div className="tool-button-row">
+        <button
+          className="button secondary"
+          onClick={() => {
+            void enhance().catch(report);
+          }}
+        >
+          {t("Auto enhance")}
+        </button>
+        <button
+          className="button quiet"
+          onClick={() =>
+            onChange({
+              adjustments: {
+                brightness: 0,
+                contrast: 0,
+                saturation: 0,
+                warmth: 0,
+                look: "none",
+              },
+            })
           }
-        />
-        {scene.backdrop.kind === "photo" && (
-          <Choice
-            label={t("Background photo")}
-            translateOptions={false}
-            value={scene.backdrop.assetId ?? ""}
-            options={[
-              ["", "Choose a photo"],
-              ...Object.values(project.assets)
-                .filter(
-                  (asset) => asset.kind === "image" && !asset.isOriginalOnly,
-                )
-                .map((asset) => [asset.id, asset.name] as const),
-            ]}
-            onChange={(assetId) =>
-              onChange({
-                backdrop: { ...scene.backdrop, assetId: assetId || null },
-              })
-            }
-          />
-        )}
-        <Colour
-          label={t("Background colour")}
-          value={scene.background}
-          onChange={(background) => onChange({ background })}
-        />
-        {scene.backdrop.kind === "gradient" && (
-          <>
-            <Colour
-              label={t("Second colour")}
-              value={scene.backdrop.secondColour}
-              onChange={(secondColour) =>
-                onChange({ backdrop: { ...scene.backdrop, secondColour } })
-              }
-            />
-            <Slider
-              label={t("Gradient angle")}
-              value={scene.backdrop.angle}
-              max={360}
-              step={1}
-              onChange={(angle) =>
-                onChange({ backdrop: { ...scene.backdrop, angle } })
-              }
-            />
-          </>
-        )}
-      </ToolSection>
-      {asset && (
-        <ToolSection title={t("Colour & looks")}>
-          <Choice
-            label={t("Look")}
-            value={scene.adjustments.look}
-            options={[
-              ["none", "Original"],
-              ["mono", "Black & white"],
-              ["sepia", "Sepia"],
-              ["warm", "Warm"],
-              ["cool", "Cool"],
-              ["vivid", "Vivid"],
-              ["faded", "Faded film"],
-            ]}
-            onChange={(look) =>
-              onChange({ adjustments: { ...scene.adjustments, look } })
-            }
-          />
+        >
+          {t("Reset colour")}
+        </button>
+      </div>
+      <details className="fine-controls">
+        <summary>{t("Adjust colour")}</summary>
+        <div className="tool-fields">
           {(["brightness", "contrast", "saturation", "warmth"] as const).map(
             (key) => (
               <Slider
@@ -244,39 +245,15 @@ export function PictureTools({
               />
             ),
           )}
-          <button
-            className="button secondary"
-            onClick={() => {
-              void enhance().catch(report);
-            }}
-          >
-            {t("Auto enhance")}
-          </button>
-          <button
-            className="text-button"
-            onClick={() =>
-              onChange({
-                adjustments: {
-                  brightness: 0,
-                  contrast: 0,
-                  saturation: 0,
-                  warmth: 0,
-                  look: "none",
-                },
-              })
-            }
-          >
-            {t("Reset colour")}
-          </button>
           <Choice
             label={t("Imported .cube look")}
             translateOptions={false}
             value={scene.adjustments.lutAssetId ?? ""}
             options={[
-              ["", "No imported look"],
+              ["", t("No imported look")],
               ...Object.values(project.assets)
-                .filter((asset) => asset.kind === "lut")
-                .map((asset) => [asset.id, asset.name] as const),
+                .filter((candidate) => candidate.kind === "lut")
+                .map((candidate) => [candidate.id, candidate.name] as const),
             ]}
             onChange={(id) => {
               const { lutAssetId: _previous, ...settings } = scene.adjustments;
@@ -288,15 +265,131 @@ export function PictureTools({
           <p className="dialog-note">
             {t("Import a .cube file with Import media, then choose it here.")}
           </p>
-        </ToolSection>
+        </div>
+      </details>
+    </ToolSection>
+  );
+}
+
+const CARD_COLOURS = [
+  { value: "#151517", name: "Graphite" },
+  { value: "#e8e5dd", name: "Paper" },
+  { value: "#ffffff", name: "White" },
+  { value: "#2b3a4a", name: "Ink blue" },
+  { value: "#4a2f2a", name: "Umber" },
+] as const;
+
+/** What sits behind the picture (or forms the whole title card). */
+export function BackgroundSection({
+  project,
+  scene,
+  asset,
+  onChange,
+  title,
+}: Pick<PictureProperties, "project" | "scene" | "asset" | "onChange"> & {
+  title: string;
+}) {
+  const t = useT();
+  return (
+    <ToolSection title={t(title)}>
+      {!asset && (
+        <div
+          className="background-swatches"
+          role="group"
+          aria-label={t("Title background")}
+        >
+          {CARD_COLOURS.map((colour) => (
+            <button
+              key={colour.value}
+              type="button"
+              style={{ background: colour.value }}
+              aria-label={t(`${colour.name} background`)}
+              aria-pressed={scene.background === colour.value}
+              onClick={() => onChange({ background: colour.value })}
+            />
+          ))}
+        </div>
       )}
-      <ToolSection title={t("Transitions")}>
+      <Choice
+        label={t("Background treatment")}
+        value={scene.backdrop.kind}
+        options={[
+          ["solid", "Solid colour"],
+          ["gradient", "Gradient"],
+          ["photo", "Photo background"],
+          ...(asset ? [["blur", "Blurred picture"] as const] : []),
+        ]}
+        onChange={(kind) => onChange({ backdrop: { ...scene.backdrop, kind } })}
+      />
+      {scene.backdrop.kind === "photo" && (
         <Choice
-          label={t("Transition to next scene")}
-          value={scene.transition}
-          options={TRANSITION_CHOICES}
-          onChange={(transition) => onChange({ transition })}
+          label={t("Background photo")}
+          translateOptions={false}
+          value={scene.backdrop.assetId ?? ""}
+          options={[
+            ["", t("Choose a photo")],
+            ...Object.values(project.assets)
+              .filter(
+                (candidate) =>
+                  candidate.kind === "image" && !candidate.isOriginalOnly,
+              )
+              .map((candidate) => [candidate.id, candidate.name] as const),
+          ]}
+          onChange={(assetId) =>
+            onChange({
+              backdrop: { ...scene.backdrop, assetId: assetId || null },
+            })
+          }
         />
+      )}
+      <Colour
+        label={t("Background colour")}
+        value={scene.background}
+        onChange={(background) => onChange({ background })}
+      />
+      {scene.backdrop.kind === "gradient" && (
+        <>
+          <Colour
+            label={t("Second colour")}
+            value={scene.backdrop.secondColour}
+            onChange={(secondColour) =>
+              onChange({ backdrop: { ...scene.backdrop, secondColour } })
+            }
+          />
+          <Slider
+            label={t("Gradient angle")}
+            value={scene.backdrop.angle}
+            max={360}
+            step={1}
+            onChange={(angle) =>
+              onChange({ backdrop: { ...scene.backdrop, angle } })
+            }
+          />
+        </>
+      )}
+    </ToolSection>
+  );
+}
+
+/** The join into the next scene; the same control appears at the seam in the reel. */
+export function TransitionSection({
+  scene,
+  isLast,
+  onChange,
+}: Pick<PictureProperties, "scene" | "onChange"> & { isLast: boolean }) {
+  const t = useT();
+  return (
+    <ToolSection title={t("Into the next scene")}>
+      {isLast && (
+        <p className="dialog-note">
+          {t("This is the last scene; the transition applies if you add more.")}
+        </p>
+      )}
+      <TransitionTiles
+        value={scene.transition}
+        onChange={(transition) => onChange({ transition })}
+      />
+      {scene.transition !== "cut" && (
         <Slider
           label={t("Transition duration")}
           value={scene.transitionSeconds}
@@ -305,12 +398,7 @@ export function PictureTools({
           step={0.05}
           onChange={(transitionSeconds) => onChange({ transitionSeconds })}
         />
-        <Toggle
-          label={t("Shade picture behind the simple title")}
-          checked={scene.captionShade}
-          onChange={(captionShade) => onChange({ captionShade })}
-        />
-      </ToolSection>
-    </>
+      )}
+    </ToolSection>
   );
 }

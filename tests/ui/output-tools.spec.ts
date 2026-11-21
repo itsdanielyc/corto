@@ -14,6 +14,7 @@ async function photo(page: import("@playwright/test").Page, seconds = "0.5") {
     .getByTestId("media-input")
     .setInputFiles(join(process.cwd(), "tests/fixtures/red.png"));
   await expect(page.getByTestId("scene-card")).toHaveCount(1);
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill(seconds);
   await page.getByLabel("Duration (seconds)").press("Tab");
 }
@@ -23,6 +24,7 @@ test("background export keeps its original film and title while another film is 
   await photo(page, "1");
   await page.getByLabel("Project name").fill("Queued original");
   await page.getByLabel("Project name").press("Tab");
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("ORIGINAL");
   await page.getByRole("button", { name: "Export movie", exact: true }).click();
   await page
@@ -36,6 +38,7 @@ test("background export keeps its original film and title while another film is 
       exact: true,
     })
     .click();
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("");
   await page
     .getByRole("button", { name: "Project actions", exact: true })
@@ -95,5 +98,59 @@ test("exports a bounded animated GIF and an actual audio-only WAV", async ({
     await page
       .getByRole("button", { name: "Back to my film", exact: true })
       .click();
+  }
+});
+
+test("a waiting background export can be cancelled independently of the running film", async ({
+  page,
+}) => {
+  await photo(page);
+  // Hold the real encoder download to keep one job running while the next is queued.
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/ffmpeg-core.wasm", async (route) => {
+    await ready;
+    await route.continue();
+  });
+  const queueExport = async (name: string) => {
+    const title = page.getByLabel("Project name");
+    await title.fill(name);
+    await title.press("Tab");
+    await page
+      .getByRole("button", { name: "Export movie", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Export MP4", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Continue editing while exporting" })
+      .click();
+  };
+  try {
+    await queueExport("In progress");
+    await queueExport("Waiting film");
+    const cancelWaiting = page.getByRole("button", {
+      name: "Cancel queued export Waiting film",
+    });
+    await expect(cancelWaiting).toBeVisible();
+    await cancelWaiting.click();
+    await expect(cancelWaiting).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Cancel queued export In progress" }),
+    ).toBeVisible();
+    const movie = page.waitForEvent("download");
+    release();
+    expect((await movie).suggestedFilename()).toBe("In progress.mp4");
+    const notice = page.getByRole("complementary", { name: "Export queue" });
+    await expect(notice.getByText("In progress.mp4")).toBeVisible();
+    const heading = (await page.locator(".inspector-heading").boundingBox())!;
+    const tray = (await notice.boundingBox())!;
+    expect(tray.y + tray.height).toBeLessThanOrEqual(heading.y);
+    await test.info().attach("finished-export", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
+  } finally {
+    release();
   }
 });

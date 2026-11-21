@@ -64,7 +64,12 @@ export function locateScene(
 }
 
 /** Report the complete film length without rebuilding its timeline. */
-export function filmDuration(scenes: readonly Scene[]): number {
+export function filmDuration(
+  scenes: readonly Pick<
+    Scene,
+    "duration" | "transition" | "transitionSeconds"
+  >[],
+): number {
   return scenes.reduce(
     (duration, scene, index) =>
       duration + scene.duration - transitionOverlap(scene, scenes[index + 1]),

@@ -121,7 +121,10 @@ export function mediaPlacement(
 }
 
 /** Stable overlap semantics are shared by UI timing, audio and encoded segments. */
-export function transitionOverlap(scene: Scene, next?: Scene): number {
+export function transitionOverlap(
+  scene: Pick<Scene, "duration" | "transition" | "transitionSeconds">,
+  next?: Pick<Scene, "duration">,
+): number {
   if (!next || scene.transition === "cut" || scene.transition === "fade")
     return 0;
   return Math.max(

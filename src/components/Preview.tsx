@@ -1,6 +1,11 @@
 import { useT } from "../i18n/locale";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Film, Maximize2 } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import type { Project } from "../../contracts/project";
 import { filmDuration, frameDimensions } from "../domain/timeline";
 import type { MediaResources } from "../hooks/use-resources";
@@ -9,7 +14,6 @@ import type { CortoPlatform } from "../platform/types";
 import { loadCaptionFonts } from "../preview/captions";
 import { CompositionPlayer } from "../preview/composition-player";
 import { renderProjectFrame } from "../preview/composite";
-import { IconButton } from "./primitives";
 interface PreviewProperties {
   preferProxies?: boolean;
   project: Project;
@@ -144,44 +148,22 @@ export function Preview({
     report,
   ]);
   return (
-    <div
-      className={`preview-stage ${project.scenes.length ? "has-film" : ""}`}
-      ref={stage}
-      data-geo="preview"
-    >
-      {project.scenes.length ? (
-        <>
-          <canvas
-            ref={canvas}
-            width={dimensions.width}
-            height={dimensions.height}
-            data-ratio={project.ratio}
-            data-testid="preview-canvas"
-            aria-label={t("Film preview")}
-          />
-          <IconButton
-            icon={Maximize2}
-            label={t("Full screen preview")}
-            className="fullscreen-button"
-            onClick={() => {
-              void stage.current?.requestFullscreen().catch(report);
-            }}
-          />
-        </>
-      ) : (
-        <div className="empty-preview">
-          <img
-            src={`${import.meta.env.BASE_URL}brand/corto-mark-white.svg`}
-            alt=""
-          />
-          <p>
-            {t("A little life.")}
-            <br />
-            <em>{t("A little film.")}</em>
-          </p>
-          <span>{t("Your photos, clips and stories go here.")}</span>
-          <Film size={18} aria-hidden="true" />
-        </div>
+    <div className="preview-stage" ref={stage} data-geo="preview">
+      {project.scenes.length > 0 && (
+        <canvas
+          ref={canvas}
+          width={dimensions.width}
+          height={dimensions.height}
+          data-ratio={project.ratio}
+          data-testid="preview-canvas"
+          aria-label={t("Film preview")}
+          style={
+            {
+              aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+              "--ratio": dimensions.width / dimensions.height,
+            } as CSSProperties
+          }
+        />
       )}
       <span className="sr-only" data-testid="preview-status" aria-live="polite">
         {status}

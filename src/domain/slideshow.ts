@@ -1,4 +1,5 @@
 import {
+  LIMITS,
   parseProject,
   type MediaAsset,
   type Project,
@@ -247,33 +248,51 @@ export function sortMedia(
   );
 }
 
-// Time O(scenes × 32), space O(scenes). Binary search accounts for short-neighbour transition clamping.
-function fitPhotos(
-  scenes: Scene[],
-  assets: Project["assets"],
-  target: number,
-): Scene[] {
-  const isPhoto = (scene: Scene) =>
-    !!scene.assetId && assets[scene.assetId].kind === "image";
-  let low = 0.25;
-  let high = 120;
-  const candidate = (seconds: number) =>
-    scenes.map((scene) =>
-      isPhoto(scene) ? { ...scene, duration: seconds } : scene,
-    );
+const OPENING_TITLE_SECONDS = 3;
+const MAX_FITTED_PHOTO_SECONDS = 120;
+const FIT_ITERATIONS = 32;
+const FIT_TOLERANCE_SECONDS = 0.01;
+
+/** Find the same photo duration for the wizard and the draft, including fixed clips, titles and transition overlaps.
+ * Time O(n × FIT_ITERATIONS), space O(n). Only the scratch timings change during the search. */
+export function slideshowPhotoSeconds(
+  orderedMedia: readonly MediaAsset[],
+  options: Pick<SlideshowOptions, "theme" | "title" | "seconds" | "fitSeconds">,
+): number {
+  const target = options.fitSeconds;
+  if (target === undefined) return options.seconds;
+  const theme = THEMES[options.theme];
+  const timing = (duration: number) => ({
+    duration,
+    transition: theme.transition,
+    transitionSeconds: theme.seconds,
+  });
+  const moments = orderedMedia.map((asset) =>
+    timing(Math.min(asset.duration, LIMITS.sceneSeconds)),
+  );
+  const photos = moments.filter(
+    (_, index) => orderedMedia[index].kind === "image",
+  );
+  if (options.title.trim()) moments.unshift(timing(OPENING_TITLE_SECONDS));
+  const durationAt = (seconds: number) => {
+    for (const photo of photos) photo.duration = seconds;
+    return filmDuration(moments);
+  };
+  let low: number = LIMITS.minimumSceneSeconds;
+  let high = MAX_FITTED_PHOTO_SECONDS;
   if (
-    target < filmDuration(candidate(low)) - 0.01 ||
-    target > filmDuration(candidate(high)) + 0.01
+    target < durationAt(low) - FIT_TOLERANCE_SECONDS ||
+    target > durationAt(high) + FIT_TOLERANCE_SECONDS
   )
     throw new Error(
       "The music length cannot fit these photos between 0.25 and 120 seconds each. Choose fewer photos or a longer soundtrack.",
     );
-  for (let iteration = 0; iteration < 32; iteration++) {
+  for (let iteration = 0; iteration < FIT_ITERATIONS; iteration++) {
     const middle = (low + high) / 2;
-    if (filmDuration(candidate(middle)) < target) low = middle;
+    if (durationAt(middle) < target) low = middle;
     else high = middle;
   }
-  return candidate((low + high) / 2);
+  return (low + high) / 2;
 }
 
 /** Build a normal editable storyboard; themes never flatten the user's photos into an opaque template. */
@@ -296,6 +315,7 @@ export function buildSlideshow(
   );
   if (!assets.length)
     throw new Error("Choose photos or clips for the slideshow");
+  const photoSeconds = slideshowPhotoSeconds(assets, options);
   const motions: Scene["transform"]["motion"][] = [
     "zoom-in",
     "pan-right",
@@ -306,7 +326,7 @@ export function buildSlideshow(
     const scene = createScene(asset);
     return {
       ...scene,
-      duration: asset.kind === "image" ? options.seconds : scene.duration,
+      duration: asset.kind === "image" ? photoSeconds : scene.duration,
       background: theme.background,
       captionStyle: theme.style,
       transition: theme.transition,
@@ -339,10 +359,8 @@ export function buildSlideshow(
       background: theme.background,
       transition: theme.transition,
       transitionSeconds: theme.seconds,
-      duration: 3,
+      duration: OPENING_TITLE_SECONDS,
     });
-  if (options.fitSeconds)
-    scenes = fitPhotos(scenes, project.assets, options.fitSeconds);
   if (options.beats?.length)
     scenes = alignPhotosToBeats(scenes, project.assets, options.beats);
   return parseProject({

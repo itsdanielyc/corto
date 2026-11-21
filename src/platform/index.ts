@@ -1,5 +1,7 @@
 import type {
   NativeBridge,
+  ThemeChoice,
+  WindowFrame,
   MovieRequest,
   ExportProgress,
   MovieResult,
@@ -17,7 +19,13 @@ import { checkPublishedUpdate } from "./updates";
 
 class NativePlatform implements CortoPlatform {
   readonly kind = "native" as const;
-  constructor(private readonly bridge: NativeBridge) {}
+  readonly windowFrame: WindowFrame;
+  constructor(private readonly bridge: NativeBridge) {
+    this.windowFrame = bridge.windowFrame ?? "system";
+  }
+  setNativeTheme(theme: ThemeChoice) {
+    return this.bridge.setNativeTheme?.(theme) ?? Promise.resolve();
+  }
   loadProject(): Promise<Project | null> {
     return this.bridge.loadProject();
   }
@@ -172,6 +180,8 @@ class NativePlatform implements CortoPlatform {
 }
 
 class WebPlatform extends BrowserProjectRepository implements CortoPlatform {
+  /** Browsers draw their own frame; the page never needs to leave room for window controls. */
+  readonly windowFrame = "system" as const;
   constructor(readonly kind: "web" | "mock") {
     super();
   }

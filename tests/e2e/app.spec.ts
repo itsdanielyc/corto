@@ -10,7 +10,8 @@ import {
   type Page,
 } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import type { PlatformInfo } from "../../electron/bridge";
@@ -66,9 +67,7 @@ test.describe("corto in the real shell", () => {
       win.getByRole("button", { name: "Import media", exact: true }),
     ).toBeVisible();
     // The badge proves the UI is talking to the main process, not the mock.
-    await expect(win.getByTestId("save-status")).toHaveText(
-      "Saved on this device",
-    );
+    await expect(win.getByTestId("save-status")).toHaveText("Saved");
     // contextIsolation and the sandbox: the page sees the bridge, not Node.
     const exposed = await win.evaluate(() => ({
       bridge: typeof window.electronBridge,
@@ -102,11 +101,88 @@ test.describe("corto in the real shell", () => {
       "native",
     );
 
+    // The page leaves room for the window controls this system really has:
+    // what the preload reports must be the frame the main process built.
+    const frame = { win32: "windows", darwin: "mac", linux: "system" }[
+      main.os as "win32" | "darwin" | "linux"
+    ];
+    expect(await win.evaluate(() => window.electronBridge!.windowFrame)).toBe(
+      frame,
+    );
+    await expect(win.getByTestId("editor-shell")).toHaveAttribute(
+      "data-frame",
+      frame,
+    );
+
+    // Renderer readiness alone does not prove the OS has shown the window.
+    await expect
+      .poll(() =>
+        app.evaluate(
+          ({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows()[0]?.isVisible() ?? false,
+        ),
+      )
+      .toBe(true);
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
-    await win.screenshot({ path: file });
+    await win.evaluate(() => document.fonts.ready.then(() => undefined));
+    // A visible X11 window can still have no frame to capture. Subscribe
+    // before requesting a repaint so the artifact is a presented frame.
+    const png = await app.evaluate(({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0].webContents;
+      return new Promise<string>((resolve) => {
+        contents.beginFrameSubscription(false, (image) => {
+          if (image.isEmpty()) return;
+          const frame = image.toPNG().toString("base64");
+          contents.endFrameSubscription();
+          resolve(frame);
+        });
+        contents.invalidate();
+      });
+    });
+    await writeFile(file, Buffer.from(png, "base64"));
+    if (main.os === "darwin") {
+      // Page screenshots exclude the native title-bar controls. Capture just
+      // Corto's WindowServer window so the traffic lights can be reviewed.
+      const source = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0].getMediaSourceId(),
+      );
+      const windowId = /^window:(\d+):/.exec(source)?.[1];
+      if (!windowId) throw new Error(`Unrecognised window source: ${source}`);
+      execFileSync("/usr/sbin/screencapture", [
+        "-x",
+        "-o",
+        "-l",
+        windowId,
+        join(dir, `mac-window-${main.arch}.png`),
+      ]);
+    }
     console.log(`[e2e] screenshot saved: ${file}`);
+  });
+
+  test("the appearance channel changes the native theme and refuses anything but the three choices", async () => {
+    const nativeSource = () =>
+      app.evaluate(({ nativeTheme }) => nativeTheme.themeSource);
+    await win.evaluate(() => window.electronBridge!.setNativeTheme!("dark"));
+    expect(await nativeSource()).toBe("dark");
+    for (const malformed of [null, 7, "Light", ["light"], { theme: "light" }]) {
+      const outcome = await win.evaluate(
+        (value) =>
+          window.electronBridge!.setNativeTheme!(value as never).then(
+            () => "accepted",
+            (error: Error) => error.message,
+          ),
+        malformed,
+      );
+      expect(outcome, JSON.stringify(malformed)).toContain(
+        "Unknown appearance",
+      );
+    }
+    // A refused request changed nothing.
+    expect(await nativeSource()).toBe("dark");
+    await win.evaluate(() => window.electronBridge!.setNativeTheme!("system"));
+    expect(await nativeSource()).toBe("system");
   });
 
   test("logged no console errors (CSP violations, failed loads)", async () => {

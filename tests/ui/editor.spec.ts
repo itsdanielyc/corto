@@ -22,9 +22,7 @@ async function example(page: import("@playwright/test").Page) {
   await expect(page.getByTestId("scene-card")).toHaveCount(4);
   await expect(page.getByTestId("preview-status")).toHaveText("Ready");
   await expect(page.getByTestId("library-loading")).toHaveCount(0);
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
 }
 
 test("example film can be edited, duplicated, reordered and undone", async ({
@@ -32,6 +30,7 @@ test("example film can be edited, duplicated, reordered and undone", async ({
 }) => {
   await example(page);
   await page.getByTestId("scene-card").first().click();
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("A summer to remember");
   await page
     .getByRole("button", { name: "Duplicate scene", exact: true })
@@ -65,15 +64,16 @@ test("local imports persist after reload and title cards are editable by keyboar
     .getByRole("button", { name: "Add title card", exact: true })
     .click();
   await expect(page.getByTestId("scene-card")).toHaveCount(3);
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await page.getByLabel("On-screen title").fill("Hello, family");
+  await page.getByRole("tab", { name: "Timing", exact: true }).click();
   await page.getByLabel("Duration (seconds)").fill("3");
   await page.getByLabel("Duration (seconds)").press("Tab");
-  await expect(page.getByTestId("save-status")).toHaveText(
-    "Saved on this device",
-  );
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
   await page.reload();
   await expect(page.getByTestId("scene-card")).toHaveCount(3);
   await page.getByRole("button", { name: /Scene \d+: Hello, family$/ }).click();
+  await page.getByRole("tab", { name: "Text", exact: true }).click();
   await expect(page.getByLabel("On-screen title")).toHaveValue("Hello, family");
   await page.getByRole("button", { name: "Delete scene", exact: true }).click();
   await expect(page.getByTestId("scene-card")).toHaveCount(2);

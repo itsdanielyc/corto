@@ -9,6 +9,7 @@ import { handleMediaRequests, registerMediaScheme } from "./media-protocol";
 import { registerExportCommands } from "./export-ipc";
 import { writeAtomic } from "./atomic-file";
 import { configureCapture, projectOpenIntegration } from "./shell-integration";
+import { frameOptions, registerWindowChrome } from "./window-chrome";
 
 const testingWorkspace = testPreset("CORTO_WORKSPACE_ROOT");
 if (testingWorkspace) {
@@ -84,7 +85,9 @@ function createWindow(): void {
     minHeight: 680,
     title: "Corto",
     icon: join(import.meta.dirname, "../renderer/icon-512.png"),
-    show: false,
+    // A themed window can be shown even before a cold compositor paints it.
+    show: true,
+    ...frameOptions(),
     webPreferences: {
       preload: join(import.meta.dirname, "../preload/preload.cjs"),
       contextIsolation: true,
@@ -121,7 +124,6 @@ function createWindow(): void {
       });
   });
   win.webContents.on("will-navigate", (event) => event.preventDefault());
-  win.once("ready-to-show", () => win.show());
   // Links open in the system browser, never inside the app window.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://")) void shell.openExternal(url);
@@ -179,6 +181,7 @@ app.whenReady().then(() => {
   );
   configureCapture(() => mainWindow);
   ipcMain.handle(channels.platformInfo, () => platformInfo());
+  registerWindowChrome(() => mainWindow);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
