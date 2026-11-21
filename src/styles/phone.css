@@ -91,6 +91,14 @@
   .stage-screen {
     padding: 10px 12px 4px;
   }
+  .stage[data-empty="true"] .stage-screen {
+    overflow-y: auto;
+    place-items: safe center;
+  }
+  .empty-stage {
+    gap: 8px;
+    padding: 8px;
+  }
   .stage-controls {
     padding: 0 12px;
   }

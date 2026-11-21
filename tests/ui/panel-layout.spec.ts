@@ -78,92 +78,98 @@ async function outsidePanel(page: Page, selector: string): Promise<string[]> {
 }
 
 for (const size of WINDOW_SIZES) {
-  test(`every scene tool stays inside the inspector at ${size.width} px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(size);
-    await openExampleFilm(page);
-    const editSheet = page.getByRole("button", { name: "Edit", exact: true });
-    if (await editSheet.isVisible()) await editSheet.click();
-    for (const tab of SCENE_TABS) {
-      await page.getByRole("tab", { name: tab, exact: true }).click();
-      // Give the Text and Overlays tabs their per-item controls.
-      if (tab === "Text")
-        await page
-          .getByRole("button", { name: "Heading", exact: true })
-          .click();
-      if (tab === "Overlays")
-        await page
-          .getByRole("button", { name: "Add emoji sticker", exact: true })
-          .click();
-      expect.soft(await outsidePanel(page, ".inspector-body"), tab).toEqual([]);
-    }
-    if (await editSheet.isVisible()) await editSheet.click();
-    await page.getByTestId("scene-card").last().click();
-    if (await editSheet.isVisible()) await editSheet.click();
-    await page.getByRole("tab", { name: "Card", exact: true }).click();
-    expect
-      .soft(await outsidePanel(page, ".inspector-body"), "Card")
-      .toEqual([]);
-    await page
-      .getByTestId("media-input")
-      .setInputFiles("tests/fixtures/motion.mp4");
-    await page.getByRole("tab", { name: "Clip", exact: true }).click();
-    expect
-      .soft(await outsidePanel(page, ".inspector-body"), "Clip")
-      .toEqual([]);
-  });
-
-  test(`sound, subtitles and bulk edits fit their side panel at ${size.width} px`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(size);
-    await openExampleFilm(page);
-    for (const panel of SIDE_PANELS) {
+  test.describe(`layout at ${size.width} px`, () => {
+    test.use({ viewport: size, hasTouch: size.width < 760 });
+    test(`every scene tool stays inside the inspector at ${size.width} px`, async ({
+      page,
+    }) => {
+      await openExampleFilm(page);
+      const editSheet = page.getByRole("button", { name: "Edit", exact: true });
+      if (await editSheet.isVisible()) await editSheet.click();
+      for (const tab of SCENE_TABS) {
+        await page.getByRole("tab", { name: tab, exact: true }).click();
+        // Give the Text and Overlays tabs their per-item controls.
+        if (tab === "Text")
+          await page
+            .getByRole("button", { name: "Heading", exact: true })
+            .click();
+        if (tab === "Overlays")
+          await page
+            .getByRole("button", { name: "Add emoji sticker", exact: true })
+            .click();
+        expect
+          .soft(await outsidePanel(page, ".inspector-body"), tab)
+          .toEqual([]);
+      }
+      if (await editSheet.isVisible()) await editSheet.click();
+      await page.getByTestId("scene-card").last().click();
+      if (await editSheet.isVisible()) await editSheet.click();
+      await page.getByRole("tab", { name: "Card", exact: true }).click();
+      expect
+        .soft(await outsidePanel(page, ".inspector-body"), "Card")
+        .toEqual([]);
       await page
-        .getByRole("button", { name: "Project actions", exact: true })
-        .click();
-      await page.getByRole("menuitem", { name: panel, exact: true }).click();
-      const close = page.getByRole("button", {
-        name: "Close panel",
-        exact: true,
-      });
-      // The whole close button is on screen, not clipped by the window edge.
-      await expect.soft(close, panel).toBeInViewport({ ratio: 1 });
-      expect.soft(await outsidePanel(page, ".panel-body"), panel).toEqual([]);
-      // Escape closes a panel wherever its close button happens to be.
-      await page.locator(".panel-title h2").press("Escape");
-      await expect(close).toHaveCount(0);
-    }
+        .getByTestId("media-input")
+        .setInputFiles("tests/fixtures/motion.mp4");
+      await page.getByRole("tab", { name: "Clip", exact: true }).click();
+      expect
+        .soft(await outsidePanel(page, ".inspector-body"), "Clip")
+        .toEqual([]);
+    });
+
+    test(`sound, subtitles and bulk edits fit their side panel at ${size.width} px`, async ({
+      page,
+    }) => {
+      await openExampleFilm(page);
+      for (const panel of SIDE_PANELS) {
+        await page
+          .getByRole("button", { name: "Project actions", exact: true })
+          .click();
+        await page.getByRole("menuitem", { name: panel, exact: true }).click();
+        const close = page.getByRole("button", {
+          name: "Close panel",
+          exact: true,
+        });
+        // The whole close button is on screen, not clipped by the window edge.
+        await expect.soft(close, panel).toBeInViewport({ ratio: 1 });
+        expect.soft(await outsidePanel(page, ".panel-body"), panel).toEqual([]);
+        // Escape closes a panel wherever its close button happens to be.
+        await page.locator(".panel-title h2").press("Escape");
+        await expect(close).toHaveCount(0);
+      }
+    });
   });
 }
 
-test("the transition picker and its actions stay on a small phone screen", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 320, height: 568 });
-  await openExampleFilm(page);
-  await page
-    .getByRole("button", { name: /^Transition after scene 1:/ })
-    .click();
-  const picker = page.getByRole("dialog", { name: "Transition after scene 1" });
-  await expect(picker).toBeInViewport({ ratio: 1 });
-  await picker.getByRole("radio", { name: "Cross dissolve" }).click();
-  await expect(picker.getByRole("button", { name: "Done" })).toBeInViewport({
-    ratio: 1,
-  });
-  await test.info().attach("phone-transition-picker", {
-    body: await page.screenshot({ animations: "disabled" }),
-    contentType: "image/png",
-  });
-});
-
 test.describe("phone actions", () => {
   test.use({ viewport: { width: 320, height: 568 }, hasTouch: true });
+  test("the transition picker and its actions stay on a small phone screen", async ({
+    page,
+  }) => {
+    await openExampleFilm(page);
+    await page
+      .getByRole("button", { name: /^Transition after scene 1:/ })
+      .click();
+    const picker = page.getByRole("dialog", {
+      name: "Transition after scene 1",
+    });
+    await expect(picker).toBeInViewport({ ratio: 1 });
+    await picker.getByRole("radio", { name: "Cross dissolve" }).click();
+    await expect(picker.getByRole("button", { name: "Done" })).toBeInViewport({
+      ratio: 1,
+    });
+    await test.info().attach("phone-transition-picker", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
+  });
+
   test("touch users can undo, redo and open the palette from the project menu", async ({
     page,
   }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Try an example" }).tap();
+    await expect(page.getByTestId("scene-card")).toHaveCount(4);
     await page
       .getByRole("button", { name: "Add title card", exact: true })
       .tap();
@@ -179,10 +185,10 @@ test.describe("phone actions", () => {
       contentType: "image/png",
     });
     await menu.getByRole("menuitem", { name: "Undo", exact: true }).tap();
-    await expect(page.getByTestId("scene-card")).toHaveCount(0);
+    await expect(page.getByTestId("scene-card")).toHaveCount(4);
     await trigger.tap();
     await menu.getByRole("menuitem", { name: "Redo", exact: true }).tap();
-    await expect(page.getByTestId("scene-card")).toHaveCount(1);
+    await expect(page.getByTestId("scene-card")).toHaveCount(5);
     await trigger.tap();
     await menu
       .getByRole("menuitem", { name: "Search commands", exact: true })

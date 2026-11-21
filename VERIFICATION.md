@@ -358,3 +358,7 @@ Review changes without a test level of their own: the appearance storage moved f
 | 16:28–16:34 | L7 | Packaged installers installed, launched the renderer and encoder smoke, and uninstalled on all four targets. | Windows x64, Linux x64, macOS arm64 and x64 | [Installers 44924717179](https://github.com/itsdanielyc/corto/actions/runs/44924717179) |
 
 Phone geometry and tap actions were exercised in Chromium touch emulation at 320 and 390 px. Physical handsets, assistive-technology sessions and Linux desktop compositors outside the hosted Xvfb environment remain outside this verification. The experimental Linux WebM tail defect remains tracked in issue #8.
+
+| UTC | Level | Behavior or finding | Platform | Run |
+|---|---|---|---|---|
+| 16:36–16:39 | L4/L5 | With coarse-pointer controls at 320 × 568, the empty reel covered “Try an example”. Both initial panel checks failed at the entry point with “reel-bar … intercepts pointer”. The empty stage now uses the available height and scrolls when needed. The phone cases exercise coarse-pointer layouts and enter the example by touch. | Windows x64 Chromium, 320 × 568 and 390 × 844 phone layouts, 1024 and 1440 px desktop layouts | After the CSS change, all ten cases in `npx playwright test tests/ui/panel-layout.spec.ts --workers=2` passed in 41.6 s. The same cases run on each browser OS in [PR #22 checks](https://github.com/itsdanielyc/corto/pull/22/checks). |
