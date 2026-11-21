@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { openExampleFilm, savedBrowserProject } from "../helpers/browser-project";
+import {
+  openExampleFilm,
+  savedBrowserProject,
+} from "../helpers/browser-project";
 
 test("importing subtitles preserves edits made while the local file is being read", async ({
   page,
@@ -86,23 +89,29 @@ for (const entry of ["Films template", "slideshow wizard"] as const) {
       await page.getByRole("menuitem", { name: "Make a slideshow" }).click();
       await page.getByRole("button", { name: "Next", exact: true }).click();
       await page.getByRole("button", { name: "Next", exact: true }).click();
+      await page.getByLabel("Slideshow soundtrack").selectOption("theme");
     }
-    // Hold the final save acknowledgement. The write itself and the rest of
-    // the draft flow still use the production storage adapter.
+    // Opening Films can schedule its own autosave. Arm the gate only after
+    // the draft has stored its soundtrack, immediately before it saves.
     await page.evaluate(async () => {
       const path = "/src/platform/browser-repository.ts";
       const { BrowserProjectRepository } = await import(path);
       const repository = BrowserProjectRepository.prototype;
-      const save = repository.saveProject;
-      repository.saveProject = async function (...args: unknown[]) {
-        repository.saveProject = save;
-        await save.apply(this, args);
-        window.dispatchEvent(new Event("draft-save-pending"));
-        await new Promise<void>((resolve) =>
-          window.addEventListener("finish-draft-save", () => resolve(), {
-            once: true,
-          }),
-        );
+      const put = repository.putAsset;
+      repository.putAsset = async function (...args: unknown[]) {
+        repository.putAsset = put;
+        await put.apply(this, args);
+        const save = repository.saveProject;
+        repository.saveProject = async function (...saveArgs: unknown[]) {
+          repository.saveProject = save;
+          await save.apply(this, saveArgs);
+          window.dispatchEvent(new Event("draft-save-pending"));
+          await new Promise<void>((resolve) =>
+            window.addEventListener("finish-draft-save", () => resolve(), {
+              once: true,
+            }),
+          );
+        };
       };
     });
     const pending = page.evaluate(
