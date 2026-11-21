@@ -85,6 +85,7 @@ export function App() {
     selected,
     selectedIndex,
     selectedIds,
+    acceptProject,
     sceneAction,
     selectScene,
     edit,
@@ -195,14 +196,13 @@ export function App() {
         if (present.scenes.length || Object.keys(present.assets).length)
           await platform.saveProject(present);
         signal.throwIfAborted();
-        editor.replace(draft);
-        setTime(0.6);
+        acceptProject(draft);
         setDialog(null);
       } catch (failure) {
         if (!signal.aborted) report(failure);
       }
     },
-    [beginTemplate, platform, t, current, editor, setTime, setDialog, report],
+    [beginTemplate, platform, t, current, acceptProject, setDialog, report],
   );
   const commands = useEditorCommands({
     project,
@@ -413,14 +413,10 @@ export function App() {
             if (changed.id === project.id) edit(() => changed);
           }}
           onDeleted={(id) => {
-            if (id === project.id) {
-              editor.replace(createProject());
-              setTime(0);
-            }
+            if (id === project.id) acceptProject(createProject());
           }}
           onRestored={(restored) => {
-            editor.replace(restored);
-            setTime(0.6);
+            acceptProject(restored);
             modalClose();
           }}
         />
@@ -721,10 +717,7 @@ export function App() {
           project={project}
           platform={platform}
           resources={resources}
-          onCreate={(draft) => {
-            editor.replace(draft);
-            setTime(0.6);
-          }}
+          onCreate={acceptProject}
           onClose={modalClose}
         />
       )}

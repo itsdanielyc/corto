@@ -81,7 +81,6 @@ export function useEditorController() {
     const existingSceneIds = new Set(project.scenes.map((scene) => scene.id));
     return new Set([...selectedIds].filter((id) => existingSceneIds.has(id)));
   }, [selectedIds, project.scenes]);
-  selectionRef.current = validSelection;
   const anchorRef = useRef<string | null>(null);
   const clipboard = useRef<{
     scenes: Scene[];
@@ -115,8 +114,17 @@ export function useEditorController() {
 
   const selected =
     project.scenes.find((scene) => scene.id === selectedId) ??
+    project.scenes.find((scene) => validSelection.has(scene.id)) ??
     project.scenes[0] ??
     null;
+  const effectiveSelection = useMemo(
+    () =>
+      validSelection.size || !selected
+        ? validSelection
+        : new Set([selected.id]),
+    [validSelection, selected],
+  );
+  selectionRef.current = effectiveSelection;
 
   const selectedIndex = selected ? project.scenes.indexOf(selected) : -1;
 
@@ -150,23 +158,28 @@ export function useEditorController() {
 
   const selectScene = useCallback(
     (id: string, options?: { additive?: boolean; range?: boolean }) => {
-      const entry = buildTimeline(current.current.present.scenes).find(
-        (item) => item.scene.id === id,
+      const scenes = current.current.present.scenes;
+      const nextSelection = selectScenes(
+        scenes,
+        selectionRef.current,
+        id,
+        anchorRef.current,
+        !!options?.additive,
+        !!options?.range,
+      );
+      // Removing the primary scene keeps the inspector and playhead on a
+      // member of the remaining selection.
+      const primaryId = nextSelection.has(id)
+        ? id
+        : (nextSelection.values().next().value ?? id);
+      const entry = buildTimeline(scenes).find(
+        (item) => item.scene.id === primaryId,
       );
       if (!entry) return;
       setPlaying(false);
-      setSelectedId(id);
-      setSelectedIds(
-        selectScenes(
-          current.current.present.scenes,
-          selectionRef.current,
-          id,
-          anchorRef.current,
-          !!options?.additive,
-          !!options?.range,
-        ),
-      );
-      if (!options?.range) anchorRef.current = id;
+      setSelectedId(primaryId);
+      setSelectedIds(nextSelection);
+      if (!options?.range) anchorRef.current = primaryId;
       setTime(entry.start + Math.min(0.6, entry.scene.duration / 2));
     },
     [current],
@@ -404,6 +417,21 @@ export function useEditorController() {
     [task, current, commit, platform, report],
   );
 
+  /** Open a whole film with one current scene for the reel, inspector and editing commands. */
+  const acceptProject = useCallback(
+    (opened: Project) => {
+      const first = opened.scenes[0];
+      clearResources();
+      replace(opened);
+      setPlaying(false);
+      setSelectedId(first?.id ?? null);
+      setSelectedIds(new Set(first ? [first.id] : []));
+      anchorRef.current = first?.id ?? null;
+      setTime(first ? Math.min(0.6, first.duration / 2) : 0);
+      setMode("media");
+    },
+    [clearResources, replace],
+  );
   const showExample = useCallback(() => {
     void task("Opening the example", async () => {
       if (
@@ -412,14 +440,9 @@ export function useEditorController() {
         current.current.present.name !== "Untitled film"
       )
         await platform.saveProject(current.current.present);
-      const example = await createExampleProject(platform);
-      clearResources();
-      replace(example);
-      setSelectedId(example.scenes[0].id);
-      setTime(0.6);
-      setMode("media");
+      acceptProject(await createExampleProject(platform));
     });
-  }, [task, platform, current, clearResources, replace]);
+  }, [task, platform, current, acceptProject]);
 
   const chooseMedia = useCallback(
     (music = false) => (music ? musicInput : mediaInput).current?.click(),
@@ -458,19 +481,6 @@ export function useEditorController() {
     });
   }, [task, platform, current]);
 
-  const acceptProject = useCallback(
-    (opened: Project) => {
-      clearResources();
-      replace(opened);
-      setSelectedId(opened.scenes[0]?.id ?? null);
-      setTime(
-        opened.scenes.length ? Math.min(0.6, opened.scenes[0].duration / 2) : 0,
-      );
-      setMode("media");
-    },
-    [clearResources, replace],
-  );
-
   const openSelectedFile = useCallback(
     (file?: File) => {
       void task("Opening your project", async () => {
@@ -499,9 +509,8 @@ export function useEditorController() {
     else {
       void task("Saving your film", async () => {
         await platform.saveProject(current.current.present);
-        clearResources();
         const preferences = await platform.loadPreferences?.();
-        replace(
+        acceptProject(
           preferences
             ? {
                 ...createProject(),
@@ -510,12 +519,10 @@ export function useEditorController() {
               }
             : createProject(),
         );
-        setSelectedId(null);
-        setTime(0);
         setError(null);
       });
     }
-  }, [chooseProject, clearResources, replace, task, platform, current]);
+  }, [chooseProject, acceptProject, task, platform, current]);
 
   const showProjects = useCallback(() => {
     void task("Saving your film", async () => {
@@ -698,9 +705,8 @@ export function useEditorController() {
     total,
     selected,
     selectedIndex,
-    selectedIds: validSelection.size
-      ? validSelection
-      : new Set(selected ? [selected.id] : []),
+    selectedIds: effectiveSelection,
+    acceptProject,
     sceneAction,
     selectScene,
     edit,

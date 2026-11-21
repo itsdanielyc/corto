@@ -1,5 +1,48 @@
 import { expect, test } from "@playwright/test";
-import { openExampleFilm, savedBrowserProject } from "../helpers/browser-project";
+import {
+  openExampleFilm,
+  savedBrowserProject,
+} from "../helpers/browser-project";
+
+test("reopening a film keeps the highlighted scene and the inspector delete action together", async ({
+  page,
+}) => {
+  await openExampleFilm(page);
+  const original = await savedBrowserProject(page);
+  const cards = page.getByTestId("scene-card");
+  await cards.last().click();
+  await page.getByRole("button", { name: "My films" }).click();
+  await page
+    .getByRole("button", { name: `Open ${original.name}`, exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Scene 1", exact: true }),
+  ).toBeVisible();
+  await expect.soft(cards.first()).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Delete scene", exact: true }).click();
+  await expect
+    .poll(async () =>
+      (await savedBrowserProject(page)).scenes.map((scene) => scene.id),
+    )
+    .toEqual(original.scenes.slice(1).map((scene) => scene.id));
+});
+
+test("removing a scene from a multiple selection returns the inspector to the remaining scene", async ({
+  page,
+}) => {
+  await openExampleFilm(page);
+  const cards = page.getByTestId("scene-card");
+  await cards.first().click();
+  await cards.nth(1).click({ modifiers: ["ControlOrMeta"] });
+  await expect(
+    page.getByRole("heading", { name: "Film tools & bulk edits" }),
+  ).toBeVisible();
+  await cards.nth(1).click({ modifiers: ["ControlOrMeta"] });
+  await expect(cards.first()).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("heading", { name: "Scene 1", exact: true }),
+  ).toBeVisible();
+});
 
 test("Escape discards a project rename and typed scene timing respects its bounds", async ({
   page,
