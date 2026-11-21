@@ -35,7 +35,7 @@ Each line names the test that carries it; all enter through the shipped editor o
 - `tests/ui/panel-layout.spec.ts` measures the photo, clip, title-card and side-panel controls at 320, 390, 1024 and 1440 px. It also operates the transition picker at 320 × 568 (L4/L5).
 - `tests/ui/concurrent-edits.spec.ts` delays real reads and saves while the user edits or changes views. It checks the saved film after SRT import, Auto Enhance, template creation and slideshow creation (L4).
 - `tests/ui/output-tools.spec.ts` cancels a waiting background export, downloads the running film and checks the finished notice clears the inspector heading (L4/L5). `tests/ui/creator.spec.ts` compares the fitted timing shown for a mixed-media slideshow with its saved scenes (L4).
-- Narration counts down before recording, cancelling the countdown releases the microphone and records nothing: `tests/ui/voice.spec.ts` (L4); narration through the real shell: `tests/e2e/essentials.spec.ts` (L6).
+- `tests/ui/voice.spec.ts` checks countdown cancellation, recorder startup failure and microphone release (L4). `tests/e2e/essentials.spec.ts` records narration in the native shell (L6).
 - The appearance channel refuses anything but the three choices and the preload reports the frame the main process built: `tests/e2e/app.spec.ts` (L6).
 - The production web build offline: `tests/web/offline.spec.ts`; the experimental WebM capture offline: `tests/advisory/offline-webm.spec.ts` (advisory, weekly).
 

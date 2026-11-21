@@ -98,6 +98,10 @@ Ruling: the appearance storage keeps the author's per-device ruling but moves fr
 Ruling: left for their own slices because main behaves the same — five English strings without Spanish (`Slideshow soundtrack`, `No music`, `Timeline ruler`, `Marker`, the template hint) and a typed duration that is not clamped to its limits. Cost if wrong: they stay as they are on main a little longer.
 Ruling: the finished-export notice still sits over the inspector heading for ten seconds (seen in the hosted Linux real-shell screenshot). It is dismissible and brief, so it is recorded as a design follow-up rather than changed in review. Cost if wrong: scene actions are covered for up to ten seconds after a background export.
 
+### Independent review of PR #22 (2026-11-21)
+
+The November 21 review resolved the open slice 33 checks. Both macOS window captures show the native controls, the Linux startup diagnostic passed 30 fresh launches, and the layout suite now measures phone sheets. The export notice has its own row. Run links and the additional editing regressions are recorded in the November 21 section of VERIFICATION.md.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

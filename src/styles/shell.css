@@ -190,6 +190,9 @@
   right: 0;
   width: 260px;
 }
+.project-menu > [role="menuitem"].phone-menu-item {
+  display: none;
+}
 .export-button {
   position: relative;
   overflow: hidden;

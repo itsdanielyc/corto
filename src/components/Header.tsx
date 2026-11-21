@@ -224,9 +224,9 @@ export function Header(properties: HeaderProperties) {
               event.preventDefault();
               const items = Array.from(
                 event.currentTarget.querySelectorAll<HTMLElement>(
-                  "[role=menuitem]",
+                  "[role=menuitem]:not(:disabled)",
                 ),
-              );
+              ).filter((item) => item.getClientRects().length > 0);
               const index = items.indexOf(
                 document.activeElement as HTMLElement,
               );
@@ -239,6 +239,32 @@ export function Header(properties: HeaderProperties) {
             <button role="menuitem" onClick={action(properties.onProjects)}>
               <FolderOpen aria-hidden="true" />
               {t("My films")}
+            </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              onClick={action(properties.onCommands)}
+            >
+              <Search aria-hidden="true" />
+              {t("Search commands")}
+            </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              disabled={!properties.canUndo}
+              onClick={action(properties.onUndo)}
+            >
+              <Undo2 aria-hidden="true" />
+              {t("Undo")}
+            </button>
+            <button
+              role="menuitem"
+              className="phone-menu-item"
+              disabled={!properties.canRedo}
+              onClick={action(properties.onRedo)}
+            >
+              <Redo2 aria-hidden="true" />
+              {t("Redo")}
             </button>
             <button role="menuitem" onClick={action(properties.onNew)}>
               <FilePlus2 aria-hidden="true" />

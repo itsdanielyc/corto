@@ -136,3 +136,24 @@ test("declined microphone access reports the recovery path without adding a soun
     page.getByRole("button", { name: "Record narration", exact: true }),
   ).toBeEnabled();
 });
+
+test("a recorder that cannot start after the countdown releases the microphone", async ({
+  page,
+}) => {
+  await watchMicrophone(page);
+  await openRecorder(page);
+  await page.evaluate(() => {
+    MediaRecorder.prototype.start = () => {
+      throw new DOMException("Recorder unavailable", "NotSupportedError");
+    };
+  });
+  await page.getByRole("button", { name: "Record narration" }).click();
+  await expect(page.getByRole("alert")).toContainText("Recorder unavailable", {
+    timeout: COUNTDOWN_MS + 5000,
+  });
+  expect(await microphoneTracks(page)).toEqual(["ended"]);
+  await expect(
+    page.getByRole("button", { name: "Record narration" }),
+  ).toBeEnabled();
+  await expect(page.getByLabel("Sound 1 role")).toHaveCount(0);
+});

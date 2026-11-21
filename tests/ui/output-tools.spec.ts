@@ -146,6 +146,10 @@ test("a waiting background export can be cancelled independently of the running 
     const heading = (await page.locator(".inspector-heading").boundingBox())!;
     const tray = (await notice.boundingBox())!;
     expect(tray.y + tray.height).toBeLessThanOrEqual(heading.y);
+    await test.info().attach("finished-export", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
   } finally {
     release();
   }

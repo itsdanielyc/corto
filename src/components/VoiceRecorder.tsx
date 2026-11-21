@@ -4,6 +4,7 @@ import { Mic, Square } from "lucide-react";
 import { MAX_VOICE_SECONDS, voiceRecordingFile } from "../media/voice";
 /** Seconds counted down between granting the microphone and recording, so the first words are not cut. */
 const COUNTDOWN_SECONDS = 3;
+const RECORDER_TICK_MS = 250;
 interface Recording {
   recorder: MediaRecorder;
   stream: MediaStream;
@@ -31,11 +32,11 @@ export function VoiceRecorder({
   const stop = (discard: boolean) => {
     const recording = active.current;
     if (!recording) return;
+    active.current = null;
     recording.cancelled = discard;
     window.clearTimeout(recording.timer);
     window.clearInterval(recording.clockTimer);
     if (recording.recorder.state !== "inactive") recording.recorder.stop();
-    else if (active.current === recording) active.current = null;
     recording.stream.getTracks().forEach((track) => track.stop());
     if (mounted.current) setState(discard ? "idle" : "saving");
   };
@@ -84,6 +85,7 @@ export function VoiceRecorder({
         if (event.data.size) recording.chunks.push(event.data);
       };
       recorder.onerror = () => {
+        if (active.current !== recording) return;
         stop(true);
         report(
           new Error(
@@ -92,7 +94,9 @@ export function VoiceRecorder({
         );
       };
       recorder.onstop = () => {
-        if (active.current === recording) active.current = null;
+        // A device can stop itself. Release its stream and both timers just as
+        // we would for the Stop button before accepting another recording.
+        if (active.current === recording) stop(false);
         if (recording.cancelled || !mounted.current) return;
         void voiceRecordingFile(
           new Blob(recording.chunks, { type: recorder.mimeType }),
@@ -112,12 +116,12 @@ export function VoiceRecorder({
         // Discarded or closed during the countdown: the stream is already released.
         if (!mounted.current || active.current !== recording) return;
       }
-      recorder.start(250);
+      recorder.start(RECORDER_TICK_MS);
       setElapsed(0);
       const started = performance.now();
       recording.clockTimer = window.setInterval(
         () => setElapsed(Math.floor((performance.now() - started) / 1000)),
-        250,
+        RECORDER_TICK_MS,
       );
       recording.timer = window.setTimeout(
         () => stop(false),
@@ -125,6 +129,7 @@ export function VoiceRecorder({
       );
       setState("recording");
     } catch (error) {
+      stop(true);
       report(
         error instanceof DOMException && error.name === "NotAllowedError"
           ? new Error(

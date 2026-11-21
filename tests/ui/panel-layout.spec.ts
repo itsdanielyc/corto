@@ -152,4 +152,43 @@ test("the transition picker and its actions stay on a small phone screen", async
   await expect(picker.getByRole("button", { name: "Done" })).toBeInViewport({
     ratio: 1,
   });
+  await test.info().attach("phone-transition-picker", {
+    body: await page.screenshot({ animations: "disabled" }),
+    contentType: "image/png",
+  });
+});
+
+test.describe("phone actions", () => {
+  test.use({ viewport: { width: 320, height: 568 }, hasTouch: true });
+  test("touch users can undo, redo and open the palette from the project menu", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page
+      .getByRole("button", { name: "Add title card", exact: true })
+      .tap();
+    const trigger = page.getByRole("button", {
+      name: "Project actions",
+      exact: true,
+    });
+    const menu = page.getByRole("menu", { name: "Project actions" });
+    await trigger.tap();
+    await expect.soft(menu).toBeInViewport({ ratio: 1 });
+    await test.info().attach("phone-project-menu", {
+      body: await page.screenshot({ animations: "disabled" }),
+      contentType: "image/png",
+    });
+    await menu.getByRole("menuitem", { name: "Undo", exact: true }).tap();
+    await expect(page.getByTestId("scene-card")).toHaveCount(0);
+    await trigger.tap();
+    await menu.getByRole("menuitem", { name: "Redo", exact: true }).tap();
+    await expect(page.getByTestId("scene-card")).toHaveCount(1);
+    await trigger.tap();
+    await menu
+      .getByRole("menuitem", { name: "Search commands", exact: true })
+      .tap();
+    await expect(
+      page.getByRole("combobox", { name: "Search commands" }),
+    ).toBeFocused();
+  });
 });
