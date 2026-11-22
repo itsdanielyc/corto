@@ -1,6 +1,6 @@
 import { useT } from "./i18n/locale";
 import { setApplicationLocale } from "./i18n/locale";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   CircleAlert,
@@ -120,6 +120,22 @@ export function App() {
     showProjects,
     openSavedProject,
   } = useEditorController();
+  /**
+   * Settings returns to the place it was opened from, however it was opened
+   * (menu, palette, shortcut or the Films link); reopening it keeps the target.
+   */
+  const openSettings = () => {
+    setSettingsReturn((previous) =>
+      dialog === "projects"
+        ? "projects"
+        : dialog === "settings"
+          ? previous
+          : null,
+    );
+    setDialog("settings");
+  };
+  const openSettingsLatest = useRef(openSettings);
+  openSettingsLatest.current = openSettings;
   const exports = useExportQueue(platform);
   const running = exports.jobs.find((job) => job.status === "running");
   useEffect(() => {
@@ -241,10 +257,7 @@ export function App() {
       newFilm: startNewFilm,
       open: requestOpen,
       save: savePortable,
-      settings: () => {
-        setSettingsReturn(null);
-        setDialog("settings");
-      },
+      settings: () => openSettingsLatest.current(),
       capture: () => setDialog("capture"),
       help: () => setDialog("help"),
       about: () => setDialog("about"),
@@ -273,21 +286,20 @@ export function App() {
         !document.querySelector("dialog[open]")
       ) {
         event.preventDefault();
-        if (!busy && editor.loaded) {
-          setSettingsReturn(null);
-          setDialog("settings");
-        }
+        if (!busy && editor.loaded) openSettingsLatest.current();
       }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [busy, editor.loaded]);
   // A removal toast steps aside on its own, like every miille toast.
+  // Keyed by the removal, so a second removal gets its own six seconds.
+  const removalId = removalOffer?.id ?? null;
   useEffect(() => {
-    if (removalOffer === null) return;
+    if (removalId === null) return;
     const timer = window.setTimeout(dismissRemoval, REMOVAL_TOAST_MS);
     return () => window.clearTimeout(timer);
-  }, [removalOffer, dismissRemoval]);
+  }, [removalId, dismissRemoval]);
   const modal =
     dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
   /** Settings save as they change; this applies each saved set to the open film and editor. */
@@ -296,7 +308,13 @@ export function App() {
     setTimelineMode(preferences.timeline);
     setTimelineZoom(preferences.timelineZoom);
     setPreferProxies(preferences.proxyEditing);
-    edit((value) => ({ ...value, defaults: preferences.defaults }));
+    // Only a real change to the defaults becomes an edit of the open film;
+    // the language, timeline or update settings leave its history alone.
+    edit((value) =>
+      JSON.stringify(value.defaults) === JSON.stringify(preferences.defaults)
+        ? value
+        : { ...value, defaults: preferences.defaults },
+    );
   };
   const bulk = selectedIds.size > 1;
   const panel = useMemo(() => {
@@ -425,10 +443,7 @@ export function App() {
         }}
         onFilmTools={() => openPanel("film-tools")}
         onCapture={() => setDialog("capture")}
-        onSettings={() => {
-          setSettingsReturn(null);
-          setDialog("settings");
-        }}
+        onSettings={() => openSettingsLatest.current()}
         onCommands={() => setPalette(true)}
       />
       <ExportTray
@@ -461,10 +476,7 @@ export function App() {
             acceptProject(restored);
             modalClose();
           }}
-          onSettings={() => {
-            setSettingsReturn("projects");
-            setDialog("settings");
-          }}
+          onSettings={() => openSettingsLatest.current()}
         />
       ) : settingsView ? (
         <SettingsPage
@@ -719,13 +731,13 @@ export function App() {
             {t("…")}
           </div>
         )}
-        {removalOffer !== null && !busy && (
+        {removalOffer && !busy && (
           <div className="toast removal-notice" role="status">
             <Check size={16} aria-hidden="true" />
             <span>
-              {removalOffer === 1
+              {removalOffer.count === 1
                 ? t("Scene removed")
-                : `${removalOffer}${t(" scenes removed")}`}
+                : `${removalOffer.count}${t(" scenes removed")}`}
             </span>
             <button className="button" onClick={undoRemoval}>
               {t("Undo")}

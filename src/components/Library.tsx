@@ -211,6 +211,8 @@ export const Library = memo(function Library({
   const [sort, setSort] = useState<"name" | "date" | "type" | "used">("name");
   const [context, setContext] = useState<string | null>(null);
   const replacement = useRef<HTMLInputElement>(null);
+  /** The asset a Replace / relink click is for, kept while the file dialog is open. */
+  const replacing = useRef<string | null>(null);
   const used = useMemo(() => usedAssetIds(project), [project]);
   const assets = useMemo(
     () =>
@@ -457,12 +459,17 @@ export const Library = memo(function Library({
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           event.currentTarget.value = "";
-          if (file && context) onReplace(context, file);
+          // The native file dialog takes focus and closes the menu, so the
+          // asset being replaced is remembered from the click, not the menu.
+          const target = replacing.current;
+          replacing.current = null;
+          if (file && target) onReplace(target, file);
           setContext(null);
         }}
       />
       {context && (
-        // Menus close on Escape and when focus leaves them; no "Close menu" item.
+        // Menus close on Escape and when focus moves elsewhere in the window;
+        // no "Close menu" item.
         <div
           className="library-replace-menu"
           role="menu"
@@ -474,14 +481,19 @@ export const Library = memo(function Library({
             }
           }}
           onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node))
-              setContext(null);
+            // relatedTarget is null when focus leaves the window (a native
+            // dialog opening); only a move to another element closes the menu.
+            const next = event.relatedTarget as Node | null;
+            if (next && !event.currentTarget.contains(next)) setContext(null);
           }}
         >
           <button
             role="menuitem"
             autoFocus
-            onClick={() => replacement.current?.click()}
+            onClick={() => {
+              replacing.current = context;
+              replacement.current?.click();
+            }}
           >
             {t("Replace / relink ")}
             {project.assets[context]?.name}

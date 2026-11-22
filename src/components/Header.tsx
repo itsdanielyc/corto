@@ -138,6 +138,8 @@ export function Header(properties: HeaderProperties) {
     };
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Handled here: the view behind (Films, Settings) must not also close.
+        event.preventDefault();
         setMenuOpen(false);
         trigger.current?.focus();
       }
@@ -191,7 +193,8 @@ export function Header(properties: HeaderProperties) {
       >
         <Search size={15} aria-hidden="true" />
         <span>{t("Search or run a command")}</span>
-        <kbd>{shortcutLabel("K")}</kbd>
+        {/* Spoken through aria-keyshortcuts; the keycap is for the eye. */}
+        <kbd aria-hidden="true">{shortcutLabel("K")}</kbd>
       </button>
       <div className="history-actions">
         <IconButton

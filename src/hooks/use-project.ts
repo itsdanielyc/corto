@@ -30,15 +30,31 @@ export function useProject(
   const historyRef = useRef(history);
   const [loaded, setLoaded] = useState(false);
   const [canAutosave, setCanAutosave] = useState(true);
+  const canAutosaveRef = useRef(true);
+  const allowAutosave = useCallback((allowed: boolean) => {
+    canAutosaveRef.current = allowed;
+    setCanAutosave(allowed);
+  }, []);
+  /**
+   * An edit is on its way to disk only while autosave works; after a failed
+   * load it stays unsaved, and the title bar says so instead of "Saving".
+   */
+  const markChanged = useCallback(
+    () => setSaveStatus(canAutosaveRef.current ? "pending" : "error"),
+    [],
+  );
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("loading");
 
-  const replace = useCallback((project: Project) => {
-    const next = createHistory(project);
-    historyRef.current = next;
-    setHistory(next);
-    setCanAutosave(true);
-    setSaveStatus("pending");
-  }, []);
+  const replace = useCallback(
+    (project: Project) => {
+      const next = createHistory(project);
+      historyRef.current = next;
+      setHistory(next);
+      allowAutosave(true);
+      setSaveStatus("pending");
+    },
+    [allowAutosave],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +76,7 @@ export function useProject(
       })
       .catch((error) => {
         if (cancelled) return;
-        setCanAutosave(false);
+        allowAutosave(false);
         setSaveStatus("error");
         setLoaded(true);
         report(error);
@@ -68,7 +84,7 @@ export function useProject(
     return () => {
       cancelled = true;
     };
-  }, [platform, replace, report]);
+  }, [platform, replace, report, allowAutosave]);
 
   useEffect(() => {
     if (!loaded || !canAutosave || paused) return;
@@ -99,27 +115,27 @@ export function useProject(
         const previous = historyRef.current;
         const next = commitHistory(previous, edit(previous.present));
         historyRef.current = next;
-        if (next !== previous) setSaveStatus("pending");
+        if (next !== previous) markChanged();
         setHistory(next);
       } catch (error) {
         report(error);
       }
     },
-    [report],
+    [report, markChanged],
   );
 
   const undo = useCallback(() => {
     const next = undoHistory(historyRef.current);
     historyRef.current = next;
-    setSaveStatus("pending");
+    markChanged();
     setHistory(next);
-  }, []);
+  }, [markChanged]);
   const redo = useCallback(() => {
     const next = redoHistory(historyRef.current);
     historyRef.current = next;
-    setSaveStatus("pending");
+    markChanged();
     setHistory(next);
-  }, []);
+  }, [markChanged]);
 
   return {
     project: history.present,

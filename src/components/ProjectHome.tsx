@@ -97,7 +97,11 @@ export function ProjectHome({
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !document.querySelector("dialog[open]"))
+      if (
+        event.key === "Escape" &&
+        !event.defaultPrevented &&
+        !document.querySelector("dialog[open]")
+      )
         onClose();
     };
     window.addEventListener("keydown", escape);

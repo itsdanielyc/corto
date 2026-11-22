@@ -2,7 +2,7 @@
   - button "My films": Films
   - textbox "Project name": Mountain days
   - text: Saved
-  - button "Search commands": Ctrl K
+  - button "Search commands"
   - button "Undo" [disabled]
   - button "Redo" [disabled]
   - button "Project actions"

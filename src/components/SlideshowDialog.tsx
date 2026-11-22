@@ -16,7 +16,7 @@ import { Choice, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { Modal } from "./primitives";
 import { soundAnalysis } from "../media/sound-analysis";
 import { bundledSoundFile } from "../media/bundled-sounds";
-import { inspectFile } from "../media/import";
+import { inspectFile, posterFromUrl } from "../media/import";
 import { importMedia } from "../media/phone";
 import { addAsset } from "../domain/project";
 import type { MediaResources } from "../hooks/use-resources";
@@ -92,10 +92,12 @@ export function SlideshowDialog({
     resources[id]?.poster ??
     chosen.find((entry) => entry.asset.id === id)?.poster ??
     null;
-  // Posters live as long as the dialog; revoke them when it closes.
-  const posters = useRef<string[]>([]);
+  // An import still running when the dialog closes must not touch its state.
+  const open = useRef(true);
   useEffect(
-    () => () => posters.current.forEach((url) => URL.revokeObjectURL(url)),
+    () => () => {
+      open.current = false;
+    },
     [],
   );
   const [selected, setSelected] = useState(
@@ -110,16 +112,21 @@ export function SlideshowDialog({
       try {
         const { asset, original } = await importMedia(file, platform);
         if (asset.kind !== "image" && asset.kind !== "video") continue;
-        const poster =
-          asset.kind === "image" ? URL.createObjectURL(file) : null;
-        if (poster) posters.current.push(poster);
+        // The poster comes from the converted picture, so HEIC and TIFF show
+        // too; it is a small data URL, so there is nothing to revoke.
+        const poster = await posterFromUrl(
+          asset,
+          await platform.assetUrl(asset.id),
+        ).catch(() => null);
         added.push({ asset, original, poster });
       } catch (failure) {
         failures.push(
           `${file.name}: ${failure instanceof Error ? failure.message : String(failure)}`,
         );
       }
+      if (!open.current) return;
     }
+    if (!open.current) return;
     setChosen((previous) => [...previous, ...added]);
     setSelected((previous) => {
       const next = new Set(previous);
@@ -549,6 +556,7 @@ export function SlideshowDialog({
             disabled={
               (!template && (!selected.size || !!timing.error)) ||
               readingTrack ||
+              importing ||
               busy
             }
             onClick={() => {
@@ -561,7 +569,7 @@ export function SlideshowDialog({
           <button
             className="button primary"
             // With no photos yet, choosing them is the one thing to do.
-            disabled={step === 0 && !template && !media.length}
+            disabled={importing || (step === 0 && !template && !media.length)}
             onClick={() => setStep(step + 1)}
           >
             {t("Next")}

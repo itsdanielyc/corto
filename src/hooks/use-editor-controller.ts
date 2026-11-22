@@ -65,9 +65,11 @@ export function useEditorController() {
    * something else.
    */
   const [removal, setRemoval] = useState<{
+    id: number;
     count: number;
     after: Project;
   } | null>(null);
+  const removals = useRef(0);
 
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -233,7 +235,7 @@ export function useEditorController() {
       }));
       const after = current.current.present;
       const count = before - after.scenes.length;
-      if (count > 0) setRemoval({ count, after });
+      if (count > 0) setRemoval({ id: ++removals.current, count, after });
     }
     setSelectedIds(new Set());
   }, [edit, current]);
@@ -597,7 +599,9 @@ export function useEditorController() {
   }, [current, undoEdit]);
   const dismissRemoval = useCallback(() => setRemoval(null), []);
   const removalOffer =
-    removal && removal.after === project ? removal.count : null;
+    removal && removal.after === project
+      ? { id: removal.id, count: removal.count }
+      : null;
 
   const togglePlayback = useCallback(() => {
     if (!current.current.present.scenes.length) return;

@@ -296,3 +296,77 @@
     transform: none;
   }
 }
+
+/* Films and Settings on a phone: the desk's places become a scrolling row
+   above the page, and the export card sits above the editor's tabs. */
+@media (max-width: 759px) {
+  .films-home,
+  .settings-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .home-sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 12px 10px;
+    scrollbar-width: none;
+  }
+  .editor-shell:has(> .export-tray) .home-sidebar {
+    padding-bottom: 10px;
+  }
+  .home-sidebar > .home-group,
+  .home-sidebar > .home-spacer {
+    display: none;
+  }
+  .home-back,
+  .start-card,
+  .settings-nav,
+  .home-settings {
+    flex: none;
+  }
+  .home-back {
+    margin-bottom: 0;
+  }
+  .start-card small {
+    display: none;
+  }
+  .settings-nav[aria-current="page"]::before {
+    display: none;
+  }
+  .home-sheet {
+    margin-top: 0;
+    border-top-right-radius: 12px;
+    box-shadow:
+      -1px -1px 0 var(--line),
+      1px -1px 0 var(--line);
+  }
+  .home-content {
+    padding: 22px 18px 40px;
+  }
+  .home-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .home-content h1 {
+    font-size: 26px;
+  }
+  .project-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .theme-choice-label {
+    padding-left: 2px;
+    font-size: var(--text-xs);
+  }
+  .export-tray,
+  .editor-shell[data-view="home"] .export-tray,
+  .editor-shell[data-view="settings"] .export-tray {
+    left: 8px;
+    right: 8px;
+    bottom: calc(var(--phone-tabs) + 8px + env(safe-area-inset-bottom));
+    width: auto;
+  }
+}

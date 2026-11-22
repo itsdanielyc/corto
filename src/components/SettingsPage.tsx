@@ -169,8 +169,13 @@ export function SettingsPage({
 
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !document.querySelector("dialog[open]"))
-        onBack();
+      // A menu that handled this Escape (the title bar's) marks it as done.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (document.querySelector("dialog[open]")) return;
+      // Blur first, so a number still being typed is committed and saved.
+      if (document.activeElement instanceof HTMLElement)
+        document.activeElement.blur();
+      onBack();
     };
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
@@ -692,9 +697,10 @@ function NumberField({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           const next = Number(draft);
-          if (draft && Number.isFinite(next) && next >= min && next <= max)
-            onChange(next);
-          else setDraft(String(value));
+          if (draft && Number.isFinite(next) && next >= min && next <= max) {
+            // Leaving a field without changing it writes nothing.
+            if (next !== value) onChange(next);
+          } else setDraft(String(value));
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
