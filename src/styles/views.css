@@ -266,26 +266,59 @@
   color: #fff;
   font-weight: 620;
 }
+/* The ⋯ on a poster, and the small panel it opens over the grid. */
 .project-management {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+}
+.film-more {
   display: grid;
-  gap: 8px;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgb(12 12 13 / 62%);
+  color: #ffffff;
+  opacity: 0;
+  backdrop-filter: blur(6px);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
-.project-management > .text-button {
-  justify-self: start;
+.saved-film:hover .film-more,
+.saved-film:focus-within .film-more,
+.film-more[aria-expanded="true"] {
+  opacity: 1;
 }
-.project-management .tool-fields {
-  padding: 12px;
+.film-more:hover {
+  background: rgb(12 12 13 / 80%);
+}
+.film-more:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+.film-panel {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  width: 300px;
+  padding: 16px;
   border-radius: var(--radius-popover);
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--raised);
+  box-shadow: var(--shadow-pop);
+  animation: pop-in var(--dur-base) var(--ease-out);
 }
 .delete-confirmation {
   display: grid;
   gap: 8px;
-  padding: 10px;
+  padding: 12px;
   border-radius: var(--radius-control);
-  background: color-mix(in srgb, var(--err) 8%, var(--panel));
+  background: var(--err-bg);
+  color: var(--fg);
   font-size: var(--text-xs);
+  line-height: 1.45;
 }
 .version-list {
   display: grid;
@@ -1190,4 +1223,8 @@ progress::-moz-progress-bar {
 }
 .slideshow-add {
   justify-self: start;
+}
+.text-button.danger-text {
+  color: var(--err);
+  text-decoration-color: color-mix(in srgb, var(--err) 40%, transparent);
 }
