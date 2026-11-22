@@ -1188,3 +1188,6 @@ progress::-moz-progress-bar {
 .theme-preview-system b {
   background: linear-gradient(90deg, #0f0f10 50%, #f4f4f5 50%);
 }
+.slideshow-add {
+  justify-self: start;
+}

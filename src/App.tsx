@@ -41,6 +41,9 @@ import { ExportTray } from "./components/ExportTray";
 import { describeDrop } from "./components/drop-summary";
 import { loadTheme } from "./platform/appearance";
 
+/** How long "Scene removed · Undo" stays before it steps aside. */
+const REMOVAL_TOAST_MS = 6000;
+
 /** Phone layouts show one of these as a bottom sheet over the reel. */
 type PhoneSheet = "edit" | "library" | null;
 
@@ -107,9 +110,12 @@ export function App() {
     savePortable,
     openSelectedFile,
     requestOpen,
-    performTransition,
+    startNewFilm,
     undoEdit,
     redoEdit,
+    removalOffer,
+    undoRemoval,
+    dismissRemoval,
     togglePlayback,
     playbackStep,
     modalClose,
@@ -234,7 +240,7 @@ export function App() {
         setDialog("slideshow");
       },
       films: showProjects,
-      newFilm: () => setDialog("new"),
+      newFilm: startNewFilm,
       open: requestOpen,
       save: savePortable,
       settings: () => {
@@ -278,6 +284,12 @@ export function App() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [busy, editor.loaded]);
+  // A removal toast steps aside on its own, like every miille toast.
+  useEffect(() => {
+    if (removalOffer === null) return;
+    const timer = window.setTimeout(dismissRemoval, REMOVAL_TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [removalOffer, dismissRemoval]);
   const modal =
     dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
   /** Settings save as they change; this applies each saved set to the open film and editor. */
@@ -397,7 +409,7 @@ export function App() {
         exportProgress={running ? running.progress.fraction : null}
         onUndo={undoEdit}
         onRedo={redoEdit}
-        onNew={() => setDialog("new")}
+        onNew={startNewFilm}
         onOpen={requestOpen}
         onSave={savePortable}
         onExport={() => {
@@ -432,7 +444,7 @@ export function App() {
           currentId={project.id}
           onClose={modalClose}
           onOpen={openSavedProject}
-          onNew={() => setDialog("new")}
+          onNew={startNewFilm}
           onPortable={() => {
             setDialog(null);
             requestOpen();
@@ -709,6 +721,24 @@ export function App() {
             {t("…")}
           </div>
         )}
+        {removalOffer !== null && !busy && (
+          <div className="toast removal-notice" role="status">
+            <Check size={16} aria-hidden="true" />
+            <span>
+              {removalOffer === 1
+                ? t("Scene removed")
+                : `${removalOffer}${t(" scenes removed")}`}
+            </span>
+            <button className="button" onClick={undoRemoval}>
+              {t("Undo")}
+            </button>
+            <IconButton
+              icon={X}
+              label={t("Dismiss notification")}
+              onClick={dismissRemoval}
+            />
+          </div>
+        )}
         {message && !busy && (
           <div className="toast success-notice" role="status">
             <Check size={16} aria-hidden="true" />
@@ -749,8 +779,6 @@ export function App() {
         platform={platform}
         resources={resources}
         onClose={modalClose}
-        onSave={savePortable}
-        onTransition={performTransition}
       />
       {palette && (
         <CommandPalette commands={commands} onClose={() => setPalette(false)} />

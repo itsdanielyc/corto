@@ -12,6 +12,7 @@ import {
   changeScene,
   createProject,
   createScene,
+  isBlankProject,
   moveScene,
   splitScene,
 } from "../domain/project";
@@ -57,6 +58,16 @@ export function useEditorController() {
   const [error, setError] = useState<string | null>(null);
 
   const [message, setMessage] = useState<string | null>(null);
+
+  /**
+   * The last removal, offered back in a toast. It stays valid only while the
+   * film is exactly as the removal left it, so Undo can never reverse
+   * something else.
+   */
+  const [removal, setRemoval] = useState<{
+    count: number;
+    after: Project;
+  } | null>(null);
 
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -209,7 +220,8 @@ export function useEditorController() {
 
   const deleteSelected = useCallback(() => {
     const scene = selectedRef.current;
-    if (scene)
+    if (scene) {
+      const before = current.current.present.scenes.length;
       edit((project) => ({
         ...project,
         scenes: project.scenes.filter(
@@ -219,8 +231,12 @@ export function useEditorController() {
               : item.id === scene.id),
         ),
       }));
+      const after = current.current.present;
+      const count = before - after.scenes.length;
+      if (count > 0) setRemoval({ count, after });
+    }
     setSelectedIds(new Set());
-  }, [edit]);
+  }, [edit, current]);
 
   const duplicateSelected = useCallback(() => {
     const scene = selectedRef.current;
@@ -434,11 +450,7 @@ export function useEditorController() {
   );
   const showExample = useCallback(() => {
     void task("Opening the example", async () => {
-      if (
-        current.current.present.scenes.length ||
-        Object.keys(current.current.present.assets).length ||
-        current.current.present.name !== "Untitled film"
-      )
+      if (!isBlankProject(current.current.present))
         await platform.saveProject(current.current.present);
       acceptProject(await createExampleProject(platform));
     });
@@ -484,7 +496,8 @@ export function useEditorController() {
   const openSelectedFile = useCallback(
     (file?: File) => {
       void task("Opening your project", async () => {
-        await platform.saveProject(current.current.present);
+        if (!isBlankProject(current.current.present))
+          await platform.saveProject(current.current.present);
         const opened = await platform.openPortable(file);
         if (opened) acceptProject(opened);
       });
@@ -497,36 +510,37 @@ export function useEditorController() {
     else projectInput.current?.click();
   }, [platform, openSelectedFile]);
 
-  const requestOpen = useCallback(() => {
-    if (current.current.present.scenes.length) setDialog("open");
-    else chooseProject();
-  }, [current, chooseProject]);
+  // Opening a project saves the current film first (openSelectedFile), so
+  // there is nothing to confirm.
+  const requestOpen = chooseProject;
 
-  const performTransition = useCallback(() => {
-    const action = ui.current.dialog;
+  /** A new film starts at once: the current one is already safe in Films. */
+  const startNewFilm = useCallback(() => {
     setDialog(null);
-    if (action === "open") chooseProject();
-    else {
-      void task("Saving your film", async () => {
+    void task("Saving your film", async () => {
+      if (!isBlankProject(current.current.present))
         await platform.saveProject(current.current.present);
-        const preferences = await platform.loadPreferences?.();
-        acceptProject(
-          preferences
-            ? {
-                ...createProject(),
-                defaults: preferences.defaults,
-                output: preferences.output,
-              }
-            : createProject(),
-        );
-        setError(null);
-      });
-    }
-  }, [chooseProject, acceptProject, task, platform, current]);
+      const preferences = await platform.loadPreferences?.();
+      acceptProject(
+        preferences
+          ? {
+              ...createProject(),
+              defaults: preferences.defaults,
+              output: preferences.output,
+            }
+          : createProject(),
+      );
+      setError(null);
+    });
+  }, [acceptProject, task, platform, current]);
 
   const showProjects = useCallback(() => {
     void task("Saving your film", async () => {
-      if (editor.saveStatus !== "error")
+      // An untouched film is not worth a place in Films.
+      if (
+        editor.saveStatus !== "error" &&
+        !isBlankProject(current.current.present)
+      )
         await platform.saveProject(current.current.present);
       setDialog("projects");
     });
@@ -554,10 +568,7 @@ export function useEditorController() {
     () =>
       platform.onProjectOpened?.((opened) => {
         void task("Opening the selected Corto file", async () => {
-          if (
-            current.current.present.scenes.length ||
-            Object.keys(current.current.present.assets).length
-          )
+          if (!isBlankProject(current.current.present))
             await platform.saveProject(current.current.present);
           await platform.saveProject(opened);
           acceptProject(opened);
@@ -576,6 +587,17 @@ export function useEditorController() {
     setPlaying(false);
     redo();
   }, [redo]);
+
+  /** Undo from the removal toast, only while nothing else has changed. */
+  const undoRemoval = useCallback(() => {
+    setRemoval((offer) => {
+      if (offer && current.current.present === offer.after) undoEdit();
+      return null;
+    });
+  }, [current, undoEdit]);
+  const dismissRemoval = useCallback(() => setRemoval(null), []);
+  const removalOffer =
+    removal && removal.after === project ? removal.count : null;
 
   const togglePlayback = useCallback(() => {
     if (!current.current.present.scenes.length) return;
@@ -725,9 +747,12 @@ export function useEditorController() {
     savePortable,
     openSelectedFile,
     requestOpen,
-    performTransition,
+    startNewFilm,
     undoEdit,
     redoEdit,
+    removalOffer,
+    undoRemoval,
+    dismissRemoval,
     togglePlayback,
     playbackStep,
     modalClose,

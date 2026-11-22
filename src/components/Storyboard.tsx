@@ -517,10 +517,15 @@ export const Storyboard = memo(function Storyboard({
             );
           })}
           {!project.scenes.length && (
-            <div className="empty-storyboard" aria-hidden="true">
-              {[0, 1, 2, 3].map((slot) => (
-                <span className="ghost-card" key={slot} />
-              ))}
+            <div className="empty-storyboard">
+              <div className="ghost-cards" aria-hidden="true">
+                {[0, 1, 2, 3].map((slot) => (
+                  <span className="ghost-card" key={slot} />
+                ))}
+              </div>
+              <p className="empty-storyboard-text">
+                {t("Scenes line up here. Each photo or clip becomes one; drag to change the order.")}
+              </p>
             </div>
           )}
           {!!project.scenes.length && (
@@ -585,9 +590,6 @@ export const Storyboard = memo(function Storyboard({
               {t(label)}
             </button>
           ))}
-          <button role="menuitem" onClick={() => setContext(null)}>
-            {t("Close menu")}
-          </button>
         </div>
       )}
       {(!timelineMode || !project.audioClips.length) && (

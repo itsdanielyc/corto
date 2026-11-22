@@ -130,7 +130,7 @@ export function ProjectManagement({
                 {t("Keep film")}
               </button>
               <button
-                className="button primary"
+                className="button danger"
                 disabled={busy}
                 onClick={() => {
                   void run(async () => {

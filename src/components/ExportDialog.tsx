@@ -283,8 +283,10 @@ export function ExportDialog({
             <div>
               <strong>{project.name}</strong>
               <span>
-                {project.scenes.length}
-                {t(" scenes · ")}
+                {project.scenes.length === 1
+                  ? t("1 scene")
+                  : `${project.scenes.length}${t(" scenes")}`}
+                {t(" · ")}
                 {formatTime(total)}
                 {t(" · ")}
                 {RATIO_LABELS[project.ratio]}

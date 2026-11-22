@@ -82,12 +82,6 @@ export function VideoTools({
           checked={scene.loop}
           onChange={(loop) => onChange({ loop })}
         />
-        <Slider
-          label={t("Original audio gain")}
-          value={scene.volume}
-          max={4}
-          onChange={(volume) => onChange({ volume })}
-        />
         <Numeric
           label={t("Original sound fade in")}
           value={scene.audioFadeIn}

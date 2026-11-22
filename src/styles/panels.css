@@ -131,32 +131,33 @@ img.look-art {
 .motion-none img {
   transform: none;
 }
+/* Motion previews play while you point at or focus a tile; nothing moves at rest. */
 .tile:hover .motion-zoom-in img,
-.tile[aria-checked="true"] .motion-zoom-in img {
+.tile:focus-visible .motion-zoom-in img {
   animation: kb-in 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-zoom-out img,
-.tile[aria-checked="true"] .motion-zoom-out img {
+.tile:focus-visible .motion-zoom-out img {
   animation: kb-out 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-left img,
-.tile[aria-checked="true"] .motion-pan-left img {
+.tile:focus-visible .motion-pan-left img {
   animation: kb-left 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-right img,
-.tile[aria-checked="true"] .motion-pan-right img {
+.tile:focus-visible .motion-pan-right img {
   animation: kb-right 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-up img,
-.tile[aria-checked="true"] .motion-pan-up img {
+.tile:focus-visible .motion-pan-up img {
   animation: kb-up 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-down img,
-.tile[aria-checked="true"] .motion-pan-down img {
+.tile:focus-visible .motion-pan-down img {
   animation: kb-down 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-custom img,
-.tile[aria-checked="true"] .motion-custom img {
+.tile:focus-visible .motion-custom img {
   animation: kb-custom 2.4s var(--ease-in-out) infinite alternate;
 }
 @keyframes kb-in {

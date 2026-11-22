@@ -39,6 +39,8 @@ export type InspectorTab = "look" | "clip" | "text" | "overlays" | "timing";
 
 /** Seconds added or removed by the duration stepper. */
 const DURATION_STEP = 0.5;
+/** One clip volume control covers quiet clips too: up to four times louder. */
+const CLIP_VOLUME_MAX_PERCENT = 400;
 
 interface InspectorProperties {
   project: Project;
@@ -432,11 +434,12 @@ function SceneInspector(properties: InspectorProperties & { scene: Scene }) {
                     aria-label={t("Clip volume")}
                     type="range"
                     min="0"
-                    max="100"
+                    max={CLIP_VOLUME_MAX_PERCENT}
+                    step="5"
                     value={Math.round(scene.volume * 100)}
                     style={
                       {
-                        "--progress": `${Math.min(100, scene.volume * 100)}%`,
+                        "--progress": `${(scene.volume * 10000) / CLIP_VOLUME_MAX_PERCENT}%`,
                       } as CSSProperties
                     }
                     onChange={(event) =>

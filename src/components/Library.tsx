@@ -462,17 +462,29 @@ export const Library = memo(function Library({
         }}
       />
       {context && (
+        // Menus close on Escape and when focus leaves them; no "Close menu" item.
         <div
           className="library-replace-menu"
           role="menu"
           aria-label={t("Media actions")}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.stopPropagation();
+              setContext(null);
+            }
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node))
+              setContext(null);
+          }}
         >
-          <button role="menuitem" onClick={() => replacement.current?.click()}>
+          <button
+            role="menuitem"
+            autoFocus
+            onClick={() => replacement.current?.click()}
+          >
             {t("Replace / relink ")}
             {project.assets[context]?.name}
-          </button>
-          <button role="menuitem" onClick={() => setContext(null)}>
-            {t("Close menu")}
           </button>
         </div>
       )}

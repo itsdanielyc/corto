@@ -313,6 +313,10 @@
   color: var(--fg);
 }
 .empty-storyboard {
+  display: grid;
+  gap: 12px;
+}
+.ghost-cards {
   display: flex;
   gap: 24px;
 }
@@ -320,8 +324,12 @@
   width: 140px;
   height: 84px;
   border: 1.5px dashed var(--line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
   opacity: 0.8;
+}
+.empty-storyboard-text {
+  color: var(--fg-3);
+  font-size: var(--text-sm);
 }
 .ghost-card:nth-child(3) {
   opacity: 0.55;

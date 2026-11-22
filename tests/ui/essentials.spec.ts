@@ -50,9 +50,6 @@ test("multiple films resume and recovery keeps the latest edit", async ({
   await page.getByLabel("Project name").press("Tab");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   await menu(page, "New film");
-  await page
-    .getByRole("button", { name: "Start new film", exact: true })
-    .click();
   await page.getByLabel("Project name").fill("Birthday");
   await page.getByLabel("Project name").press("Tab");
   await page.getByRole("button", { name: "My films", exact: true }).click();

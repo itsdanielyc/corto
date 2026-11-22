@@ -7,7 +7,7 @@ import {
   undoHistory,
   type History,
 } from "../domain/history";
-import { createProject } from "../domain/project";
+import { createProject, isBlankProject } from "../domain/project";
 import type { CortoPlatform } from "../platform/types";
 
 /**
@@ -78,11 +78,7 @@ export function useProject(
   useEffect(() => {
     if (!loaded || !canAutosave || paused) return;
     const snapshot = history.present;
-    if (
-      !snapshot.scenes.length &&
-      !Object.keys(snapshot.assets).length &&
-      snapshot.name === "Untitled film"
-    ) {
+    if (isBlankProject(snapshot)) {
       setSaveStatus("blank");
       return;
     }

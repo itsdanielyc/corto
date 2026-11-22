@@ -13,6 +13,18 @@ import { sliceScene } from "./scene-slice";
 import { transitionOverlap } from "./composition";
 
 /** Create an empty, versioned project with a stable opaque identifier. */
+/**
+ * An untouched new film: no scenes, no media and the default name. It is not
+ * worth saving, and the title bar says nothing about it.
+ */
+export function isBlankProject(project: Project): boolean {
+  return (
+    !project.scenes.length &&
+    !Object.keys(project.assets).length &&
+    project.name === "Untitled film"
+  );
+}
+
 export function createProject(name = "Untitled film"): Project {
   return projectSchema.parse({
     schemaVersion: 3,

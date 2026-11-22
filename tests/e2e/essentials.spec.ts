@@ -226,9 +226,6 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .click();
     await page.getByRole("button", { name: "My films", exact: true }).click();
     await page.getByRole("button", { name: "New film", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Start new film", exact: true })
-      .click();
     await page.getByRole("button", { name: "My films", exact: true }).click();
     await page
       .getByRole("button", { name: "Open Phone memories", exact: true })

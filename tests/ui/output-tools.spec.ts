@@ -44,9 +44,6 @@ test("background export keeps its original film and title while another film is 
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
   await page.getByRole("menuitem", { name: "New film", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Start new film", exact: true })
-    .click();
   const file = await download;
   expect(file.suggestedFilename()).toBe("Queued original.mp4");
   const path = info.outputPath("queued.mp4");

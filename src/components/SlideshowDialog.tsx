@@ -1,5 +1,6 @@
 import { useT } from "../i18n/locale";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus } from "lucide-react";
 import type { MediaAsset, Project } from "../../contracts/project";
 import {
   buildSlideshow,
@@ -16,6 +17,7 @@ import { Modal } from "./primitives";
 import { soundAnalysis } from "../media/sound-analysis";
 import { bundledSoundFile } from "../media/bundled-sounds";
 import { inspectFile } from "../media/import";
+import { importMedia } from "../media/phone";
 import { addAsset } from "../domain/project";
 import type { MediaResources } from "../hooks/use-resources";
 import { useDraftRequest } from "../hooks/use-draft-request";
@@ -70,15 +72,63 @@ export function SlideshowDialog({
   onClose: () => void;
 }) {
   const t = useT();
-  const media = Object.values(project.assets).filter(
-    (asset) =>
-      ["image", "video"].includes(asset.kind) &&
-      !asset.isOriginalOnly &&
-      !asset.isProxy,
+  // Photos chosen here, for a slideshow started from Films or with more
+  // moments than the open film holds. They join the new film only.
+  const [chosen, setChosen] = useState<
+    { asset: MediaAsset; original?: MediaAsset; poster: string | null }[]
+  >([]);
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const media = [
+    ...Object.values(project.assets).filter(
+      (asset) =>
+        ["image", "video"].includes(asset.kind) &&
+        !asset.isOriginalOnly &&
+        !asset.isProxy,
+    ),
+    ...chosen.map((entry) => entry.asset),
+  ];
+  const posterOf = (id: string) =>
+    resources[id]?.poster ??
+    chosen.find((entry) => entry.asset.id === id)?.poster ??
+    null;
+  // Posters live as long as the dialog; revoke them when it closes.
+  const posters = useRef<string[]>([]);
+  useEffect(
+    () => () => posters.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
   );
   const [selected, setSelected] = useState(
     new Set(media.map((asset) => asset.id)),
   );
+  const addFiles = async (files: File[]) => {
+    setImporting(true);
+    setError(null);
+    const added: typeof chosen = [];
+    const failures: string[] = [];
+    for (const file of files) {
+      try {
+        const { asset, original } = await importMedia(file, platform);
+        if (asset.kind !== "image" && asset.kind !== "video") continue;
+        const poster =
+          asset.kind === "image" ? URL.createObjectURL(file) : null;
+        if (poster) posters.current.push(poster);
+        added.push({ asset, original, poster });
+      } catch (failure) {
+        failures.push(
+          `${file.name}: ${failure instanceof Error ? failure.message : String(failure)}`,
+        );
+      }
+    }
+    setChosen((previous) => [...previous, ...added]);
+    setSelected((previous) => {
+      const next = new Set(previous);
+      added.forEach((entry) => next.add(entry.asset.id));
+      return next;
+    });
+    if (failures.length) setError(failures.join("\n"));
+    setImporting(false);
+  };
   const [theme, setTheme] = useState<SlideshowOptions["theme"]>("family");
   const [order, setOrder] = useState<SlideshowOptions["order"]>("date");
   const [seconds, setSeconds] = useState(project.defaults.photoSeconds);
@@ -106,12 +156,15 @@ export function SlideshowDialog({
   const moments = useMemo(
     () =>
       sortMedia(
-        Array.from(selected, (id) => project.assets[id]).filter(
-          (asset) => !!asset,
-        ),
+        Array.from(
+          selected,
+          (id) =>
+            project.assets[id] ??
+            chosen.find((entry) => entry.asset.id === id)?.asset,
+        ).filter((asset) => !!asset),
         order,
       ),
-    [selected, project.assets, order],
+    [selected, project.assets, chosen, order],
   );
   const photoCount = moments.filter((asset) => asset.kind === "image").length;
   const fitSeconds =
@@ -142,6 +195,10 @@ export function SlideshowDialog({
     setError(null);
     try {
       let source = project;
+      for (const entry of chosen) {
+        if (entry.original) source = addAsset(source, entry.original);
+        source = addAsset(source, entry.asset);
+      }
       if (themeMusic.track) {
         const { asset, file } = themeMusic.track;
         await platform.putAsset(asset, file);
@@ -290,11 +347,8 @@ export function SlideshowDialog({
                         }}
                       />
                       <span className="slideshow-thumb">
-                        {resources[asset.id]?.poster ? (
-                          <img
-                            src={resources[asset.id]?.poster ?? undefined}
-                            alt=""
-                          />
+                        {posterOf(asset.id) ? (
+                          <img src={posterOf(asset.id) ?? undefined} alt="" />
                         ) : null}
                       </span>
                       <span className="slideshow-name">{asset.name}</span>
@@ -306,11 +360,34 @@ export function SlideshowDialog({
                     </label>
                   ))}
                 </div>
-                {!media.length && (
-                  <p className="dialog-note">
-                    {t("Import photos, clips or a folder in the editor first.")}
-                  </p>
-                )}
+                <input
+                  ref={fileInput}
+                  type="file"
+                  multiple
+                  hidden
+                  accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.gif,.tif,.tiff,.mp4,.mov,.m4v,.webm"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = "";
+                    if (files.length) void addFiles(files);
+                  }}
+                />
+                <button
+                  className={
+                    media.length
+                      ? "button secondary slideshow-add"
+                      : "button primary large slideshow-add"
+                  }
+                  disabled={importing}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <ImagePlus size={16} aria-hidden="true" />
+                  {importing
+                    ? t("Adding your photos…")
+                    : media.length
+                      ? t("Add more photos and clips")
+                      : t("Choose photos and clips")}
+                </button>
                 <Choice
                   label={t("Slideshow order")}
                   value={order}
@@ -481,7 +558,12 @@ export function SlideshowDialog({
             {busy ? t("Creating draft…") : t("Create editable draft")}
           </button>
         ) : (
-          <button className="button primary" onClick={() => setStep(step + 1)}>
+          <button
+            className="button primary"
+            // With no photos yet, choosing them is the one thing to do.
+            disabled={step === 0 && !template && !media.length}
+            onClick={() => setStep(step + 1)}
+          >
             {t("Next")}
           </button>
         )}
