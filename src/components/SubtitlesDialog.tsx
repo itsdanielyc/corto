@@ -122,7 +122,7 @@ export function SubtitlesDialog({
       <fieldset disabled={generating} className="subtitle-manual-controls">
         <div className="dialog-toolbar">
           <button
-            className="button primary"
+            className="button secondary"
             onClick={() =>
               commit([
                 ...project.subtitles,

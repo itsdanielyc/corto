@@ -149,7 +149,7 @@ export function SoundDialog({
         />
         <div className="dialog-toolbar">
           <button
-            className="button primary"
+            className="button secondary"
             onClick={() => input.current?.click()}
           >
             {t("Add next song")}
