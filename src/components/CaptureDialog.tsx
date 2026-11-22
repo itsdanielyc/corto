@@ -144,7 +144,7 @@ export function CaptureDialog({
       />
       <p className="dialog-note">
         {t(
-          "Record up to ten minutes or 60 MB per take. You choose the device or screen; recording stays local.",
+          "Record up to 10 minutes or 60 MB at a time. You choose the camera, microphone or screen.",
         )}
       </p>
       {error && (

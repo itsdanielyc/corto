@@ -55,11 +55,11 @@ export function SoundPack({
   return (
     <details className="sound-pack">
       <summary>
-        {t("Built-in music & sound effects \u00B7 28 original CC0 sounds")}
+        {t("Corto's music and sounds \u00B7 28")}
       </summary>
       <p className="dialog-note">
         {t(
-          "Free to use, including commercially. No attribution or account required.",
+          "Yours to use in any film, including ones you share or sell.",
         )}
       </p>
       {preview && (

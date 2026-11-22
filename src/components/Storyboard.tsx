@@ -610,7 +610,7 @@ export const Storyboard = memo(function Storyboard({
               <>
                 <span className="soundtrack-name">
                   {project.audioClips.length}
-                  {t(" placed sounds")}
+                  {t(" sounds")}
                 </span>
                 <small>{t("Music & narration")}</small>
               </>

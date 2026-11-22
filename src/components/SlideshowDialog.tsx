@@ -480,7 +480,7 @@ export function SlideshowDialog({
               translateOptions={false}
               options={[
                 ["", t("No music")],
-                ["theme", t("Theme soundtrack · original CC0 music")],
+                ["theme", t("The theme's music")],
                 ...Object.values(project.assets)
                   .filter(
                     (asset) => asset.kind === "audio" && !asset.isOriginalOnly,

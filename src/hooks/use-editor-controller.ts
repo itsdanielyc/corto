@@ -48,7 +48,7 @@ function readableError(error: unknown): string {
         /^Error invoking remote method '[^']+': Error: /,
         "",
       )
-    : "Something could not be completed. Please try again.";
+    : "That didn't work. Try it again.";
 }
 
 /** Coordinate editor state and platform actions without coupling them to layout markup. */
@@ -557,7 +557,7 @@ export function useEditorController() {
           setDialog(null);
           if (recover)
             setMessage(
-              "Recovered as a separate film. Your latest edit is still in My films.",
+              "Recovered as a separate film. Your latest edit is still in Films.",
             );
         },
       );

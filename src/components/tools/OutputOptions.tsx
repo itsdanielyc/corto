@@ -157,7 +157,7 @@ export function OutputOptions({
               label={t("Encoder preference")}
               value={settings.encoder}
               options={[
-                ["auto", "Automatic · probe hardware"],
+                ["auto", "Automatic"],
                 ["software", "Software"],
                 ["hardware", "Prefer hardware with software fallback"],
               ]}
