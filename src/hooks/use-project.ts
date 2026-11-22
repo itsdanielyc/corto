@@ -10,7 +10,17 @@ import {
 import { createProject } from "../domain/project";
 import type { CortoPlatform } from "../platform/types";
 
-export type SaveStatus = "loading" | "pending" | "saving" | "saved" | "error";
+/**
+ * "blank" is an untouched new film: nothing has been saved because there is
+ * nothing to save yet, so the title bar says nothing rather than "Saved".
+ */
+export type SaveStatus =
+  | "loading"
+  | "blank"
+  | "pending"
+  | "saving"
+  | "saved"
+  | "error";
 const AUTOSAVE_DELAY_MS = 500;
 
 /** Keep pure edit history separate from serialized asynchronous persistence. */
@@ -73,7 +83,7 @@ export function useProject(
       !Object.keys(snapshot.assets).length &&
       snapshot.name === "Untitled film"
     ) {
-      setSaveStatus("saved");
+      setSaveStatus("blank");
       return;
     }
     setSaveStatus("pending");

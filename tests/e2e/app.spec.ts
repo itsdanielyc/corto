@@ -66,8 +66,12 @@ test.describe("corto in the real shell", () => {
     await expect(
       win.getByRole("button", { name: "Import media", exact: true }),
     ).toBeVisible();
-    // The badge proves the UI is talking to the main process, not the mock.
-    await expect(win.getByTestId("save-status")).toHaveText("Saved");
+    // The badge proves the UI is talking to the main process, not the mock:
+    // the untouched film has loaded (not "loading", not "error") and says nothing.
+    await expect(win.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
     // contextIsolation and the sandbox: the page sees the bridge, not Node.
     const exposed = await win.evaluate(() => ({
       bridge: typeof window.electronBridge,

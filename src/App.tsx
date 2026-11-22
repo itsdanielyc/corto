@@ -11,7 +11,7 @@ import {
   Type,
   X,
 } from "lucide-react";
-import type { Project, Scene } from "../contracts/project";
+import type { Preferences, Project, Scene } from "../contracts/project";
 import { Header } from "./components/Header";
 import { Library } from "./components/Library";
 import { Inspector, type InspectorTab } from "./components/Inspector";
@@ -27,7 +27,7 @@ import { SoundDialog } from "./components/SoundDialog";
 import { SubtitlesDialog } from "./components/SubtitlesDialog";
 import { SlideshowDialog } from "./components/SlideshowDialog";
 import { FilmTools } from "./components/FilmTools";
-import { SettingsDialog } from "./components/SettingsDialog";
+import { SettingsPage } from "./components/SettingsPage";
 import { CaptureDialog } from "./components/CaptureDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { useEditorCommands } from "./components/editor-commands";
@@ -54,6 +54,9 @@ export function App() {
   const [framing, setFraming] = useState(false);
   const [sheet, setSheet] = useState<PhoneSheet>(null);
   const [dropSummary, setDropSummary] = useState("");
+  const [settingsReturn, setSettingsReturn] = useState<"projects" | null>(
+    null,
+  );
   const {
     platform,
     error,
@@ -234,7 +237,10 @@ export function App() {
       newFilm: () => setDialog("new"),
       open: requestOpen,
       save: savePortable,
-      settings: () => setDialog("settings"),
+      settings: () => {
+        setSettingsReturn(null);
+        setDialog("settings");
+      },
       capture: () => setDialog("capture"),
       help: () => setDialog("help"),
       about: () => setDialog("about"),
@@ -256,12 +262,32 @@ export function App() {
         event.preventDefault();
         if (!busy && editor.loaded) setPalette(true);
       }
+      // Ctrl+, (⌘, on a Mac) opens Settings, as in every miille app.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key === "," &&
+        !document.querySelector("dialog[open]")
+      ) {
+        event.preventDefault();
+        if (!busy && editor.loaded) {
+          setSettingsReturn(null);
+          setDialog("settings");
+        }
+      }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [busy, editor.loaded]);
   const modal =
     dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
+  /** Settings save as they change; this applies each saved set to the open film and editor. */
+  const applyPreferences = (preferences: Preferences) => {
+    setApplicationLocale(preferences.locale);
+    setTimelineMode(preferences.timeline);
+    setTimelineZoom(preferences.timelineZoom);
+    setPreferProxies(preferences.proxyEditing);
+    edit((value) => ({ ...value, defaults: preferences.defaults }));
+  };
   const bulk = selectedIds.size > 1;
   const panel = useMemo(() => {
     if (dialog === "sound")
@@ -320,13 +346,15 @@ export function App() {
     selectScene,
   ]);
   const home = dialog === "projects";
+  // Settings is a place too; Back returns to wherever it was opened from.
+  const settingsView = dialog === "settings";
   const locked = !!busy || !editor.loaded;
   return (
     <div
       className="editor-shell"
       data-testid="editor-shell"
       data-backend={platform.kind}
-      data-view={home ? "home" : "editor"}
+      data-view={home ? "home" : settingsView ? "settings" : "editor"}
       data-sheet={panel ? "panel" : (sheet ?? undefined)}
       data-frame={platform.windowFrame}
       onDragOver={(event) => {
@@ -365,6 +393,7 @@ export function App() {
         busy={locked}
         canExport={project.scenes.length > 0}
         frame={platform.windowFrame}
+        view={home || settingsView ? "home" : "editor"}
         exportProgress={running ? running.progress.fraction : null}
         onUndo={undoEdit}
         onRedo={redoEdit}
@@ -386,7 +415,10 @@ export function App() {
         }}
         onFilmTools={() => openPanel("film-tools")}
         onCapture={() => setDialog("capture")}
-        onSettings={() => setDialog("settings")}
+        onSettings={() => {
+          setSettingsReturn(null);
+          setDialog("settings");
+        }}
         onCommands={() => setPalette(true)}
       />
       <ExportTray
@@ -419,6 +451,17 @@ export function App() {
             acceptProject(restored);
             modalClose();
           }}
+          onSettings={() => {
+            setSettingsReturn("projects");
+            setDialog("settings");
+          }}
+        />
+      ) : settingsView ? (
+        <SettingsPage
+          project={project}
+          platform={platform}
+          onApply={applyPreferences}
+          onBack={() => setDialog(settingsReturn)}
         />
       ) : (
         <div className="app-body" inert={locked}>
@@ -718,20 +761,6 @@ export function App() {
           platform={platform}
           resources={resources}
           onCreate={acceptProject}
-          onClose={modalClose}
-        />
-      )}
-      {dialog === "settings" && (
-        <SettingsDialog
-          project={project}
-          platform={platform}
-          onSave={(preferences) => {
-            setApplicationLocale(preferences.locale);
-            setTimelineMode(preferences.timeline);
-            setTimelineZoom(preferences.timelineZoom);
-            setPreferProxies(preferences.proxyEditing);
-            edit((value) => ({ ...value, defaults: preferences.defaults }));
-          }}
           onClose={modalClose}
         />
       )}

@@ -1,26 +1,29 @@
 /* The inspector and the side panels that take its place. */
+/* The inspector is the sheet's right column. */
 .inspector {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  margin-top: 6px;
   border-left: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--panel);
+  box-shadow: 0 -1px 0 var(--line);
 }
 .inspector-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 8px 12px 16px;
+  gap: 12px;
+  padding: 14px 10px 12px 18px;
 }
 .inspector-thumb {
   display: block;
   flex: none;
-  width: 52px;
-  height: 32px;
+  width: 54px;
+  height: 34px;
   overflow: hidden;
-  border-radius: 4px;
-  background: #151517;
+  border-radius: 7px;
+  background: var(--stage-2);
 }
 .inspector-thumb img {
   width: 100%;
@@ -33,13 +36,17 @@
   min-width: 0;
 }
 .inspector-title h2 {
-  font-size: var(--fs-l);
-  font-weight: 640;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .inspector-title span {
   overflow: hidden;
-  color: var(--ink-3);
-  font-size: var(--fs-s);
+  color: var(--fg-3);
+  font-size: var(--text-xs);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -51,17 +58,17 @@
   height: 30px;
 }
 .inspector > .tool-tabs {
-  margin: 0 12px 4px;
+  margin: 0 14px 6px 16px;
 }
 .inspector-body,
 .panel-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 6px 16px 24px;
+  padding: 8px 18px 28px;
 }
 .inspector-body {
-  animation: rise-in var(--t-base) var(--ease);
+  animation: rise-in var(--dur-base) var(--ease-out);
 }
 .inspector-fields {
   display: block;
@@ -82,8 +89,8 @@
   gap: 10px;
   padding: 10px 16px;
   border-top: 1px solid var(--line);
-  color: var(--ink-2);
-  font-size: var(--fs-s);
+  color: var(--fg-2);
+  font-size: var(--text-xs);
 }
 .film-heading {
   padding-top: 16px;
@@ -126,31 +133,31 @@ img.look-art {
 }
 .tile:hover .motion-zoom-in img,
 .tile[aria-checked="true"] .motion-zoom-in img {
-  animation: kb-in 2.4s var(--ease-io) infinite alternate;
+  animation: kb-in 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-zoom-out img,
 .tile[aria-checked="true"] .motion-zoom-out img {
-  animation: kb-out 2.4s var(--ease-io) infinite alternate;
+  animation: kb-out 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-left img,
 .tile[aria-checked="true"] .motion-pan-left img {
-  animation: kb-left 2.4s var(--ease-io) infinite alternate;
+  animation: kb-left 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-right img,
 .tile[aria-checked="true"] .motion-pan-right img {
-  animation: kb-right 2.4s var(--ease-io) infinite alternate;
+  animation: kb-right 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-up img,
 .tile[aria-checked="true"] .motion-pan-up img {
-  animation: kb-up 2.4s var(--ease-io) infinite alternate;
+  animation: kb-up 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-pan-down img,
 .tile[aria-checked="true"] .motion-pan-down img {
-  animation: kb-down 2.4s var(--ease-io) infinite alternate;
+  animation: kb-down 2.4s var(--ease-in-out) infinite alternate;
 }
 .tile:hover .motion-custom img,
 .tile[aria-checked="true"] .motion-custom img {
-  animation: kb-custom 2.4s var(--ease-io) infinite alternate;
+  animation: kb-custom 2.4s var(--ease-in-out) infinite alternate;
 }
 @keyframes kb-in {
   from {
@@ -234,7 +241,7 @@ img.look-art {
   aspect-ratio: 4 / 3;
 }
 .transition-tiles .tile {
-  font-size: var(--fs-xs);
+  font-size: var(--text-xs);
   line-height: 1.25;
 }
 .shape-tiles .tile-art {
@@ -271,7 +278,7 @@ img.look-art {
   aspect-ratio: 2.35;
 }
 .tile[aria-checked="true"] .shape-art {
-  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
 }
 
 /* Words. */
@@ -285,9 +292,9 @@ img.look-art {
   gap: 5px;
   justify-items: center;
   padding: 0 0 6px;
-  border-radius: var(--radius);
-  color: var(--ink-2);
-  font-size: var(--fs-xs);
+  border-radius: var(--radius-control);
+  color: var(--fg-2);
+  font-size: var(--text-xs);
   font-weight: 540;
 }
 .type-style-art {
@@ -295,7 +302,7 @@ img.look-art {
   place-items: center;
   width: 100%;
   aspect-ratio: 16 / 10;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-sm);
   background: #151517;
   color: #fff;
 }
@@ -309,12 +316,12 @@ img.look-art {
   font-size: 13px;
 }
 .type-style[aria-pressed="true"] {
-  color: var(--ink);
+  color: var(--fg);
 }
 .type-style[aria-pressed="true"] .type-style-art {
   box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 3.5px var(--ink);
+    0 0 0 2px var(--panel),
+    0 0 0 3.5px var(--fg);
 }
 .background-swatches {
   display: flex;
@@ -326,13 +333,13 @@ img.look-art {
   height: 30px;
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 14%);
-  transition: box-shadow var(--t-fast) var(--ease);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
 }
 .background-swatches button[aria-pressed="true"] {
   box-shadow:
     inset 0 0 0 1px rgb(0 0 0 / 14%),
-    0 0 0 2px var(--surface),
-    0 0 0 4px var(--ink);
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--fg);
 }
 
 /* Nine placements for words. */
@@ -342,15 +349,15 @@ img.look-art {
   gap: 4px;
   padding: 4px;
   justify-self: start;
-  border-radius: var(--radius);
-  background: var(--well);
+  border-radius: var(--radius-control);
+  background: var(--sunken);
 }
 .placement-grid button {
   display: grid;
   place-items: center;
   height: 28px;
   border-radius: 5px;
-  transition: background var(--t-fast) var(--ease);
+  transition: background var(--dur-fast) var(--ease-out);
 }
 .placement-grid button:hover {
   background: var(--hover);
@@ -359,15 +366,15 @@ img.look-art {
   width: 14px;
   height: 4px;
   border-radius: 2px;
-  background: var(--line-2);
-  transition: background var(--t-fast) var(--ease);
+  background: var(--line-strong);
+  transition: background var(--dur-fast) var(--ease-out);
 }
 .placement-grid button[aria-pressed="true"] {
-  background: var(--surface);
+  background: var(--panel);
   box-shadow: 0 0 0 1px var(--line);
 }
 .placement-grid button[aria-pressed="true"] span {
-  background: var(--ink);
+  background: var(--fg);
 }
 
 /* Seconds with steppers. */
@@ -376,13 +383,13 @@ img.look-art {
   align-items: center;
   min-height: 36px;
   overflow: hidden;
-  border: 1px solid var(--line-2);
-  border-radius: var(--radius);
-  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--panel);
 }
 .number-wrap:focus-within {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 1px var(--ink);
+  border-color: var(--fg);
+  box-shadow: 0 0 0 1px var(--fg);
 }
 .number-wrap input[type="number"] {
   flex: 1;
@@ -392,7 +399,7 @@ img.look-art {
   background: transparent;
   text-align: center;
   font-weight: 620;
-  font-size: var(--fs-m);
+  font-size: var(--text-sm);
   -moz-appearance: textfield;
 }
 .number-wrap input::-webkit-inner-spin-button,
@@ -402,19 +409,19 @@ img.look-art {
 }
 .number-wrap .unit {
   padding-right: 10px;
-  color: var(--ink-3);
-  font-size: var(--fs-s);
+  color: var(--fg-3);
+  font-size: var(--text-xs);
 }
 .stepper {
   display: grid;
   place-items: center;
   align-self: stretch;
   width: 38px;
-  color: var(--ink-2);
+  color: var(--fg-2);
 }
 .stepper:hover:not(:disabled) {
   background: var(--hover);
-  color: var(--ink);
+  color: var(--fg);
 }
 .split-button {
   justify-self: start;
@@ -422,7 +429,7 @@ img.look-art {
 
 /* Side panels: sound, subtitles, bulk edits. */
 .side-panel {
-  animation: panel-in var(--t-base) var(--ease);
+  animation: panel-in var(--dur-base) var(--ease-out);
 }
 @keyframes panel-in {
   from {
@@ -438,13 +445,13 @@ img.look-art {
   padding: 12px 8px 8px 16px;
 }
 .panel-title h2 {
-  font-size: var(--fs-l);
+  font-size: var(--text-lg);
   font-weight: 640;
 }
 .panel-body .modal-introduction {
   margin-bottom: 12px;
-  color: var(--ink-3);
-  font-size: var(--fs-s);
+  color: var(--fg-3);
+  font-size: var(--text-xs);
 }
 .panel-body > .modal-actions {
   margin-top: 16px;
@@ -468,8 +475,8 @@ img.look-art {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border-radius: var(--radius-l);
-  background: var(--well);
+  border-radius: var(--radius-popover);
+  background: var(--sunken);
 }
 .sound-row h3,
 .subtitle-row h3 {
@@ -477,7 +484,7 @@ img.look-art {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: var(--fs-s);
+  font-size: var(--text-xs);
   font-weight: 620;
 }
 .timing-fields {
@@ -488,8 +495,8 @@ img.look-art {
 .timing-fields > label {
   display: grid;
   gap: 5px;
-  color: var(--ink-2);
-  font-size: var(--fs-s);
+  color: var(--fg-2);
+  font-size: var(--text-xs);
   font-weight: 520;
 }
 .timing-fields > label:has(textarea),
@@ -501,8 +508,8 @@ img.look-art {
 .subtitle-style-controls,
 .advanced-export {
   padding: 8px 12px;
-  border-radius: var(--radius-l);
-  background: var(--well);
+  border-radius: var(--radius-popover);
+  background: var(--sunken);
 }
 .sound-pack > :not(summary),
 .local-model-tool > :not(summary),
@@ -530,22 +537,22 @@ img.look-art {
   gap: 8px;
   padding: 6px 4px;
   border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  font-size: var(--text-xs);
 }
 .sound-pack-list > div > div {
   display: grid;
   min-width: 0;
 }
 .sound-pack-list small {
-  color: var(--ink-3);
-  font-size: var(--fs-xs);
+  color: var(--fg-3);
+  font-size: var(--text-xs);
 }
 .recorder-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: var(--fs-s);
+  font-size: var(--text-xs);
 }
 .recorder-status .button.primary {
   background: var(--record);
@@ -562,10 +569,10 @@ img.look-art {
   border-radius: 50%;
   background: var(--record);
   color: #fff;
-  font-size: var(--fs-xl);
+  font-size: var(--text-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  animation: countdown-beat 1s var(--ease) both;
+  animation: countdown-beat 1s var(--ease-out) both;
 }
 @keyframes countdown-beat {
   from {
@@ -578,7 +585,7 @@ img.look-art {
   height: 10px;
   border-radius: 50%;
   background: var(--record);
-  animation: recording-pulse 1.2s var(--ease-io) infinite alternate;
+  animation: recording-pulse 1.2s var(--ease-in-out) infinite alternate;
 }
 @keyframes recording-pulse {
   to {
@@ -588,7 +595,7 @@ img.look-art {
 .waveform {
   width: 100%;
   height: 40px;
-  color: var(--ink-3);
+  color: var(--fg-3);
   fill: currentColor;
 }
 .subtitle-manual-controls {

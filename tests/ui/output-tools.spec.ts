@@ -143,9 +143,13 @@ test("a waiting background export can be cancelled independently of the running 
     expect((await movie).suggestedFilename()).toBe("In progress.mp4");
     const notice = page.getByRole("complementary", { name: "Export queue" });
     await expect(notice.getByText("In progress.mp4")).toBeVisible();
-    const heading = (await page.locator(".inspector-heading").boundingBox())!;
+    // The export card sits on the desk column; it never covers the screen or
+    // the inspector's controls, and it does not move them.
     const tray = (await notice.boundingBox())!;
-    expect(tray.y + tray.height).toBeLessThanOrEqual(heading.y);
+    for (const covered of [".stage", ".inspector"]) {
+      const box = (await page.locator(covered).boundingBox())!;
+      expect(tray.x + tray.width).toBeLessThanOrEqual(box.x);
+    }
     await test.info().attach("finished-export", {
       body: await page.screenshot({ animations: "disabled" }),
       contentType: "image/png",

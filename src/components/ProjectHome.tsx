@@ -6,6 +6,7 @@ import {
   FolderOpen,
   Plus,
   RotateCcw,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import type { ProjectSummary } from "../../contracts/platform";
@@ -54,8 +55,10 @@ function ProjectThumbnail({ poster }: { poster?: string }) {
 
 /**
  * Films: every local film, plus ways to start a new one. A full view rather
- * than a dialog, so it reads as a place you go back to. Choosing recovery
- * always opens a separate editable copy.
+ * than a dialog, so it reads as a place you go back to. Like every miille app
+ * it is a grey desk holding a white sheet (docs/design/miille.md): the ways to
+ * start sit on the desk, in the column the editor uses for its library, and
+ * your films are the page. Choosing recovery always opens a separate copy.
  */
 export function ProjectHome({
   platform,
@@ -69,6 +72,7 @@ export function ProjectHome({
   onChanged,
   onDeleted,
   onRestored,
+  onSettings,
 }: {
   platform: CortoPlatform;
   currentId: string;
@@ -81,6 +85,7 @@ export function ProjectHome({
   onChanged: (project: Project) => void;
   onDeleted: (id: string) => void;
   onRestored: (project: Project) => void;
+  onSettings: () => void;
 }) {
   const t = useT();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -126,124 +131,153 @@ export function ProjectHome({
       cancelled = true;
     };
   }, [platform, refresh]);
+  const themes = Object.keys(THEMES) as TemplateTheme[];
   return (
     <section className="films-home" aria-labelledby="films-heading">
-      <div className="home-bar">
-        <button className="button quiet" onClick={onClose}>
-          <ArrowLeft size={16} aria-hidden="true" />
+      <nav className="home-sidebar" aria-label={t("Start a film")}>
+        <button className="home-back" onClick={onClose}>
+          <span className="home-back-icon" aria-hidden="true">
+            <ArrowLeft size={16} />
+          </span>
           {t("Back to my film")}
         </button>
-        <span className="header-spacer" />
-        <button className="button secondary" onClick={onPortable}>
-          <FolderOpen size={16} aria-hidden="true" />
-          {t("Open portable project")}
+        <p className="home-group" aria-hidden="true">
+          {t("Start")}
+        </p>
+        <button className="start-card start-empty" onClick={onNew}>
+          <span className="start-art" aria-hidden="true">
+            <Plus size={18} />
+          </span>
+          <span className="start-text">
+            <strong>{t("New film")}</strong>
+            <small aria-hidden="true">{t("Start empty")}</small>
+          </span>
         </button>
-      </div>
-      <div className="home-scroll">
-        <div className="home-content">
-          <h1 id="films-heading" ref={heading} tabIndex={-1}>
-            {t("Films")}
-          </h1>
-          <section className="home-starts" aria-label={t("Start a film")}>
-            <button className="start-card start-empty" onClick={onNew}>
-              <span className="start-art">
-                <Plus size={22} strokeWidth={1.6} aria-hidden="true" />
-              </span>
-              <strong>{t("New film")}</strong>
-              <small aria-hidden="true">{t("Start empty")}</small>
-            </button>
-            <button
-              className="start-card start-slideshow"
-              onClick={onSlideshow}
+        <button className="start-card start-slideshow" onClick={onSlideshow}>
+          <span className="start-art" aria-hidden="true">
+            <Sparkles size={18} />
+          </span>
+          <span className="start-text">
+            <strong>{t("Slideshow")}</strong>
+            <small aria-hidden="true">{t("From your photos")}</small>
+          </span>
+        </button>
+        <p className="home-group" aria-hidden="true">
+          {t("Templates")}
+        </p>
+        {themes.map((theme) => (
+          <button
+            key={theme}
+            className="start-card start-template"
+            aria-label={`${t(THEMES[theme].name)} ${t("template")}`}
+            onClick={() => onTemplate(theme)}
+          >
+            {/* Monochrome on the brand tiles: the typeface is the template's character. */}
+            <span
+              aria-hidden="true"
+              className={`start-art template-art caption-${THEMES[theme].style}`}
+              data-light={THEMES[theme].background === "#e8e5dd"}
             >
-              <span className="start-art">
-                <Sparkles size={20} strokeWidth={1.6} aria-hidden="true" />
-              </span>
-              <strong>{t("Slideshow")}</strong>
-              <small aria-hidden="true">{t("From your photos")}</small>
-            </button>
-            {(Object.keys(THEMES) as TemplateTheme[]).map((theme) => (
-              <button
-                key={theme}
-                className="start-card start-template"
-                aria-label={`${t(THEMES[theme].name)} ${t("template")}`}
-                onClick={() => onTemplate(theme)}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`start-art template-art caption-${THEMES[theme].style}`}
-                  style={{ background: THEMES[theme].background }}
-                  data-light={THEMES[theme].background === "#e8e5dd"}
-                >
-                  {t(THEMES[theme].name)}
-                </span>
-                <strong>{t(THEMES[theme].name)}</strong>
-                <small>{t("Template")}</small>
+              Aa
+            </span>
+            <span className="start-text">
+              <strong>{t(THEMES[theme].name)}</strong>
+            </span>
+          </button>
+        ))}
+        <span className="home-spacer" />
+        <button className="home-settings" onClick={onSettings}>
+          <Settings size={18} aria-hidden="true" />
+          {t("Settings")}
+        </button>
+      </nav>
+      <div className="home-sheet">
+        <div className="home-scroll">
+          <div className="home-content">
+            <header className="home-head">
+              <div>
+                <h1 id="films-heading" ref={heading} tabIndex={-1}>
+                  {t("Films")}
+                </h1>
+                <p className="home-lede">
+                  {t("Pick up where you left off, or start something new.")}
+                </p>
+              </div>
+              <button className="button secondary large" onClick={onPortable}>
+                <FolderOpen size={16} aria-hidden="true" />
+                {t("Open portable project")}
               </button>
-            ))}
-          </section>
-          <h2 className="home-section-title">{t("Recent")}</h2>
-          {error && (
-            <p role="alert" className="inline-error">
-              {error}
-            </p>
-          )}
-          {!projects && !error && (
-            <p role="status" className="home-note">
-              {t("Opening your films…")}
-            </p>
-          )}
-          {projects?.length === 0 && (
-            <p className="home-note">{t("Films you make appear here.")}</p>
-          )}
-          <div className="project-grid">
-            {projects?.map((project) => (
-              <article
-                className={`saved-film ${project.id === currentId ? "current" : ""}`}
-                key={project.id}
-              >
-                <button
-                  className="saved-film-open"
-                  disabled={!!project.unavailableReason}
-                  onClick={() => onOpen(project.id, false)}
-                  aria-label={t(`Open ${project.name}`)}
+            </header>
+            <h2 className="home-section-title">{t("Recent")}</h2>
+            {error && (
+              <p role="alert" className="inline-error">
+                {error}
+              </p>
+            )}
+            {!projects && !error && (
+              <p role="status" className="home-note">
+                {t("Opening your films…")}
+              </p>
+            )}
+            {projects?.length === 0 && (
+              <div className="home-empty">
+                <span className="home-empty-art" aria-hidden="true">
+                  <Film size={20} />
+                </span>
+                <p>{t("Films you make appear here.")}</p>
+              </div>
+            )}
+            <div className="project-grid">
+              {projects?.map((project) => (
+                <article
+                  className={`saved-film ${project.id === currentId ? "current" : ""}`}
+                  key={project.id}
                 >
-                  <ProjectThumbnail poster={posters[project.id]} />
-                  <strong>{project.name}</strong>
-                  <span>
-                    {project.sceneCount}
-                    {t(" scenes · ")}
-                    {formatTime(project.duration)}
-                    {t(" · ")}
-                    {editedLabel(project.updatedAt, locale)}
-                  </span>
-                </button>
-                {project.id === currentId && (
-                  <span className="badge current-badge">{t("Open now")}</span>
-                )}
-                <ProjectManagement
-                  project={project}
-                  platform={platform}
-                  onChanged={onChanged}
-                  onDeleted={onDeleted}
-                  onRestored={onRestored}
-                  onRefresh={() => setRefresh((value) => value + 1)}
-                />
-                {project.unavailableReason && (
-                  <p className="dialog-note">{project.unavailableReason}</p>
-                )}
-                {project.hasRecovery && (
                   <button
-                    className="text-button recover-button"
-                    onClick={() => onOpen(project.id, true)}
-                    aria-label={t(`Recover previous edit of ${project.name}`)}
+                    className="saved-film-open"
+                    disabled={!!project.unavailableReason}
+                    onClick={() => onOpen(project.id, false)}
+                    aria-label={t(`Open ${project.name}`)}
                   >
-                    <RotateCcw size={14} aria-hidden="true" />
-                    {t("Recover previous edit as a copy")}
+                    <ProjectThumbnail poster={posters[project.id]} />
+                    <strong>{project.name}</strong>
+                    <span>
+                      {project.sceneCount === 1
+                        ? t("1 scene")
+                        : `${project.sceneCount}${t(" scenes")}`}
+                      {t(" · ")}
+                      {formatTime(project.duration)}
+                      {t(" · ")}
+                      {editedLabel(project.updatedAt, locale)}
+                    </span>
                   </button>
-                )}
-              </article>
-            ))}
+                  {project.id === currentId && (
+                    <span className="badge current-badge">{t("Open now")}</span>
+                  )}
+                  <ProjectManagement
+                    project={project}
+                    platform={platform}
+                    onChanged={onChanged}
+                    onDeleted={onDeleted}
+                    onRestored={onRestored}
+                    onRefresh={() => setRefresh((value) => value + 1)}
+                  />
+                  {project.unavailableReason && (
+                    <p className="dialog-note">{project.unavailableReason}</p>
+                  )}
+                  {project.hasRecovery && (
+                    <button
+                      className="text-button recover-button"
+                      onClick={() => onOpen(project.id, true)}
+                      aria-label={t(`Recover previous edit of ${project.name}`)}
+                    >
+                      <RotateCcw size={14} aria-hidden="true" />
+                      {t("Recover previous edit as a copy")}
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </div>

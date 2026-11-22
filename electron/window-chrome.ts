@@ -17,11 +17,15 @@ import {
 import { assertMainSender } from "./project-ipc";
 
 /** Matches --titlebar in src/styles/tokens.css. */
-export const TITLE_BAR_HEIGHT = 48;
-/** Title-bar canvas and caption-symbol colours from the design tokens. */
+export const TITLE_BAR_HEIGHT = 44;
+/**
+ * Title-bar canvas and caption-symbol colours: the miille desk (--base) and
+ * secondary ink (--fg-2) from src/styles/tokens.css, so the caption buttons sit
+ * on the same grey as the title bar and the library.
+ */
 const CHROME = {
-  light: { color: "#f4f4f5", symbolColor: "#3f3f46", window: "#f4f4f5" },
-  dark: { color: "#0e0e10", symbolColor: "#bcbcc3", window: "#0e0e10" },
+  light: { color: "#f3f3f4", symbolColor: "#45454b", window: "#f3f3f4" },
+  dark: { color: "#0b0b0c", symbolColor: "#c4c4ca", window: "#0b0b0c" },
 } as const;
 
 const chrome = () =>
@@ -37,7 +41,7 @@ export function frameOptions(
     return {
       ...base,
       titleBarStyle: "hiddenInset",
-      trafficLightPosition: { x: 18, y: 16 },
+      trafficLightPosition: { x: 16, y: 15 },
     };
   if (frame === "windows")
     return {

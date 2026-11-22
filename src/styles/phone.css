@@ -14,7 +14,7 @@
     --inspector-width: 300px;
   }
   .command-search {
-    width: 200px;
+    width: 220px;
   }
 }
 
@@ -23,21 +23,43 @@
     --library-width: 216px;
     --inspector-width: 284px;
   }
+  /* The brand name and the palette's keycap stay visible down to the
+     smallest desktop window; the long label gives way first. */
   .command-search {
     width: auto;
   }
-  .command-search > span,
-  .command-search > kbd {
+  .command-search > span {
     display: none;
   }
-  .films-button > span {
+  .library-tabs > [role="tab"] {
+    padding: 0 4px;
+  }
+  .library-tabs > [role="tab"] svg {
     display: none;
+  }
+  /* Search keeps its whole width; the sort order sits under it. */
+  .library-filter {
+    flex-wrap: wrap;
+  }
+  .library-search,
+  .library-sort {
+    flex: 1 1 100%;
+  }
+  .library-sort select {
+    width: 100%;
+  }
+  /* The scene's name needs the room more than its thumbnail does. */
+  .inspector-thumb {
+    display: none;
+  }
+  .inspector-heading {
+    padding-left: 16px;
   }
   .stage-screen {
     padding: 14px 14px 6px;
   }
   .stage-controls {
-    padding: 4px 14px 2px;
+    padding: 2px 14px 4px;
   }
 }
 
@@ -56,6 +78,7 @@
     padding-left: 8px;
     padding-right: 8px;
   }
+  .films-button > span,
   .crumb-divider,
   .save-state,
   .history-actions,
@@ -113,7 +136,7 @@
     display: none;
   }
   .empty-stage h1 {
-    font-size: var(--fs-xl);
+    font-size: var(--text-xl);
   }
   .storyboard {
     max-height: 40vh;
@@ -163,7 +186,7 @@
     display: flex;
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--line);
-    background: var(--surface);
+    background: var(--panel);
   }
   .phone-tabs > button {
     flex: 1;
@@ -171,12 +194,12 @@
     justify-items: center;
     align-content: center;
     gap: 2px;
-    color: var(--ink-3);
-    font-size: var(--fs-xs);
+    color: var(--fg-3);
+    font-size: var(--text-xs);
     font-weight: 560;
   }
   .phone-tabs > button[aria-pressed="true"] {
-    color: var(--ink);
+    color: var(--fg);
   }
   /* Library, inspector and panels become sheets above the tabs. */
   .media-library,
@@ -192,7 +215,7 @@
     border: 0;
     border-radius: 16px 16px 0 0;
     box-shadow: var(--shadow-sheet);
-    animation: sheet-up var(--t-sheet) var(--ease);
+    animation: sheet-up var(--dur-sheet) var(--ease-out);
   }
   .media-library::before,
   .inspector::before {
@@ -202,7 +225,7 @@
     height: 4px;
     margin: 8px auto 2px;
     border-radius: 2px;
-    background: var(--line-2);
+    background: var(--line-strong);
   }
   .editor-shell[data-sheet="library"] .media-library,
   .editor-shell[data-sheet="edit"] .inspector,
@@ -215,7 +238,7 @@
     z-index: 55;
     display: block;
     background: var(--scrim);
-    animation: fade-in var(--t-base) var(--ease);
+    animation: fade-in var(--dur-base) var(--ease-out);
   }
   .notices {
     bottom: calc(var(--phone-tabs) + 16px);
@@ -234,7 +257,6 @@
   }
   .preset-grid,
   .slideshow-layout,
-  .settings-fields,
   .shortcuts {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -250,7 +272,7 @@
     border-radius: 16px 16px 0 0;
   }
   .modal[open] {
-    animation: sheet-up var(--t-sheet) var(--ease);
+    animation: sheet-up var(--dur-sheet) var(--ease-out);
   }
 }
 

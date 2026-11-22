@@ -230,7 +230,8 @@ export function useEditorCommands({
       {
         id: "settings",
         group: "Corto",
-        label: "Settings & defaults",
+        label: "Settings",
+        shortcut: shortcutLabel(","),
         run: actions.settings,
       },
       {
