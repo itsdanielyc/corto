@@ -1,10 +1,19 @@
 /* Narrower windows: the same layout, tighter; phones get tabs and sheets. */
-:root[data-theme="dark"] .about-lockup {
-  filter: invert(1);
+.about-lockup-white {
+  display: none;
+}
+:root[data-theme="dark"] .about-lockup-black {
+  display: none;
+}
+:root[data-theme="dark"] .about-lockup-white {
+  display: block;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .about-lockup {
-    filter: invert(1);
+  :root:not([data-theme="light"]) .about-lockup-black {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .about-lockup-white {
+    display: block;
   }
 }
 

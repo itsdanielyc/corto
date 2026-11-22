@@ -90,10 +90,16 @@ export function EditorDialogs({
           onClose={onClose}
           className="about-dialog"
         >
+          {/* The brand kit's black and white lockups, never a recoloured one. */}
           <img
-            className="about-lockup"
+            className="about-lockup about-lockup-black"
             src={`${import.meta.env.BASE_URL}brand/corto-lockup-black.svg`}
             alt="Corto"
+          />
+          <img
+            className="about-lockup about-lockup-white"
+            src={`${import.meta.env.BASE_URL}brand/corto-lockup-white.svg`}
+            alt=""
           />
           <p className="modal-introduction">
             {t("Corto by miille · ")}
