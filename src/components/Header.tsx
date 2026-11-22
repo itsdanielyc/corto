@@ -113,7 +113,9 @@ function SaveState({ status }: { status: SaveStatus }) {
     >
       {status === "blank" ? null : status === "saved" ? (
         <Check size={13} aria-hidden="true" />
-      ) : status === "saving" || status === "pending" || status === "loading" ? (
+      ) : status === "saving" ||
+        status === "pending" ||
+        status === "loading" ? (
         <LoaderCircle size={13} className="spin" aria-hidden="true" />
       ) : (
         <span className="status-dot" aria-hidden="true" />

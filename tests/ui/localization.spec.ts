@@ -33,9 +33,7 @@ test("Spanish settings persist while personal project names and captions remain 
   await page
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Settings", exact: true })
-    .click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Language", { exact: true })).toBeDisabled();
   await page.waitForFunction(
     () => typeof window.cortoReleasePreferences === "function",

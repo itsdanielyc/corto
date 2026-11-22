@@ -184,7 +184,9 @@ export function SettingsPage({
       setError("");
     } catch (failure) {
       setError(
-        failure instanceof Error ? failure.message : t("Couldn't save settings"),
+        failure instanceof Error
+          ? failure.message
+          : t("Couldn't save settings"),
       );
     }
   };
@@ -333,7 +335,9 @@ export function SettingsPage({
                     <Row
                       icon={Languages}
                       title={t("Language")}
-                      description={t("Words in the interface. Your own titles stay as you wrote them.")}
+                      description={t(
+                        "Words in the interface. Your own titles stay as you wrote them.",
+                      )}
                     >
                       <select
                         aria-label={t("Language")}
@@ -342,7 +346,8 @@ export function SettingsPage({
                           change(
                             {
                               ...latest.current,
-                              locale: event.target.value as Preferences["locale"],
+                              locale: event.target
+                                .value as Preferences["locale"],
                             },
                             true,
                           )
@@ -375,14 +380,17 @@ export function SettingsPage({
                   <Row
                     icon={Crop}
                     title={t("Photo framing")}
-                    description={t("Fill the frame, or show the whole photo with bars.")}
+                    description={t(
+                      "Fill the frame, or show the whole photo with bars.",
+                    )}
                   >
                     <select
                       aria-label={t("Default photo framing")}
                       value={preferences.defaults.fit}
                       onChange={(event) =>
                         defaults({
-                          fit: event.target.value as Preferences["defaults"]["fit"],
+                          fit: event.target
+                            .value as Preferences["defaults"]["fit"],
                         })
                       }
                     >
@@ -464,7 +472,9 @@ export function SettingsPage({
                   <Row
                     icon={MonitorPlay}
                     title={t("Export size")}
-                    description={t("What Export offers first. You can change it for each film.")}
+                    description={t(
+                      "What Export offers first. You can change it for each film.",
+                    )}
                   >
                     <select
                       aria-label={t("Default export resolution")}
@@ -492,7 +502,9 @@ export function SettingsPage({
                   <Row
                     icon={GalleryHorizontalEnd}
                     title={t("Use proportional timeline")}
-                    description={t("Scenes take room by their length instead of sitting as equal cards.")}
+                    description={t(
+                      "Scenes take room by their length instead of sitting as equal cards.",
+                    )}
                   >
                     <label className="switch">
                       <input
@@ -526,7 +538,9 @@ export function SettingsPage({
                   <Row
                     icon={Zap}
                     title={t("Prefer editing proxies when available")}
-                    description={t("Plays smaller copies of large clips while you edit. Export always uses the originals.")}
+                    description={t(
+                      "Plays smaller copies of large clips while you edit. Export always uses the originals.",
+                    )}
                   >
                     <label className="switch">
                       <input
@@ -551,8 +565,12 @@ export function SettingsPage({
                     title={t("Local models")}
                     description={
                       modelsRemoved
-                        ? t("Removed. Corto downloads them again if you use those tools.")
-                        : t("Removes the models. Corto downloads them again the next time you use those tools.")
+                        ? t(
+                            "Removed. Corto downloads them again if you use those tools.",
+                          )
+                        : t(
+                            "Removes the models. Corto downloads them again the next time you use those tools.",
+                          )
                     }
                   >
                     <button
@@ -575,12 +593,16 @@ export function SettingsPage({
                   <Row
                     icon={RefreshCw}
                     title={t("Check for new releases when Corto opens")}
-                    description={t("Checking contacts GitHub for public release information only.")}
+                    description={t(
+                      "Checking contacts GitHub for public release information only.",
+                    )}
                   >
                     <label className="switch">
                       <input
                         type="checkbox"
-                        aria-label={t("Check for new releases when Corto opens")}
+                        aria-label={t(
+                          "Check for new releases when Corto opens",
+                        )}
                         checked={preferences.checkUpdates}
                         onChange={(event) =>
                           change({

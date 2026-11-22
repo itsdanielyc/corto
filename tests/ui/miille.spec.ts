@@ -55,16 +55,18 @@ test("a settings change is kept without a Save button", async ({ page }) => {
   await expect(
     page.getByLabel("Default photo duration", { exact: true }),
   ).toHaveValue("7");
-  await expect(page.getByRole("button", { name: /save settings/i })).toHaveCount(
-    0,
-  );
+  await expect(
+    page.getByRole("button", { name: /save settings/i }),
+  ).toHaveCount(0);
 });
 
 test("New film starts at once, and the film you were editing stays in Films", async ({
   page,
 }) => {
   await openExampleFilm(page);
-  await page.getByRole("button", { name: "Project actions", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Project actions", exact: true })
+    .click();
   await page.getByRole("menuitem", { name: "New film", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByTestId("scene-card")).toHaveCount(0);

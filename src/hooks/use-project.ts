@@ -15,12 +15,7 @@ import type { CortoPlatform } from "../platform/types";
  * nothing to save yet, so the title bar says nothing rather than "Saved".
  */
 export type SaveStatus =
-  | "loading"
-  | "blank"
-  | "pending"
-  | "saving"
-  | "saved"
-  | "error";
+  "loading" | "blank" | "pending" | "saving" | "saved" | "error";
 const AUTOSAVE_DELAY_MS = 500;
 
 /** Keep pure edit history separate from serialized asynchronous persistence. */

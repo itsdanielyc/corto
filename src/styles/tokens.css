@@ -13,7 +13,8 @@
   /* Type. Inter for the interface; film text styles keep their own fonts. */
   --font-ui:
     "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Cascadia Mono", "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-mono:
+    "Cascadia Mono", "JetBrains Mono Variable", ui-monospace, monospace;
   --text-xs: 13px; /* smallest text anywhere: meta, counts, keycaps */
   --text-sm: 14px; /* buttons, chips, field labels, menus, secondary rows */
   --text-md: 15px; /* body and inputs */

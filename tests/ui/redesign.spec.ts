@@ -304,9 +304,7 @@ test("the chosen appearance applies at once and survives a reload", async ({
   await page
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Settings", exact: true })
-    .click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await page
     .getByRole("radiogroup", { name: "Appearance" })
     .getByRole("radio", { name: "Dark", exact: true })

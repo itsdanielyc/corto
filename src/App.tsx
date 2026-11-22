@@ -57,9 +57,7 @@ export function App() {
   const [framing, setFraming] = useState(false);
   const [sheet, setSheet] = useState<PhoneSheet>(null);
   const [dropSummary, setDropSummary] = useState("");
-  const [settingsReturn, setSettingsReturn] = useState<"projects" | null>(
-    null,
-  );
+  const [settingsReturn, setSettingsReturn] = useState<"projects" | null>(null);
   const {
     platform,
     error,

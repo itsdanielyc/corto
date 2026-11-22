@@ -524,7 +524,9 @@ export const Storyboard = memo(function Storyboard({
                 ))}
               </div>
               <p className="empty-storyboard-text">
-                {t("Scenes line up here. Each photo or clip becomes one; drag to change the order.")}
+                {t(
+                  "Scenes line up here. Each photo or clip becomes one; drag to change the order.",
+                )}
               </p>
             </div>
           )}
