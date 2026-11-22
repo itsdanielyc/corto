@@ -362,3 +362,25 @@ Phone geometry and tap actions were exercised in Chromium touch emulation at 320
 | UTC | Level | Behavior or finding | Platform | Run |
 |---|---|---|---|---|
 | 16:36–16:39 | L4/L5 | With coarse-pointer controls at 320 × 568, the empty reel covered “Try an example”. Both initial panel checks failed at the entry point with “reel-bar … intercepts pointer”. The empty stage now uses the available height and scrolls when needed. The phone cases exercise coarse-pointer layouts and enter the example by touch. | Windows x64 Chromium, 320 × 568 and 390 × 844 phone layouts, 1024 and 1440 px desktop layouts | After the CSS change, all ten cases in `npx playwright test tests/ui/panel-layout.spec.ts --workers=2` passed in 41.6 s. The same cases run on each browser OS in [PR #22 checks](https://github.com/itsdanielyc/corto/pull/22/checks). |
+
+## 2026-11-22: miille family (branch design/miille-family)
+
+Local runs on Windows x64 (this machine), times UTC. Hosted runs follow under the same date when the branch is pushed.
+
+| UTC | Level | Claim | Platform | Evidence |
+|---|---|---|---|---|
+| before 02:56 | L0 | Renderer, Electron and test sources type-check after the family tokens, shell, Films, Settings and flow changes. | windows-x64, local | `npm run typecheck`, exit 0 |
+| before 02:56 | L1/L2 | 67 unit and contract checks pass. | windows-x64, local | `npx vitest run`, 22 files, 67 passed |
+| before 02:56 | L4 | Settings as a page: the appearance radio cards apply at once and survive a reload; choosing Spanish applies when going back. Rewritten from the dialog versions; seen red with the theme not applied (Expected "dark", Received "") and with settings not applied (timed out waiting for "Atrás"). | windows-x64, local, Chromium | `npx playwright test tests/ui/redesign.spec.ts tests/ui/localization.spec.ts`, 13 passed |
+| before 02:56 | L4 | The background export card sits on the desk column and never covers the stage or the inspector. Rewritten from "tray above the inspector heading"; seen red with the card moved over the stage (Expected <= 216, Received 612). | windows-x64, local, Chromium | `npx playwright test tests/ui/output-tools.spec.ts -g "waiting background export"`, 1 passed |
+| before 02:56 | L4 | An untouched film shows no save state and the first edit is saved; Settings returns to Films or to the film it was opened from; a settings change is kept without a Save button. Each seen red: "blank" vs "saved", Films heading not visible, Expected "7" Received "5". | windows-x64, local, Chromium | `npx playwright test tests/ui/miille.spec.ts`, passed |
+| before 02:56 | L4 | New film starts at once and leaves no empty film in Films (seen red: 4 scene cards left; and 2 Untitled films before saving blank films was stopped). A slideshow from Films chooses its own photos (seen red with chosen photos dropped: 0 scenes). A removed scene comes back from the toast, and a later edit retires the offer (seen red: 3 cards after Undo; toast still offered after another edit). | windows-x64, local, Chromium | `npx playwright test tests/ui/miille.spec.ts`, 6 passed |
+| 02:56 | L0 | Renderer, Electron and test sources type-check on the final branch head. | windows-x64, local | `npm run typecheck`, exit 0 at 02:56:51 |
+| 02:56 | L1/L2 | 67 unit and contract checks pass on the final branch head. | windows-x64, local | `npx vitest run`, 67 passed at 02:56:54 |
+| 02:56–02:58 | L4/L5 | The whole browser suite passes except tier 3 pixels, which change by design and are recaptured by the snapshots workflow on the runners. Tier 1 (ARIA) and tier 2 (geometry) were refreshed locally for the new layout and reviewed line by line. | windows-x64, local, Chromium | `npx playwright test`, 65 passed, 1 failed (tier 3), 2 skipped |
+
+### Unverified (this branch)
+
+- Tier 3 pixel baselines on Linux, Windows and macOS (snapshots workflow).
+- Every hosted target: L0–L6 and the installers (L7).
+- The Windows caption buttons and macOS traffic lights against the 44 px title bar in a packaged build.
