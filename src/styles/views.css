@@ -1232,3 +1232,6 @@ progress::-moz-progress-bar {
 .editor-shell:has(> .export-tray) .home-sidebar {
   padding-bottom: 140px;
 }
+.preset-grid[hidden] {
+  display: none;
+}

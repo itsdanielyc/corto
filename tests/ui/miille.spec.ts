@@ -312,3 +312,16 @@ test("after the saved film fails to load, an edit says Not saved instead of Savi
   await expect(status).toHaveAttribute("data-status", "error");
   await expect(status).toHaveText("Not saved");
 });
+
+test("a sound-only export does not offer picture sizes", async ({ page }) => {
+  await openExampleFilm(page);
+  await page.getByRole("button", { name: "Export movie", exact: true }).click();
+  const tv = page.getByRole("radio", { name: /TV \/ Full HD/ });
+  await expect(tv).toBeVisible();
+  await page
+    .getByText("Format, quality & export range", { exact: true })
+    .click();
+  await page.getByLabel("Export format", { exact: true }).selectOption("wav");
+  await expect(tv).toBeHidden();
+  await expect(page.getByText("Where will it be watched?")).toHaveCount(0);
+});

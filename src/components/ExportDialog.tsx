@@ -144,6 +144,7 @@ export function ExportDialog({
       ? settings.format.toUpperCase()
       : browser?.label;
   const resolution = settings.resolution;
+  const audioOnly = settings.format === "wav" || settings.format === "m4a";
   const dimensions = frameDimensions(project.ratio, resolution);
   const preset = ["tv", "phone", "small"].includes(settings.preset)
     ? (settings.preset as keyof typeof EXPORT_PRESETS)
@@ -297,8 +298,9 @@ export function ExportDialog({
             </span>
           </div>
           <fieldset className="export-options" disabled={!!progress}>
-            <legend>{t("Where will it be watched?")}</legend>
-            <div className="preset-grid">
+            {/* Sound-only formats have no picture size, so the screen presets step aside. */}
+            {!audioOnly && <legend>{t("Where will it be watched?")}</legend>}
+            <div className="preset-grid" hidden={audioOnly}>
               {(["tv", "phone", "small"] as const).map((id) => {
                 const option = EXPORT_PRESETS[id];
                 const Icon = PRESET_ICONS[id];
