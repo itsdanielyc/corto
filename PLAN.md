@@ -119,6 +119,10 @@ Ruling: the library stays on the desk rather than on a white panel — Films and
 Ruling: the library tabs keep the names Media, Music and Titles — renaming Titles to Text would put two tabs named Text on screen (the inspector's words tab), which is worse for people and for screen readers. Cost if wrong: the phone's Text tab and the library's Titles tab keep different names.
 Ruling: removing a film from Films still asks first — it cannot be undone, which is the family's one reason to ask. Cost if wrong: one extra click for an irreversible action.
 
+### PR #23 review (2026-11-23)
+
+The review amended film persistence, Settings writes, slideshow selection, keyboard navigation and touch access to film management. The packaged Windows title bar was checked in both themes at the minimum supported width. The review section of VERIFICATION.md records the reproductions and runner evidence for slices 34–39.
+
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
 - Greeting form/clear flow → editor import, edit, undo, portable save/open and error recovery.

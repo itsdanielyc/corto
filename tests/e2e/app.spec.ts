@@ -130,7 +130,18 @@ test.describe("corto in the real shell", () => {
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
-    await win.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(win.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
+    // The compositor can present the first-launch fade before the controls are readable.
+    await expect(win.locator(".empty-stage")).toHaveCSS("opacity", "1");
+    await win.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+    });
     // A visible X11 window can still have no frame to capture. Subscribe
     // before requesting a repaint so the artifact is a presented frame.
     const png = await app.evaluate(({ BrowserWindow }) => {
