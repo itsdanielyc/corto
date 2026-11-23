@@ -2,7 +2,7 @@
   "name": "corto",
   "productName": "Corto",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A local, account-free home video and slideshow maker for Windows, macOS, Linux and the web.",
   "author": "itsdanielyc <itsdanielyc@users.noreply.github.com>",
   "license": "MIT",

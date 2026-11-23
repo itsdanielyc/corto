@@ -404,3 +404,10 @@ Local runs on Windows x64 (this machine), times UTC. Hosted runs follow under th
 | 01:30–01:34 | L4 | The Settings shortcut, animated GIF and audio-only WAV journeys each passed 20 consecutive repetitions. Forcing the encoder to return MP4 made both file checks fail on their signatures. Both passed after restoring the encoder. | windows-x64, Chromium | `playwright test tests/ui/miille.spec.ts tests/ui/output-tools.spec.ts -g 'Settings opened from Films by its shortcut\|exports an actual' --repeat-each=20 --workers=2`, 60 passed. The two format cases expected GIF and RIFF and received MP4 bytes. |
 | 01:32–01:33 | L6 | The startup screenshot waits for the new film and its entrance animation to finish. In the first hosted contact sheet, some renderer captures showed the editor while it was still opening. | windows-x64 | `tests/e2e/app.spec.ts` failed with opacity 0.5 when the stage was deliberately held halfway through its fade. The restored real-shell suite passed all nine standard journeys. |
 | 01:26–01:34 | L0–L6 hosted | All 14 standard jobs passed on e7fa69b, including the Windows browser job that failed on the incoming PR. Reviewed the 18 real-shell captures. | Windows x64, Linux x64, macOS arm64 and Intel | [CI 45094565810](https://github.com/itsdanielyc/corto/actions/runs/45094565810). Three opt-in diagnostics were skipped. Installer round trips run on main. |
+
+## 2026-11-23 release of v0.1.3
+
+| UTC | Level | Claim | Platform | Evidence |
+|---|---|---|---|---|
+| Before merge | L0–L6 | The final PR head ce0aa6a passed all 14 standard jobs. Its startup captures show the settled editor on all four desktop targets. | Windows x64, Linux x64, macOS arm64 and Intel, production web | [CI 45095471228](https://github.com/itsdanielyc/corto/actions/runs/45095471228), merged in [PR 23](https://github.com/itsdanielyc/corto/pull/23). |
+| 08:34 | L0–L2 | The manifest, lockfile and release notes identify 0.1.3. The release candidate passed all three TypeScript configurations and all 67 unit and contract checks. | windows-x64, local | `npm run typecheck` and `npm run test:unit`, both exit 0. |

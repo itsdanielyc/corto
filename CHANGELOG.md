@@ -2,8 +2,19 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-23
+
+### Changed
+
+- Edit titles and photo framing directly on the preview, choose transitions between scene cards, and keep sound, subtitles and bulk edits beside the film. The command palette opens with Ctrl+K or ⌘K.
+- Films brings recent projects, templates and slideshows together. A new slideshow can choose its own photos and clips. The editor and Films share light, dark and system appearances, with layouts for phones and desktop windows.
+- Settings opens with Ctrl+, or ⌘+, saves each change, and returns to the page it came from. Background exports show progress while you edit. Removing scenes offers Undo.
+
 ### Fixed
 
+- Unnamed films keep edits that leave the storyboard empty, including deleting the last title card or changing only the aspect ratio. Switching films protects edits when local storage fails.
+- Rapid Settings changes are saved in order. Changing a device preference preserves the film's own defaults, and new title cards use the selected style and background.
+- Cancelling a file choice or slideshow returns to Films. Deselected slideshow photos stay out of the new project. Film-management controls are reachable by keyboard and on narrow touch screens.
 - "Fade through black" no longer turns title cards and other plain-colour scenes green in exported movies, GIFs and web exports; photo fades keep their colours.
 - Exports and five-second samples that start partway through a transition keep their sound, and no longer fail when the film has music.
 - Animated picture-in-picture and shape layers that shrink no longer leave a smear of earlier frames, and rotated layers that grow are no longer clipped.
