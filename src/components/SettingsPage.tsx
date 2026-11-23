@@ -26,14 +26,12 @@ import { preferencesSchema } from "../../contracts/creative";
 import type { Preferences, Project } from "../../contracts/project";
 import type { UpdateInformation } from "../../contracts/services";
 import type { CortoPlatform } from "../platform/types";
+import type { PreferenceStore } from "../platform/preferences";
 import { TRANSITION_CHOICES } from "./tools/choice-lists";
 import { loadTheme, saveTheme } from "../platform/appearance";
 
 type ThemeChoice = ReturnType<typeof loadTheme>;
 type SectionId = "general" | "scenes" | "timeline" | "downloads" | "updates";
-
-/** How long a burst of edits waits before it is written, so typing a number saves once. */
-const SAVE_DELAY_MS = 350;
 
 const SECTIONS: readonly {
   id: SectionId;
@@ -119,12 +117,16 @@ function ThemePreview({ kind }: { kind: ThemeChoice }) {
 export function SettingsPage({
   project,
   platform,
+  preferenceStore,
   onApply,
+  onSaveError,
   onBack,
 }: {
   project: Project;
   platform: CortoPlatform;
-  onApply: (preferences: Preferences) => void;
+  preferenceStore: PreferenceStore;
+  onApply: (next: Preferences, previous: Preferences) => void;
+  onSaveError: (error: unknown) => void;
   onBack: () => void;
 }) {
   const t = useT();
@@ -142,17 +144,19 @@ export function SettingsPage({
   const [modelsRemoved, setModelsRemoved] = useState(false);
   const [ready, setReady] = useState(!platform.loadPreferences);
   const [theme, setTheme] = useState(loadTheme);
-  const pending = useRef<number | null>(null);
   const latest = useRef(preferences);
+  const saved = useRef(preferences);
 
   useEffect(() => {
     let cancelled = false;
-    void platform
-      .loadPreferences?.()
-      .then((saved) => {
+    void preferenceStore
+      .load()
+      .then((value) => {
         if (cancelled) return;
-        latest.current = saved;
-        setPreferences(saved);
+        if (value) {
+          saved.current = latest.current = value;
+          setPreferences(value);
+        }
         setReady(true);
       })
       .catch((failure) => {
@@ -161,7 +165,7 @@ export function SettingsPage({
     return () => {
       cancelled = true;
     };
-  }, [platform]);
+  }, [preferenceStore]);
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -181,47 +185,24 @@ export function SettingsPage({
     return () => window.removeEventListener("keydown", escape);
   }, [onBack]);
 
-  const write = async (next: Preferences) => {
-    try {
-      const parsed = preferencesSchema.parse(next);
-      await platform.savePreferences?.(parsed);
-      onApply(parsed);
-      setError("");
-    } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : t("Couldn't save settings"),
-      );
-    }
-  };
-
-  // Write any edit still waiting when the page closes.
-  const writeLatest = useRef(write);
-  writeLatest.current = write;
-  useEffect(
-    () => () => {
-      if (pending.current === null) return;
-      window.clearTimeout(pending.current);
-      void writeLatest.current(latest.current);
-    },
-    [],
-  );
-
-  const change = (next: Preferences, immediately = false) => {
+  const change = (next: Preferences) => {
     if (!ready) return;
     latest.current = next;
     setPreferences(next);
-    if (pending.current !== null) window.clearTimeout(pending.current);
-    pending.current = null;
-    if (immediately) {
-      void write(next);
-      return;
-    }
-    pending.current = window.setTimeout(() => {
-      pending.current = null;
-      void write(latest.current);
-    }, SAVE_DELAY_MS);
+    void preferenceStore.save(next).then(
+      () => {
+        const previous = saved.current;
+        saved.current = next;
+        onApply(next, previous);
+      },
+      (failure: unknown) => {
+        if (latest.current === next) {
+          latest.current = saved.current;
+          setPreferences(saved.current);
+        }
+        onSaveError(failure);
+      },
+    );
   };
   const defaults = (changes: Partial<Preferences["defaults"]>) =>
     change({
@@ -321,19 +302,20 @@ export function SettingsPage({
                         ["dark", "Dark", Moon],
                       ] as const
                     ).map(([id, label, Icon]) => (
-                      <button
-                        key={id}
-                        role="radio"
-                        aria-checked={theme === id}
-                        className="theme-choice"
-                        onClick={() => chooseTheme(id)}
-                      >
+                      <label key={id} className="theme-choice">
+                        <input
+                          type="radio"
+                          name="appearance"
+                          value={id}
+                          checked={theme === id}
+                          onChange={() => chooseTheme(id)}
+                        />
                         <ThemePreview kind={id} />
                         <span className="theme-choice-label">
                           <Icon size={16} aria-hidden="true" />
                           {t(label)}
                         </span>
-                      </button>
+                      </label>
                     ))}
                   </div>
                   <div className="settings-rows">
@@ -348,14 +330,10 @@ export function SettingsPage({
                         aria-label={t("Language")}
                         value={preferences.locale}
                         onChange={(event) =>
-                          change(
-                            {
-                              ...latest.current,
-                              locale: event.target
-                                .value as Preferences["locale"],
-                            },
-                            true,
-                          )
+                          change({
+                            ...latest.current,
+                            locale: event.target.value as Preferences["locale"],
+                          })
                         }
                       >
                         <option value="en">English</option>

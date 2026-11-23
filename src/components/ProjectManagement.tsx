@@ -49,6 +49,7 @@ export function ProjectManagement({
     }
   };
   const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
@@ -62,16 +63,33 @@ export function ProjectManagement({
     <div
       className="project-management"
       ref={panel}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false);
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && open) {
           event.stopPropagation();
           setOpen(false);
+          trigger.current?.focus();
         }
       }}
     >
       <button
+        ref={trigger}
         className="film-more"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open) {
+            setName(project.name);
+            setRemove(false);
+            setVersions(null);
+            setError("");
+          }
+          setOpen(!open);
+        }}
         aria-expanded={open}
         aria-label={t("Manage ") + project.name}
         title={t("Manage ") + project.name}

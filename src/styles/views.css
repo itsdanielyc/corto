@@ -270,14 +270,24 @@
 .project-management {
   position: absolute;
   top: 8px;
+  left: 8px;
   right: 8px;
   z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.project-management > * {
+  pointer-events: auto;
+}
+.project-management:has(.film-panel) {
+  z-index: 6;
 }
 .film-more {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   border-radius: 9px;
   background: rgb(12 12 13 / 62%);
   color: #ffffff;
@@ -292,6 +302,11 @@
 .film-more[aria-expanded="true"] {
   opacity: 1;
 }
+@media (hover: none) {
+  .film-more {
+    opacity: 1;
+  }
+}
 .film-more:hover {
   background: rgb(12 12 13 / 80%);
 }
@@ -301,9 +316,11 @@
 }
 .film-panel {
   position: absolute;
-  top: 40px;
+  top: calc(100% + 8px);
   right: 0;
-  width: 300px;
+  width: min(300px, 100%);
+  max-height: 60dvh;
+  overflow-y: auto;
   padding: 16px;
   border-radius: var(--radius-popover);
   background: var(--raised);
@@ -1151,6 +1168,7 @@ progress::-moz-progress-bar {
   margin-bottom: 12px;
 }
 .theme-choice {
+  position: relative;
   display: grid;
   gap: 12px;
   padding: 10px 10px 14px;
@@ -1163,8 +1181,22 @@ progress::-moz-progress-bar {
 .theme-choice:hover {
   box-shadow: 0 0 0 1px var(--fg-3);
 }
-.theme-choice[aria-checked="true"] {
+.theme-choice input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.theme-choice:has(input:checked) {
   box-shadow: 0 0 0 2px var(--fg);
+}
+.theme-choice:has(input:focus-visible) {
+  outline: 2px solid var(--fg);
+  outline-offset: 4px;
 }
 .theme-choice-label {
   display: inline-flex;

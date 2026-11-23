@@ -18,7 +18,7 @@ import { soundAnalysis } from "../media/sound-analysis";
 import { bundledSoundFile } from "../media/bundled-sounds";
 import { inspectFile, posterFromUrl } from "../media/import";
 import { importMedia } from "../media/phone";
-import { addAsset } from "../domain/project";
+import { addAssets } from "../domain/project";
 import type { MediaResources } from "../hooks/use-resources";
 import { useDraftRequest } from "../hooks/use-draft-request";
 /** Below this many seconds per photo a slideshow starts to feel rushed. */
@@ -62,72 +62,79 @@ export function SlideshowDialog({
   project,
   platform,
   resources = {},
+  saveCurrent,
   onCreate,
   onClose,
 }: {
   project: Project;
   platform: CortoPlatform;
   resources?: MediaResources;
+  saveCurrent: () => Promise<void>;
   onCreate: (project: Project) => void;
   onClose: () => void;
 }) {
   const t = useT();
   // Photos chosen here, for a slideshow started from Films or with more
   // moments than the open film holds. They join the new film only.
-  const [chosen, setChosen] = useState<
-    { asset: MediaAsset; original?: MediaAsset; poster: string | null }[]
-  >([]);
+  type ImportedMoment = {
+    asset: MediaAsset;
+    original?: MediaAsset;
+    poster: string | null;
+  };
+  const [chosen, setChosen] = useState<ReadonlyMap<string, ImportedMoment>>(
+    () => new Map(),
+  );
   const [importing, setImporting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const media = [
-    ...Object.values(project.assets).filter(
-      (asset) =>
-        ["image", "video"].includes(asset.kind) &&
-        !asset.isOriginalOnly &&
-        !asset.isProxy,
-    ),
-    ...chosen.map((entry) => entry.asset),
-  ];
-  const posterOf = (id: string) =>
-    resources[id]?.poster ??
-    chosen.find((entry) => entry.asset.id === id)?.poster ??
-    null;
-  // An import still running when the dialog closes must not touch its state.
-  const open = useRef(true);
-  useEffect(
-    () => () => {
-      open.current = false;
-    },
-    [],
+  const media = useMemo(
+    () => [
+      ...Object.values(project.assets).filter(
+        (asset) =>
+          ["image", "video"].includes(asset.kind) &&
+          !asset.isOriginalOnly &&
+          !asset.isProxy,
+      ),
+      ...Array.from(chosen.values(), (entry) => entry.asset),
+    ],
+    [project.assets, chosen],
   );
+  const posterOf = (id: string) =>
+    resources[id]?.poster ?? chosen.get(id)?.poster ?? null;
+  const beginImport = useDraftRequest();
   const [selected, setSelected] = useState(
-    new Set(media.map((asset) => asset.id)),
+    () => new Set(media.map((asset) => asset.id)),
   );
   const addFiles = async (files: File[]) => {
+    const signal = beginImport();
     setImporting(true);
     setError(null);
-    const added: typeof chosen = [];
+    const added: ImportedMoment[] = [];
     const failures: string[] = [];
     for (const file of files) {
+      if (signal.aborted) return;
       try {
         const { asset, original } = await importMedia(file, platform);
+        if (signal.aborted) return;
         if (asset.kind !== "image" && asset.kind !== "video") continue;
         // The poster comes from the converted picture, so HEIC and TIFF show
         // too; it is a small data URL, so there is nothing to revoke.
-        const poster = await posterFromUrl(
-          asset,
-          await platform.assetUrl(asset.id),
-        ).catch(() => null);
+        const poster = await platform
+          .assetUrl(asset.id)
+          .then((url) => posterFromUrl(asset, url))
+          .catch(() => null);
         added.push({ asset, original, poster });
       } catch (failure) {
         failures.push(
           `${file.name}: ${failure instanceof Error ? failure.message : String(failure)}`,
         );
       }
-      if (!open.current) return;
     }
-    if (!open.current) return;
-    setChosen((previous) => [...previous, ...added]);
+    if (signal.aborted) return;
+    setChosen((previous) => {
+      const next = new Map(previous);
+      for (const entry of added) next.set(entry.asset.id, entry);
+      return next;
+    });
     setSelected((previous) => {
       const next = new Set(previous);
       added.forEach((entry) => next.add(entry.asset.id));
@@ -165,9 +172,7 @@ export function SlideshowDialog({
       sortMedia(
         Array.from(
           selected,
-          (id) =>
-            project.assets[id] ??
-            chosen.find((entry) => entry.asset.id === id)?.asset,
+          (id) => project.assets[id] ?? chosen.get(id)?.asset,
         ).filter((asset) => !!asset),
         order,
       ),
@@ -201,17 +206,20 @@ export function SlideshowDialog({
     setBusy(true);
     setError(null);
     try {
-      let source = project;
-      for (const entry of chosen) {
-        if (entry.original) source = addAsset(source, entry.original);
-        source = addAsset(source, entry.asset);
+      const additions: MediaAsset[] = [];
+      for (const id of selected) {
+        const entry = chosen.get(id);
+        if (!entry) continue;
+        if (entry.original) additions.push(entry.original);
+        additions.push(entry.asset);
       }
       if (themeMusic.track) {
         const { asset, file } = themeMusic.track;
         await platform.putAsset(asset, file);
         signal.throwIfAborted();
-        source = addAsset(source, asset);
+        additions.push(asset);
       }
+      const source = addAssets(project, additions);
       const analysis =
         beats && music && !template
           ? await soundAnalysis(platform, source, music)
@@ -249,11 +257,9 @@ export function SlideshowDialog({
             ? scene
             : { ...scene, caption: t(scene.caption) },
         );
-      if (project.scenes.length || Object.keys(project.assets).length)
-        await platform.saveProject(project);
+      await saveCurrent();
       signal.throwIfAborted();
       onCreate(draft);
-      onClose();
     } catch (failure) {
       if (signal.aborted) return;
       setError(

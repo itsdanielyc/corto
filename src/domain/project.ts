@@ -1,6 +1,7 @@
 import {
   assertSceneMedia,
   DEFAULT_PHOTO_SECONDS,
+  DEFAULT_PROJECT_NAME,
   LIMITS,
   mediaAssetSchema,
   projectSchema,
@@ -12,22 +13,8 @@ import {
 import { sliceScene } from "./scene-slice";
 import { transitionOverlap } from "./composition";
 
-/**
- * An untouched new film: no scenes, media, subtitles or markers, and the
- * default name. It is not worth saving, and the title bar says nothing about it.
- */
-export function isBlankProject(project: Project): boolean {
-  return (
-    !project.scenes.length &&
-    !Object.keys(project.assets).length &&
-    !project.subtitles.length &&
-    !project.markers.length &&
-    project.name === "Untitled film"
-  );
-}
-
 /** Create an empty, versioned project with a stable opaque identifier. */
-export function createProject(name = "Untitled film"): Project {
+export function createProject(name = DEFAULT_PROJECT_NAME): Project {
   return projectSchema.parse({
     schemaVersion: 3,
     id: crypto.randomUUID(),
@@ -67,20 +54,48 @@ export function createScene(
   });
 }
 
+/** New editor scenes inherit the film's choices while clips retain their source duration. */
+export function createSceneWithDefaults(
+  asset: MediaAsset | null,
+  defaults: Project["defaults"],
+): Scene {
+  return {
+    ...createScene(asset),
+    fit: defaults.fit,
+    transition: defaults.transition,
+    transitionSeconds: defaults.transitionSeconds,
+    background: defaults.background,
+    captionStyle: defaults.titleStyle,
+    ...(asset?.kind === "image" ? { duration: defaults.photoSeconds } : {}),
+  };
+}
+
 /** Add validated media metadata; original bytes live behind the platform adapter. */
 export function addAsset(project: Project, input: MediaAsset): Project {
-  const asset = mediaAssetSchema.parse(input);
-  if (Object.hasOwn(project.assets, asset.id))
-    throw new Error("This media identifier already exists");
-  const assets = Object.values(project.assets);
-  if (assets.length >= LIMITS.assets)
+  return addAssets(project, [input]);
+}
+
+/** Add an import batch atomically, copying the catalogue once. Time and space O(existing + added). */
+export function addAssets(
+  project: Project,
+  additions: readonly MediaAsset[],
+): Project {
+  if (!additions.length) return project;
+  const existing = Object.values(project.assets);
+  if (existing.length + additions.length > LIMITS.assets)
     throw new Error("This project has too many media files");
-  if (
-    assets.reduce((total, item) => total + item.size, asset.size) >
-    LIMITS.projectBytes
-  )
-    throw new Error("This project exceeds the 64 GB media limit");
-  return { ...project, assets: { ...project.assets, [asset.id]: asset } };
+  const assets = { ...project.assets };
+  let bytes = existing.reduce((total, asset) => total + asset.size, 0);
+  for (const input of additions) {
+    const asset = mediaAssetSchema.parse(input);
+    if (Object.hasOwn(assets, asset.id))
+      throw new Error("This media identifier already exists");
+    bytes += asset.size;
+    if (bytes > LIMITS.projectBytes)
+      throw new Error("This project exceeds the 64 GB media limit");
+    assets[asset.id] = asset;
+  }
+  return { ...project, assets };
 }
 
 function sceneIndex(project: Project, id: string): number {

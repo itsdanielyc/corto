@@ -210,7 +210,17 @@ export function Header(properties: HeaderProperties) {
           onClick={properties.onRedo}
         />
       </div>
-      <div className="project-menu-wrap" ref={menu}>
+      <div
+        className="project-menu-wrap"
+        ref={menu}
+        onBlur={(event) => {
+          if (
+            event.relatedTarget &&
+            !event.currentTarget.contains(event.relatedTarget)
+          )
+            setMenuOpen(false);
+        }}
+      >
         <button
           ref={trigger}
           className="icon-button"

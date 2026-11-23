@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { openExampleFilm } from "../helpers/browser-project";
+import {
+  openExampleFilm,
+  savedBrowserProject,
+} from "../helpers/browser-project";
 
 // Behaviour Corto shares with the other miille apps (docs/design/miille.md).
 
@@ -102,6 +105,7 @@ test("a slideshow started from Films chooses its own photos and becomes a film",
       join(process.cwd(), "tests/fixtures/blue.png"),
     ]);
   await expect(dialog.getByText("2 of 2 chosen")).toBeVisible();
+  await dialog.getByRole("checkbox", { name: /blue\.png/ }).uncheck();
   await dialog.getByRole("button", { name: "Next" }).click();
   await dialog.getByRole("button", { name: "Next" }).click();
   await dialog
@@ -109,6 +113,10 @@ test("a slideshow started from Films chooses its own photos and becomes a film",
     .click();
   await expect(page.getByTestId("scene-card")).not.toHaveCount(0);
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const draft = await savedBrowserProject(page);
+  expect(Object.values(draft.assets).map((asset) => asset.name)).toEqual([
+    "red.png",
+  ]);
 });
 
 test("a removed scene comes back from the toast, and only until something else changes", async ({
@@ -132,6 +140,9 @@ test("a removed scene comes back from the toast, and only until something else c
   await name.press("Tab");
   await expect(toast).toHaveCount(0);
   await expect(cards).toHaveCount(3);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(name).toHaveValue("Mountain days");
+  await expect(toast).toHaveCount(0);
 });
 
 // Regressions found in review of the family redesign.
@@ -202,7 +213,10 @@ test("Settings opened from Films by its shortcut returns to Films, and Escape on
 }) => {
   await openExampleFilm(page);
   await page.getByRole("button", { name: "My films", exact: true }).click();
-  await page.keyboard.press("Control+Comma");
+  await expect(
+    page.getByRole("heading", { name: "Films", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+Comma");
   await expect(
     page.getByRole("heading", { name: "General", exact: true }),
   ).toBeVisible();
@@ -311,6 +325,24 @@ test("after the saved film fails to load, an edit says Not saved instead of Savi
   await page.waitForTimeout(1200);
   await expect(status).toHaveAttribute("data-status", "error");
   await expect(status).toHaveText("Not saved");
+  await page.getByRole("button", { name: "My films", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Save a portable copy of these edits",
+  );
+  await expect(page.getByLabel("Project name")).toHaveValue(
+    "Typed after the failure",
+  );
+  const download = page.waitForEvent("download");
+  await page.keyboard.press("ControlOrMeta+s");
+  expect((await download).suggestedFilename()).toContain(
+    "Typed after the failure",
+  );
+  await page.getByRole("button", { name: "My films", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Films", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(status).toHaveAttribute("data-status", "error");
 });
 
 test("a sound-only export does not offer picture sizes", async ({ page }) => {

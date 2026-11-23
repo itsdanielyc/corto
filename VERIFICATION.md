@@ -389,3 +389,13 @@ Local runs on Windows x64 (this machine), times UTC. Hosted runs follow under th
 
 - The installers (L7) run on main, not on this branch.
 - The Windows caption buttons against the 44 px title bar in a packaged build (real-shell captures show the page, not the native caption).
+
+## 2026-11-23 review of PR #23
+
+| UTC | Level | Claim | Platform | Evidence |
+|---|---|---|---|---|
+| 11-22 11:09 | L4 | The Settings shortcut was pressed before Films finished opening. In a separate test the GIF downloaded at 22.8 s and the WAV at 31.4 s, after the combined case's 30 s deadline. The revised tests enter Films before sending the shortcut and verify each encoded format in its own case. | windows-latest | [Job and traces](https://github.com/itsdanielyc/corto/actions/runs/45015222769/job/137185985496) |
+| Before 01:18 | L4 | Reproduced lost empty and shape-only films, stale removal Undo, and a deselected photo appearing in the draft's asset catalogue. The save guards were also exercised with unreadable working data and rejected writes. | windows-x64, Chromium | `film-persistence.spec.ts` and `miille.spec.ts` saw an empty save label, a missing film, a second Undo offer, an extra blue.png and a missing portable-backup warning on the broken paths. |
+| Before 01:18 | L4 | Reproduced overlapping Settings writes, a save error disappearing on Back, device changes adding film history, and saved title defaults being ignored. | windows-x64, Chromium | `settings-persistence.spec.ts` received 7 instead of 9, found no error alert and found Undo enabled. The new title was classic on #151517 instead of modern on #894321. |
+| Before 01:18 | L4/L5 | Reproduced navigation and keyboard failures and inspected the clipped film-management panel. | windows-x64, Chromium | `film-navigation.spec.ts` lost the Films heading and Manage focus, left Dark unchecked and kept the title-bar menu open after Tab. Both touch posters had opacity 0. The panel began at −6 px on the phone and at 195 px behind the 216 px desktop sidebar. |
+| 01:22–01:24 | L6 packaged | After deleting the only title card, quitting and reopening the app restored the same film ID with zero scenes. At the 980 px minimum width the native buttons occupied the area starting at x=843, Export ended at x=834, and the overlay and header were both 44 px high in both themes. | windows-x64 | Built with `electron-builder --dir --win --x64`, launched Corto.exe twice with an isolated profile, and read the saved project through the bridge. Captured the native window in [light](docs/design/miille/screens/windows-caption-light.png) and [dark](docs/design/miille/screens/windows-caption-dark.png). |
