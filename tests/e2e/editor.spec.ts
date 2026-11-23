@@ -75,9 +75,6 @@ test("a real user can import, trim, title, save, reopen and export an MP4 in the
     );
     await page.getByRole("button", { name: "Project actions" }).click();
     await page.getByRole("menuitem", { name: "New film" }).click();
-    await page
-      .getByRole("button", { name: "Start new film", exact: true })
-      .click();
     await expect(page.getByTestId("scene-card")).toHaveCount(0);
     await page.getByRole("button", { name: "Project actions" }).click();
     await page.getByRole("menuitem", { name: "Open project" }).click();

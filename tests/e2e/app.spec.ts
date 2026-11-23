@@ -66,8 +66,12 @@ test.describe("corto in the real shell", () => {
     await expect(
       win.getByRole("button", { name: "Import media", exact: true }),
     ).toBeVisible();
-    // The badge proves the UI is talking to the main process, not the mock.
-    await expect(win.getByTestId("save-status")).toHaveText("Saved");
+    // The badge proves the UI is talking to the main process, not the mock:
+    // the untouched film has loaded (not "loading", not "error") and says nothing.
+    await expect(win.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
     // contextIsolation and the sandbox: the page sees the bridge, not Node.
     const exposed = await win.evaluate(() => ({
       bridge: typeof window.electronBridge,
@@ -126,7 +130,18 @@ test.describe("corto in the real shell", () => {
     const dir = join(process.cwd(), "artifacts", "e2e");
     mkdirSync(dir, { recursive: true });
     const file = join(dir, `${main.os}-${main.arch}.png`);
-    await win.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(win.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
+    // The compositor can present the first-launch fade before the controls are readable.
+    await expect(win.locator(".empty-stage")).toHaveCSS("opacity", "1");
+    await win.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+    });
     // A visible X11 window can still have no frame to capture. Subscribe
     // before requesting a repaint so the artifact is a presented frame.
     const png = await app.evaluate(({ BrowserWindow }) => {

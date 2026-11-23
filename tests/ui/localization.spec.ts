@@ -33,18 +33,15 @@ test("Spanish settings persist while personal project names and captions remain 
   await page
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Settings & defaults", exact: true })
-    .click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await expect(page.getByLabel("Language", { exact: true })).toBeDisabled();
   await page.waitForFunction(
     () => typeof window.cortoReleasePreferences === "function",
   );
   await page.evaluate(() => window.cortoReleasePreferences!());
   await page.getByLabel("Language", { exact: true }).selectOption("es");
-  await page
-    .getByRole("button", { name: "Save settings", exact: true })
-    .click();
+  // Settings save as they change; going back shows the editor in Spanish.
+  await page.getByRole("button", { name: "Atrás", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Exportar la película", exact: true }),
   ).toBeVisible();

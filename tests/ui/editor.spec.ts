@@ -97,9 +97,6 @@ test("portable projects download and reopen with their original photos", async (
   await (await downloaded).saveAs(projectFile);
   await page.getByRole("button", { name: "Project actions" }).click();
   await page.getByRole("menuitem", { name: "New film" }).click();
-  await page
-    .getByRole("button", { name: "Start new film", exact: true })
-    .click();
   await expect(page.getByTestId("scene-card")).toHaveCount(0);
   await page.getByTestId("project-input").setInputFiles(projectFile);
   await expect(page.getByTestId("scene-card")).toHaveCount(1);

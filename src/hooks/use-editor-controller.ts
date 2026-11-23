@@ -11,16 +11,17 @@ import {
   addAsset,
   changeScene,
   createProject,
-  createScene,
+  createSceneWithDefaults,
   moveScene,
   splitScene,
 } from "../domain/project";
 import { buildTimeline, filmDuration, locateScene } from "../domain/timeline";
-import { useProject } from "./use-project";
+import { useProject, type ProjectOrigin } from "./use-project";
 import { useResources } from "./use-resources";
 import { createExampleProject } from "../media/example";
 import { importMedia } from "../media/phone";
 import { createPlatform } from "../platform";
+import { createPreferenceStore } from "../platform/preferences";
 import { type LibraryMode } from "../components/Library";
 import { addMusic } from "../domain/audio";
 import {
@@ -47,16 +48,29 @@ function readableError(error: unknown): string {
         /^Error invoking remote method '[^']+': Error: /,
         "",
       )
-    : "Something could not be completed. Please try again.";
+    : "That didn't work. Try it again.";
 }
 
 /** Coordinate editor state and platform actions without coupling them to layout markup. */
 export function useEditorController() {
   const [platform] = useState(createPlatform);
+  const [preferenceStore] = useState(() => createPreferenceStore(platform));
 
   const [error, setError] = useState<string | null>(null);
 
   const [message, setMessage] = useState<string | null>(null);
+
+  /**
+   * The last removal, offered back in a toast. It stays valid only while the
+   * film is exactly as the removal left it, so Undo can never reverse
+   * something else.
+   */
+  const [removal, setRemoval] = useState<{
+    id: number;
+    count: number;
+    after: Project;
+  } | null>(null);
+  const removals = useRef(0);
 
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -67,7 +81,20 @@ export function useEditorController() {
 
   const editor = useProject(platform, report, busy !== null);
 
-  const { project, current, commit, replace, undo, redo } = editor;
+  const {
+    project,
+    current,
+    commit,
+    replace,
+    saveCurrent: saveFilm,
+    savePortableCopy,
+    undo,
+    redo,
+  } = editor;
+  const saveCurrent = useCallback(async () => {
+    await preferenceStore.settled();
+    await saveFilm();
+  }, [preferenceStore, saveFilm]);
 
   const { resources, clear: clearResources } = useResources(
     platform,
@@ -209,7 +236,8 @@ export function useEditorController() {
 
   const deleteSelected = useCallback(() => {
     const scene = selectedRef.current;
-    if (scene)
+    if (scene) {
+      const before = current.current.present.scenes.length;
       edit((project) => ({
         ...project,
         scenes: project.scenes.filter(
@@ -219,8 +247,12 @@ export function useEditorController() {
               : item.id === scene.id),
         ),
       }));
+      const after = current.current.present;
+      const count = before - after.scenes.length;
+      if (count > 0) setRemoval({ id: ++removals.current, count, after });
+    }
     setSelectedIds(new Set());
-  }, [edit]);
+  }, [edit, current]);
 
   const duplicateSelected = useCallback(() => {
     const scene = selectedRef.current;
@@ -285,8 +317,13 @@ export function useEditorController() {
   );
 
   const addTitle = useCallback(
-    (caption = "Your title here", style: Scene["captionStyle"] = "classic") => {
-      const scene = { ...createScene(null), caption, captionStyle: style };
+    (caption = "Your title here", style?: Scene["captionStyle"]) => {
+      const defaults = current.current.present.defaults;
+      const scene = {
+        ...createSceneWithDefaults(null, defaults),
+        caption,
+        captionStyle: style ?? defaults.titleStyle,
+      };
       edit((project) =>
         insertScenes(project, [scene], selectedRef.current?.id ?? null),
       );
@@ -309,15 +346,7 @@ export function useEditorController() {
       }
       if (asset.kind === "lut") return;
       const defaults = current.current.present.defaults;
-      const scene = {
-        ...createScene(asset),
-        fit: defaults.fit,
-        transition: defaults.transition,
-        transitionSeconds: defaults.transitionSeconds,
-        background: defaults.background,
-        captionStyle: defaults.titleStyle,
-        ...(asset.kind === "image" ? { duration: defaults.photoSeconds } : {}),
-      };
+      const scene = createSceneWithDefaults(asset, defaults);
       edit((project) =>
         insertScenes(
           project,
@@ -373,18 +402,7 @@ export function useEditorController() {
             else if (asset.kind === "lut") {
               /* Imported looks are selected in Picture tools. */
             } else {
-              const defaults = next.defaults;
-              const scene = {
-                ...createScene(asset),
-                fit: defaults.fit,
-                transition: defaults.transition,
-                transitionSeconds: defaults.transitionSeconds,
-                background: defaults.background,
-                captionStyle: defaults.titleStyle,
-                ...(asset.kind === "image"
-                  ? { duration: defaults.photoSeconds }
-                  : {}),
-              };
+              const scene = createSceneWithDefaults(asset, next.defaults);
               candidate = insertScenes(candidate, [scene], insertionAnchor);
               insertionAnchor = scene.id;
               first ??= scene.id;
@@ -419,10 +437,10 @@ export function useEditorController() {
 
   /** Open a whole film with one current scene for the reel, inspector and editing commands. */
   const acceptProject = useCallback(
-    (opened: Project) => {
+    (opened: Project, origin: ProjectOrigin = "draft") => {
       const first = opened.scenes[0];
       clearResources();
-      replace(opened);
+      replace(opened, origin);
       setPlaying(false);
       setSelectedId(first?.id ?? null);
       setSelectedIds(new Set(first ? [first.id] : []));
@@ -434,15 +452,10 @@ export function useEditorController() {
   );
   const showExample = useCallback(() => {
     void task("Opening the example", async () => {
-      if (
-        current.current.present.scenes.length ||
-        Object.keys(current.current.present.assets).length ||
-        current.current.present.name !== "Untitled film"
-      )
-        await platform.saveProject(current.current.present);
+      await saveCurrent();
       acceptProject(await createExampleProject(platform));
     });
-  }, [task, platform, current, acceptProject]);
+  }, [task, platform, saveCurrent, acceptProject]);
 
   const chooseMedia = useCallback(
     (music = false) => (music ? musicInput : mediaInput).current?.click(),
@@ -476,20 +489,22 @@ export function useEditorController() {
     )
       document.activeElement.blur();
     void task("Saving a portable copy", async () => {
-      if (await platform.savePortable(current.current.present))
-        setMessage("Portable copy saved.");
+      if (await savePortableCopy()) setMessage("Portable copy saved.");
     });
-  }, [task, platform, current]);
+  }, [task, savePortableCopy]);
 
   const openSelectedFile = useCallback(
     (file?: File) => {
       void task("Opening your project", async () => {
-        await platform.saveProject(current.current.present);
+        await saveCurrent();
         const opened = await platform.openPortable(file);
-        if (opened) acceptProject(opened);
+        if (opened) {
+          acceptProject(opened, "stored");
+          setDialog(null);
+        }
       });
     },
-    [task, platform, current, acceptProject],
+    [task, platform, saveCurrent, acceptProject],
   );
 
   const chooseProject = useCallback(() => {
@@ -497,74 +512,67 @@ export function useEditorController() {
     else projectInput.current?.click();
   }, [platform, openSelectedFile]);
 
-  const requestOpen = useCallback(() => {
-    if (current.current.present.scenes.length) setDialog("open");
-    else chooseProject();
-  }, [current, chooseProject]);
+  // Opening a project saves the current film first (openSelectedFile), so
+  // there is nothing to confirm.
+  const requestOpen = chooseProject;
 
-  const performTransition = useCallback(() => {
-    const action = ui.current.dialog;
+  /** A new film starts at once: the current one is already safe in Films. */
+  const startNewFilm = useCallback(() => {
     setDialog(null);
-    if (action === "open") chooseProject();
-    else {
-      void task("Saving your film", async () => {
-        await platform.saveProject(current.current.present);
-        const preferences = await platform.loadPreferences?.();
-        acceptProject(
-          preferences
-            ? {
-                ...createProject(),
-                defaults: preferences.defaults,
-                output: preferences.output,
-              }
-            : createProject(),
-        );
-        setError(null);
-      });
-    }
-  }, [chooseProject, acceptProject, task, platform, current]);
+    void task("Saving your film", async () => {
+      await saveCurrent();
+      const preferences = await preferenceStore.load();
+      acceptProject(
+        preferences
+          ? {
+              ...createProject(),
+              defaults: preferences.defaults,
+              output: preferences.output,
+            }
+          : createProject(),
+        "new",
+      );
+      setError(null);
+    });
+  }, [acceptProject, task, preferenceStore, saveCurrent]);
 
   const showProjects = useCallback(() => {
     void task("Saving your film", async () => {
-      if (editor.saveStatus !== "error")
-        await platform.saveProject(current.current.present);
+      await saveCurrent();
       setDialog("projects");
     });
-  }, [task, platform, current, editor.saveStatus]);
+  }, [task, saveCurrent]);
 
   const openSavedProject = useCallback(
     (id: string, recover = false) => {
       void task(
         recover ? "Recovering your film" : "Opening your film",
         async () => {
+          await saveCurrent();
           const opened = await platform.openProject(id, recover);
           await platform.saveProject(opened);
-          acceptProject(opened);
+          acceptProject(opened, "stored");
           setDialog(null);
           if (recover)
             setMessage(
-              "Recovered as a separate film. Your latest edit is still in My films.",
+              "Recovered as a separate film. Your latest edit is still in Films.",
             );
         },
       );
     },
-    [task, platform, acceptProject],
+    [task, platform, saveCurrent, acceptProject],
   );
   useEffect(
     () =>
       platform.onProjectOpened?.((opened) => {
         void task("Opening the selected Corto file", async () => {
-          if (
-            current.current.present.scenes.length ||
-            Object.keys(current.current.present.assets).length
-          )
-            await platform.saveProject(current.current.present);
+          await saveCurrent();
           await platform.saveProject(opened);
-          acceptProject(opened);
+          acceptProject(opened, "stored");
           setDialog(null);
         });
       }),
-    [platform, task, current, acceptProject],
+    [platform, task, saveCurrent, acceptProject],
   );
 
   const undoEdit = useCallback(() => {
@@ -576,6 +584,20 @@ export function useEditorController() {
     setPlaying(false);
     redo();
   }, [redo]);
+
+  /** Undo from the removal toast, only while nothing else has changed. */
+  const undoRemoval = useCallback(() => {
+    if (removal && current.current.present === removal.after) undoEdit();
+    setRemoval(null);
+  }, [removal, current, undoEdit]);
+  useEffect(() => {
+    if (removal && removal.after !== project) setRemoval(null);
+  }, [removal, project]);
+  const dismissRemoval = useCallback(() => setRemoval(null), []);
+  const removalOffer =
+    removal && removal.after === project
+      ? { id: removal.id, count: removal.count }
+      : null;
 
   const togglePlayback = useCallback(() => {
     if (!current.current.present.scenes.length) return;
@@ -677,6 +699,8 @@ export function useEditorController() {
   const modalClose = useCallback(() => setDialog(null), []);
   return {
     platform,
+    preferenceStore,
+    saveCurrent,
     error,
     setError,
     message,
@@ -725,9 +749,12 @@ export function useEditorController() {
     savePortable,
     openSelectedFile,
     requestOpen,
-    performTransition,
+    startNewFilm,
     undoEdit,
     redoEdit,
+    removalOffer,
+    undoRemoval,
+    dismissRemoval,
     togglePlayback,
     playbackStep,
     modalClose,

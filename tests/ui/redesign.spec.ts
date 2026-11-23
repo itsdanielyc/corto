@@ -304,15 +304,16 @@ test("the chosen appearance applies at once and survives a reload", async ({
   await page
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
+  await page.getByRole("menuitem", { name: "Settings", exact: true }).click();
   await page
-    .getByRole("menuitem", { name: "Settings & defaults", exact: true })
+    .getByRole("radiogroup", { name: "Appearance" })
+    .getByRole("radio", { name: "Dark", exact: true })
     .click();
-  await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
   const background = () =>
     page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  expect(await background()).toBe("rgb(14, 14, 16)");
+  expect(await background()).toBe("rgb(11, 11, 12)");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  expect(await background()).toBe("rgb(14, 14, 16)");
+  expect(await background()).toBe("rgb(11, 11, 12)");
 });

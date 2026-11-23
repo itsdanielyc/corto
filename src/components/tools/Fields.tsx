@@ -1,5 +1,5 @@
 import { useT } from "../../i18n/locale";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 export function Choice<T extends string>({
   label,
   value,
@@ -89,6 +89,8 @@ export function Slider({
   onChange: (value: number) => void;
 }) {
   const t = useT();
+  // The track fills up to the thumb, like the volume and zoom sliders.
+  const filled = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
     <label className="range-label">
       {t(label)}
@@ -100,6 +102,11 @@ export function Slider({
         max={max}
         step={step}
         value={value}
+        style={
+          {
+            "--progress": `${Math.min(100, Math.max(0, filled))}%`,
+          } as CSSProperties
+        }
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>

@@ -44,9 +44,6 @@ test("background export keeps its original film and title while another film is 
     .getByRole("button", { name: "Project actions", exact: true })
     .click();
   await page.getByRole("menuitem", { name: "New film", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Start new film", exact: true })
-    .click();
   const file = await download;
   expect(file.suggestedFilename()).toBe("Queued original.mp4");
   const path = info.outputPath("queued.mp4");
@@ -55,14 +52,14 @@ test("background export keeps its original film and title while another film is 
   await expect(page.getByTestId("scene-card")).toHaveCount(0);
   await expect(page.getByLabel("Project name")).toHaveValue("Untitled film");
 });
-test("exports a bounded animated GIF and an actual audio-only WAV", async ({
-  page,
-}, info) => {
-  await photo(page);
-  await page
-    .getByTestId("music-input")
-    .setInputFiles(join(process.cwd(), "tests/fixtures/music.mp3"));
-  for (const format of ["gif", "wav"] as const) {
+for (const format of ["gif", "wav"] as const) {
+  test(`exports an actual ${format === "gif" ? "bounded animated GIF" : "audio-only WAV"}`, async ({
+    page,
+  }, info) => {
+    await photo(page);
+    await page
+      .getByTestId("music-input")
+      .setInputFiles(join(process.cwd(), "tests/fixtures/music.mp3"));
     await page
       .getByRole("button", { name: "Export movie", exact: true })
       .click();
@@ -98,8 +95,11 @@ test("exports a bounded animated GIF and an actual audio-only WAV", async ({
     await page
       .getByRole("button", { name: "Back to my film", exact: true })
       .click();
-  }
-});
+    await expect(
+      page.getByRole("dialog", { name: "Export", exact: true }),
+    ).toHaveCount(0);
+  });
+}
 
 test("a waiting background export can be cancelled independently of the running film", async ({
   page,
@@ -143,9 +143,13 @@ test("a waiting background export can be cancelled independently of the running 
     expect((await movie).suggestedFilename()).toBe("In progress.mp4");
     const notice = page.getByRole("complementary", { name: "Export queue" });
     await expect(notice.getByText("In progress.mp4")).toBeVisible();
-    const heading = (await page.locator(".inspector-heading").boundingBox())!;
+    // The export card sits on the desk column; it never covers the screen or
+    // the inspector's controls, and it does not move them.
     const tray = (await notice.boundingBox())!;
-    expect(tray.y + tray.height).toBeLessThanOrEqual(heading.y);
+    for (const covered of [".stage", ".inspector"]) {
+      const box = (await page.locator(covered).boundingBox())!;
+      expect(tray.x + tray.width).toBeLessThanOrEqual(box.x);
+    }
     await test.info().attach("finished-export", {
       body: await page.screenshot({ animations: "disabled" }),
       contentType: "image/png",

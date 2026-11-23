@@ -82,12 +82,6 @@ export function VideoTools({
           checked={scene.loop}
           onChange={(loop) => onChange({ loop })}
         />
-        <Slider
-          label={t("Original audio gain")}
-          value={scene.volume}
-          max={4}
-          onChange={(volume) => onChange({ volume })}
-        />
         <Numeric
           label={t("Original sound fade in")}
           value={scene.audioFadeIn}
@@ -101,10 +95,10 @@ export function VideoTools({
           onChange={(audioFadeOut) => onChange({ audioFadeOut })}
         />
       </ToolSection>
-      <ToolSection title={t("Non-destructive clip tools")}>
+      <ToolSection title={t("More clip tools")}>
         <p className="dialog-note">
           {t(
-            "Each operation creates a new local copy. Your original stays in the library.",
+            "Each one makes a new clip; the original stays in the library.",
           )}
         </p>
         <div className="tool-button-row">
@@ -131,9 +125,9 @@ export function VideoTools({
           ))}
         </div>
       </ToolSection>
-      <ToolSection title={t("Chroma key")}>
+      <ToolSection title={t("Green screen")}>
         <Toggle
-          label={t("Remove clip key colour")}
+          label={t("Colour to remove")}
           checked={!!scene.keyColour}
           onChange={(enabled) =>
             onChange({ keyColour: enabled ? "#00ff00" : null })

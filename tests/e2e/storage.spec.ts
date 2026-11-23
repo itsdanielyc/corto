@@ -24,7 +24,11 @@ test("native project commands save and reopen original media through the sandbox
   });
   try {
     const page = await app.firstWindow();
-    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+    // An untouched film has loaded and claims nothing about saving.
+    await expect(page.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
     const asset = {
       id: "family-1",
       name: "Family.png",

@@ -30,6 +30,8 @@ interface HeaderProperties {
   busy: boolean;
   canExport: boolean;
   frame: WindowFrame;
+  /** Films is a place of its own; the title bar then names the app, not the film. */
+  view?: "home" | "editor";
   /** Fraction of the running background export, or null when none runs. */
   exportProgress: number | null;
   onUndo: () => void;
@@ -53,7 +55,9 @@ interface HeaderProperties {
 /** Status words only: what happened, not where the film lives. */
 const statusLabels: Record<SaveStatus, string> = {
   loading: "Opening",
-  pending: "Unsaved changes",
+  blank: "",
+  // An edit waits a moment before it is written; it is on its way, not at risk.
+  pending: "Saving",
   saving: "Saving",
   saved: "Saved",
   error: "Not saved",
@@ -107,14 +111,16 @@ function SaveState({ status }: { status: SaveStatus }) {
       data-testid="save-status"
       aria-live="polite"
     >
-      {status === "saved" ? (
+      {status === "blank" ? null : status === "saved" ? (
         <Check size={13} aria-hidden="true" />
-      ) : status === "saving" || status === "loading" ? (
+      ) : status === "saving" ||
+        status === "pending" ||
+        status === "loading" ? (
         <LoaderCircle size={13} className="spin" aria-hidden="true" />
       ) : (
         <span className="status-dot" aria-hidden="true" />
       )}
-      {t(statusLabels[status])}
+      {statusLabels[status] && t(statusLabels[status])}
     </span>
   );
 }
@@ -132,6 +138,8 @@ export function Header(properties: HeaderProperties) {
     };
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Handled here: the view behind (Films, Settings) must not also close.
+        event.preventDefault();
         setMenuOpen(false);
         trigger.current?.focus();
       }
@@ -161,7 +169,7 @@ export function Header(properties: HeaderProperties) {
         onClick={properties.onProjects}
       >
         <CortoMark className="films-mark" />
-        <span>{t("Films")}</span>
+        <span>{properties.view === "home" ? "Corto" : t("Films")}</span>
       </button>
       <span className="crumb-divider" aria-hidden="true">
         /
@@ -185,7 +193,8 @@ export function Header(properties: HeaderProperties) {
       >
         <Search size={15} aria-hidden="true" />
         <span>{t("Search or run a command")}</span>
-        <kbd>{shortcutLabel("K")}</kbd>
+        {/* Spoken through aria-keyshortcuts; the keycap is for the eye. */}
+        <kbd aria-hidden="true">{shortcutLabel("K")}</kbd>
       </button>
       <div className="history-actions">
         <IconButton
@@ -201,7 +210,17 @@ export function Header(properties: HeaderProperties) {
           onClick={properties.onRedo}
         />
       </div>
-      <div className="project-menu-wrap" ref={menu}>
+      <div
+        className="project-menu-wrap"
+        ref={menu}
+        onBlur={(event) => {
+          if (
+            event.relatedTarget &&
+            !event.currentTarget.contains(event.relatedTarget)
+          )
+            setMenuOpen(false);
+        }}
+      >
         <button
           ref={trigger}
           className="icon-button"
@@ -298,7 +317,7 @@ export function Header(properties: HeaderProperties) {
             </button>
             <hr />
             <button role="menuitem" onClick={action(properties.onSettings)}>
-              {t("Settings & defaults")}
+              {t("Settings")}
             </button>
             <button role="menuitem" onClick={action(properties.onHelp)}>
               <Keyboard aria-hidden="true" />

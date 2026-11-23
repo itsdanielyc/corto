@@ -1,5 +1,5 @@
 - banner:
-  - button "My films"
+  - button "My films": Films
   - textbox "Project name": Mountain days
   - text: Saved
   - button "Search commands"

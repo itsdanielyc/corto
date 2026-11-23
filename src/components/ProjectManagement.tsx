@@ -1,10 +1,15 @@
 import { useT } from "../i18n/locale";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import type { ProjectSummary } from "../../contracts/platform";
 import type { Project } from "../../contracts/project";
 import type { ProjectVersion } from "../../contracts/services";
 import type { CortoPlatform } from "../platform/types";
-/** Manage catalogue metadata and restore history into separate identities. */
+/**
+ * Manage catalogue metadata and restore history into separate identities.
+ * A ⋯ button on the poster opens a small floating panel, so the grid of films
+ * never shifts while you rename, duplicate or remove one.
+ */
 export function ProjectManagement({
   project,
   platform,
@@ -43,19 +48,56 @@ export function ProjectManagement({
       setBusy(false);
     }
   };
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!panel.current?.contains(event.target as Node)) setOpen(false);
+    };
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [open]);
   if (!platform.projectAction) return null;
   return (
-    <div className="project-management">
+    <div
+      className="project-management"
+      ref={panel}
+      onBlur={(event) => {
+        if (
+          event.relatedTarget &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
+          setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && open) {
+          event.stopPropagation();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
       <button
-        className="text-button"
-        onClick={() => setOpen(!open)}
+        ref={trigger}
+        className="film-more"
+        onClick={() => {
+          if (!open) {
+            setName(project.name);
+            setRemove(false);
+            setVersions(null);
+            setError("");
+          }
+          setOpen(!open);
+        }}
         aria-expanded={open}
+        aria-label={t("Manage ") + project.name}
+        title={t("Manage ") + project.name}
       >
-        {t("Manage ")}
-        {project.name}
+        <MoreHorizontal size={18} aria-hidden="true" />
       </button>
       {open && (
-        <div className="tool-fields">
+        <div className="tool-fields film-panel">
           <label className="field-label">
             {t("Film name")}
             <input
@@ -98,7 +140,7 @@ export function ProjectManagement({
               {t("Duplicate film")}
             </button>
             <button
-              className="text-button"
+              className="text-button danger-text"
               disabled={busy}
               onClick={() => setRemove(true)}
             >
@@ -130,7 +172,7 @@ export function ProjectManagement({
                 {t("Keep film")}
               </button>
               <button
-                className="button primary"
+                className="button danger"
                 disabled={busy}
                 onClick={() => {
                   void run(async () => {

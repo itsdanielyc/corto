@@ -32,6 +32,10 @@
 Each line names the test that carries it; all enter through the shipped editor or the built app.
 - Transition picked at a seam and applied to every join, command palette from the keyboard, start/end framing and words edited on the picture, a pressed or cancelled framing drag changing nothing, appearance kept across reload: `tests/ui/redesign.spec.ts` (L4).
 - Framing rectangles equal what the renderer shows and stay inside the schema's zoom range, the drop summary, the appearance guard and the frame each OS gets: `tests/unit/redesign.test.ts` (L1).
+- Family behaviour shared with Onda and Plico: an untouched film shows no save state and the first edit is saved; Settings returns to where it was opened from and saves without a button; New film starts at once and leaves no empty film in Films; a slideshow from Films chooses its own photos; a removed scene comes back from the toast only until something else changes: `tests/ui/miille.spec.ts` (L4).
+- `tests/ui/film-persistence.spec.ts` checks that an unnamed film can be saved empty after deletion, that a shape-only edit survives reopening, and that a failed write requires a recoverable copy before switching films (L4).
+- `tests/ui/settings-persistence.spec.ts` checks delayed and failed writes across navigation, independent device and film defaults, and the style and background of a newly added title card (L4).
+- `tests/ui/film-navigation.spec.ts` checks cancelled file and slideshow choices, keyboard selection and focus, touch access to film management, and the management panel at 320 and 810 px (L4/L5).
 - `tests/ui/panel-layout.spec.ts` measures the photo, clip, title-card and side-panel controls at 320, 390, 1024 and 1440 px. It also operates the transition picker at 320 × 568 (L4/L5).
 - `tests/ui/concurrent-edits.spec.ts` delays real reads and saves while the user edits or changes views. It checks the saved film after SRT import, Auto Enhance, template creation and slideshow creation (L4).
 - `tests/ui/redesign.spec.ts` checks the active inspector and highlighted reel selection after reopening and after deselecting a scene. It verifies the IDs retained on disk after Delete (L4).

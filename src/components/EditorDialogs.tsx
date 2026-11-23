@@ -8,8 +8,6 @@ import type { CortoPlatform } from "../platform/types";
 import type { MediaResources } from "../hooks/use-resources";
 import { shortcutLabel } from "./shortcut-label";
 export type EditorDialog =
-  | "new"
-  | "open"
   | "help"
   | "about"
   | "export"
@@ -33,8 +31,6 @@ interface EditorDialogsProperties {
   platform: CortoPlatform;
   resources: MediaResources;
   onClose: () => void;
-  onSave: () => void;
-  onTransition: () => void;
   renderMovie?: CortoPlatform["renderMovie"];
   time?: number;
   selectedIds?: ReadonlySet<string>;
@@ -62,8 +58,6 @@ export function EditorDialogs({
   platform,
   resources,
   onClose,
-  onSave,
-  onTransition,
   renderMovie,
   time,
   selectedIds,
@@ -71,28 +65,6 @@ export function EditorDialogs({
   const t = useT();
   return (
     <>
-      {(dialog === "new" || dialog === "open") && (
-        <Modal
-          title={t(
-            dialog === "new" ? "Start a new film?" : "Open another project?",
-          )}
-          onClose={onClose}
-          className="confirm-dialog"
-        >
-          <p className="modal-introduction">{t("This film stays in Films.")}</p>
-          <div className="modal-actions">
-            <button className="button secondary" onClick={onClose}>
-              {t("Cancel")}
-            </button>
-            <button className="button secondary" onClick={onSave}>
-              {t("Save a copy")}
-            </button>
-            <button className="button primary" onClick={onTransition}>
-              {dialog === "new" ? t("Start new film") : t("Choose project")}
-            </button>
-          </div>
-        </Modal>
-      )}
       {dialog === "help" && (
         <Modal title={t("Keyboard shortcuts")} onClose={onClose}>
           <dl className="shortcuts">
@@ -118,10 +90,16 @@ export function EditorDialogs({
           onClose={onClose}
           className="about-dialog"
         >
+          {/* The brand kit's black and white lockups, never a recoloured one. */}
           <img
-            className="about-lockup"
+            className="about-lockup about-lockup-black"
             src={`${import.meta.env.BASE_URL}brand/corto-lockup-black.svg`}
             alt="Corto"
+          />
+          <img
+            className="about-lockup about-lockup-white"
+            src={`${import.meta.env.BASE_URL}brand/corto-lockup-white.svg`}
+            alt=""
           />
           <p className="modal-introduction">
             {t("Corto by miille · ")}

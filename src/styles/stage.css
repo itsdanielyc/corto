@@ -1,18 +1,29 @@
-/* The dark screen: picture, transport and the mark-shaped controls. */
+/* The screen: a dark, rounded card set into the white sheet, carrying the
+   picture and the transport. The stage element itself is the sheet's
+   top-left corner (see shell.css). */
 .stage {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--stage);
-  color: var(--stage-ink);
+  margin-top: 6px;
+  padding: 12px 12px 12px 14px;
+  border-top-left-radius: 12px;
+  background: var(--panel);
+  box-shadow: -1px -1px 0 var(--line);
+  color: var(--stage-fg);
 }
 .stage-screen {
   position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
-  padding: 20px 24px 8px;
+  padding: 18px 22px 6px;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--stage);
+}
+.stage[data-empty="true"] .stage-screen {
+  border-radius: var(--radius-card);
 }
 .stage-screen:fullscreen {
   padding: 0;
@@ -42,62 +53,96 @@
   box-shadow: none;
 }
 
-/* First launch: the stage invites the first moments. */
+/* First launch: with no picture to show, the screen becomes the brand's
+   graphite tile with Onda's soft light, the one hero moment in Corto. */
 .stage[data-empty="true"] .stage-screen {
+  isolation: isolate;
   place-items: center;
+  overflow: hidden;
+  background: var(--tile);
+  box-shadow:
+    inset 0 1px 0 var(--tile-line),
+    0 0 0 1px rgb(0 0 0 / 40%);
+}
+.stage[data-empty="true"] .stage-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    60% 70% at 50% 34%,
+    rgb(255 255 255 / 10%),
+    transparent 70%
+  );
+  pointer-events: none;
 }
 .empty-stage {
   display: grid;
   justify-items: center;
-  gap: 14px;
-  max-width: 440px;
+  gap: 12px;
+  max-width: 460px;
   padding: 24px;
   text-align: center;
-  animation: rise-in var(--t-sheet) var(--ease);
+  animation: rise-in var(--dur-slow) var(--ease-out);
 }
+/* The master mark at full strength; it is never dimmed or recoloured. */
 .empty-stage-mark {
-  width: 30px;
-  height: 43px;
-  margin-bottom: 6px;
-  fill: var(--stage-ink);
-  opacity: 0.9;
+  width: 28px;
+  height: 40px;
+  margin-bottom: 10px;
+  fill: var(--tile-fg);
+  filter: drop-shadow(0 12px 28px rgb(0 0 0 / 50%));
 }
 .empty-stage h1 {
-  font-size: var(--fs-xxl);
-  font-weight: 650;
+  color: var(--tile-fg);
+  font-size: var(--text-2xl);
+  font-weight: 720;
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
 }
 .empty-stage p {
-  color: var(--stage-ink-2);
-  font-size: var(--fs-m);
+  color: var(--tile-fg-2);
+  font-size: var(--text-lg);
+  line-height: 1.5;
 }
 .empty-stage-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 12px;
 }
+.empty-stage-actions .button {
+  min-height: var(--control-h);
+}
+/* On the tile: Onda's inverse and inverse-ghost buttons. */
 .button.stage-primary {
-  background: var(--stage-ink);
-  color: var(--stage);
+  background: #ffffff;
+  color: #0f0f10;
 }
 .button.stage-primary:hover:not(:disabled) {
-  background: #ffffff;
+  background: #ececee;
 }
 .button.stage-secondary {
-  background: rgb(255 255 255 / 8%);
-  color: var(--stage-ink);
-  box-shadow: inset 0 0 0 1px var(--stage-line);
+  background: rgb(255 255 255 / 6%);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 24%);
 }
 .button.stage-secondary:hover:not(:disabled) {
-  background: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 34%);
+}
+.button.stage-primary:focus-visible,
+.button.stage-secondary:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 /* Transport. */
 .stage-controls {
-  padding: 4px 24px 2px;
+  padding: 2px 22px 4px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  background: var(--stage);
 }
 .stage-controls[hidden] {
   display: none;
@@ -106,16 +151,16 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  height: 58px;
+  height: 56px;
 }
 .time-code {
-  color: var(--stage-ink-2);
-  font-size: var(--fs-s);
+  color: var(--stage-fg-2);
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .time-code strong {
-  color: var(--stage-ink);
+  color: var(--stage-fg);
   font-weight: 600;
 }
 .transport-buttons {
@@ -138,22 +183,23 @@
   color: #fff;
 }
 .stage :focus-visible {
-  outline-color: var(--stage-ink);
+  outline-color: var(--stage-fg);
 }
+/* Play is the brightest control on the screen: Corto's mark, in ink on white. */
 .play-button {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: rgb(255 255 255 / 10%);
-  color: #fff;
+  background: var(--stage-fg);
+  color: var(--stage);
   transition:
-    background var(--t-fast) var(--ease),
-    transform var(--t-fast) var(--ease);
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 .play-button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 17%);
+  background: #ffffff;
 }
 .play-button:active:not(:disabled) {
   transform: scale(0.93);
@@ -166,14 +212,14 @@
   margin-left: 2px;
 }
 .play-mark-group {
-  transition: transform var(--t-move) var(--ease);
+  transition: transform var(--dur-move) var(--ease-out);
 }
 .play-mark-triangle {
   transform-box: fill-box;
   transform-origin: 0% 50%;
   transition:
-    transform var(--t-move) var(--ease),
-    opacity 180ms var(--ease);
+    transform var(--dur-move) var(--ease-out),
+    opacity 180ms var(--ease-out);
 }
 .play-mark-bar {
   transform-box: fill-box;
@@ -181,8 +227,8 @@
   opacity: 0;
   transform: translateX(-96px) scaleY(0.55);
   transition:
-    transform var(--t-move) var(--ease),
-    opacity 180ms var(--ease);
+    transform var(--dur-move) var(--ease-out),
+    opacity 180ms var(--ease-out);
 }
 .play-mark.is-playing .play-mark-triangle {
   opacity: 0;
@@ -203,14 +249,14 @@
   height: 30px;
   padding: 0 26px 0 10px;
   border: 1px solid var(--stage-line);
-  border-radius: var(--radius);
-  color: var(--stage-ink-2);
-  font-size: var(--fs-s);
+  border-radius: var(--radius-control);
+  color: var(--stage-fg-2);
+  font-size: var(--text-xs);
   font-weight: 560;
   font-variant-numeric: tabular-nums;
   transition:
-    border-color var(--t-fast) var(--ease),
-    color var(--t-fast) var(--ease);
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 .aspect-select::after {
   content: "";
@@ -225,10 +271,10 @@
 }
 .aspect-select:hover {
   border-color: rgb(255 255 255 / 24%);
-  color: var(--stage-ink);
+  color: var(--stage-fg);
 }
 .aspect-select:has(select:focus-visible) {
-  outline: 2px solid var(--stage-ink);
+  outline: 2px solid var(--stage-fg);
   outline-offset: 2px;
 }
 .aspect-select select {
@@ -239,8 +285,8 @@
   opacity: 0;
 }
 .aspect-select option {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--panel);
+  color: var(--fg);
 }
 
 /* The scrubber: one segment per scene, the mark's pillar as the thumb. */
@@ -266,7 +312,7 @@
 .scrubber-segment i {
   position: absolute;
   inset: 0;
-  background: var(--stage-ink);
+  background: var(--stage-fg);
   transform-origin: left;
 }
 .scrubber-thumb {
@@ -279,7 +325,7 @@
   background: #fff;
   box-shadow: 0 0 0 2px var(--stage);
   pointer-events: none;
-  transition: transform var(--t-fast) var(--ease);
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 .scrubber:hover .scrubber-thumb {
   transform: scaleY(1.12);
@@ -294,7 +340,7 @@
 .scrubber:has(.playhead:focus-visible) .scrubber-thumb {
   box-shadow:
     0 0 0 2px var(--stage),
-    0 0 0 4px var(--stage-ink);
+    0 0 0 4px var(--stage-fg);
 }
 
 /* Editing on the picture. */
@@ -314,7 +360,7 @@
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
-  transition: outline-color var(--t-fast) var(--ease);
+  transition: outline-color var(--dur-fast) var(--ease-out);
 }
 .stage-picture:hover .words-handle {
   outline-color: rgb(255 255 255 / 55%);
@@ -336,7 +382,7 @@
   place-items: center;
   overflow: hidden;
   color: rgb(255 255 255 / 85%);
-  font-size: var(--fs-s);
+  font-size: var(--text-xs);
   font-weight: 600;
   white-space: pre-line;
   text-align: center;
@@ -366,7 +412,7 @@
   border-radius: 10px;
   background: rgb(12 12 13 / 72%);
   color: #fff;
-  font-size: var(--fs-xs);
+  font-size: var(--text-xs);
   font-weight: 600;
   transform: translateX(-50%);
 }
@@ -378,7 +424,7 @@
   gap: 12px;
   background: var(--stage);
   pointer-events: auto;
-  animation: fade-in var(--t-base) var(--ease);
+  animation: fade-in var(--dur-base) var(--ease-out);
 }
 .framing-layer {
   display: contents;
@@ -388,20 +434,20 @@
   align-items: center;
   gap: 8px;
   padding: 5px;
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-popover);
   background: rgb(255 255 255 / 8%);
   box-shadow: inset 0 0 0 1px var(--stage-line);
-  animation: pop-in var(--t-base) var(--ease);
+  animation: pop-in var(--dur-base) var(--ease-out);
 }
 .framing-toolbar .segmented {
   background: rgb(0 0 0 / 40%);
 }
 .framing-toolbar .segmented > button {
   min-width: 64px;
-  color: var(--stage-ink-2);
+  color: var(--stage-fg-2);
 }
 .framing-toolbar .segmented > button[aria-pressed="true"] {
-  background: var(--stage-ink);
+  background: var(--stage-fg);
   color: var(--stage);
   box-shadow: none;
 }
@@ -423,7 +469,7 @@
   position: absolute;
   border: 1.5px dashed rgb(255 255 255 / 60%);
   border-radius: 2px;
-  transition: border-color var(--t-fast) var(--ease);
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 .frame-rect.active {
   z-index: 2;
@@ -443,7 +489,7 @@
   border-radius: 10px;
   background: rgb(12 12 13 / 70%);
   color: #fff;
-  font-size: var(--fs-xs);
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 .frame-rect.active .frame-label {
@@ -463,6 +509,6 @@
   touch-action: none;
 }
 .framing-hint {
-  color: var(--stage-ink-2);
-  font-size: var(--fs-s);
+  color: var(--stage-fg-2);
+  font-size: var(--text-xs);
 }

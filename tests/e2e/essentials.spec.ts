@@ -105,7 +105,11 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+    // An untouched film has loaded and claims nothing about saving.
+    await expect(page.getByTestId("save-status")).toHaveAttribute(
+      "data-status",
+      "blank",
+    );
     await page.getByLabel("Project name").fill("Phone memories");
     await page.getByLabel("Project name").press("Tab");
     await page
@@ -226,9 +230,6 @@ test("phone originals, placed sound, subtitles, sharing sample and named films w
       .click();
     await page.getByRole("button", { name: "My films", exact: true }).click();
     await page.getByRole("button", { name: "New film", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Start new film", exact: true })
-      .click();
     await page.getByRole("button", { name: "My films", exact: true }).click();
     await page
       .getByRole("button", { name: "Open Phone memories", exact: true })

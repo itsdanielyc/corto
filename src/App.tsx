@@ -11,7 +11,7 @@ import {
   Type,
   X,
 } from "lucide-react";
-import type { Project, Scene } from "../contracts/project";
+import type { Preferences, Project, Scene } from "../contracts/project";
 import { Header } from "./components/Header";
 import { Library } from "./components/Library";
 import { Inspector, type InspectorTab } from "./components/Inspector";
@@ -27,7 +27,7 @@ import { SoundDialog } from "./components/SoundDialog";
 import { SubtitlesDialog } from "./components/SubtitlesDialog";
 import { SlideshowDialog } from "./components/SlideshowDialog";
 import { FilmTools } from "./components/FilmTools";
-import { SettingsDialog } from "./components/SettingsDialog";
+import { SettingsPage } from "./components/SettingsPage";
 import { CaptureDialog } from "./components/CaptureDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { useEditorCommands } from "./components/editor-commands";
@@ -40,6 +40,9 @@ import { useExportQueue } from "./hooks/use-export-queue";
 import { ExportTray } from "./components/ExportTray";
 import { describeDrop } from "./components/drop-summary";
 import { loadTheme } from "./platform/appearance";
+
+/** How long "Scene removed · Undo" stays before it steps aside. */
+const REMOVAL_TOAST_MS = 6000;
 
 /** Phone layouts show one of these as a bottom sheet over the reel. */
 type PhoneSheet = "edit" | "library" | null;
@@ -54,8 +57,14 @@ export function App() {
   const [framing, setFraming] = useState(false);
   const [sheet, setSheet] = useState<PhoneSheet>(null);
   const [dropSummary, setDropSummary] = useState("");
+  const [settingsReturn, setSettingsReturn] = useState<"projects" | null>(null);
+  const [slideshowReturn, setSlideshowReturn] = useState<
+    "projects" | "settings" | null
+  >(null);
   const {
     platform,
+    preferenceStore,
+    saveCurrent,
     error,
     setError,
     message,
@@ -104,15 +113,40 @@ export function App() {
     savePortable,
     openSelectedFile,
     requestOpen,
-    performTransition,
+    startNewFilm,
     undoEdit,
     redoEdit,
+    removalOffer,
+    undoRemoval,
+    dismissRemoval,
     togglePlayback,
     playbackStep,
     modalClose,
     showProjects,
     openSavedProject,
   } = useEditorController();
+  /**
+   * Settings returns to the place it was opened from, however it was opened
+   * (menu, palette, shortcut or the Films link); reopening it keeps the target.
+   */
+  const openSettings = useCallback(() => {
+    setPlaying(false);
+    setSettingsReturn((previous) =>
+      dialog === "projects"
+        ? "projects"
+        : dialog === "settings"
+          ? previous
+          : null,
+    );
+    setDialog("settings");
+  }, [dialog, setDialog, setPlaying]);
+  const openSlideshow = () => {
+    setPlaying(false);
+    setSlideshowReturn(
+      dialog === "projects" || dialog === "settings" ? dialog : null,
+    );
+    setDialog("slideshow");
+  };
   const exports = useExportQueue(platform);
   const running = exports.jobs.find((job) => job.status === "running");
   useEffect(() => {
@@ -192,9 +226,7 @@ export function App() {
           ...scene,
           caption: t(scene.caption),
         }));
-        const present = current.current.present;
-        if (present.scenes.length || Object.keys(present.assets).length)
-          await platform.saveProject(present);
+        await saveCurrent();
         signal.throwIfAborted();
         acceptProject(draft);
         setDialog(null);
@@ -202,7 +234,7 @@ export function App() {
         if (!signal.aborted) report(failure);
       }
     },
-    [beginTemplate, platform, t, current, acceptProject, setDialog, report],
+    [beginTemplate, platform, t, saveCurrent, acceptProject, setDialog, report],
   );
   const commands = useEditorCommands({
     project,
@@ -226,15 +258,12 @@ export function App() {
       sound: () => openPanel("sound"),
       subtitles: () => openPanel("subtitles"),
       filmTools: () => openPanel("film-tools"),
-      slideshow: () => {
-        pause();
-        setDialog("slideshow");
-      },
+      slideshow: openSlideshow,
       films: showProjects,
-      newFilm: () => setDialog("new"),
+      newFilm: startNewFilm,
       open: requestOpen,
       save: savePortable,
-      settings: () => setDialog("settings"),
+      settings: openSettings,
       capture: () => setDialog("capture"),
       help: () => setDialog("help"),
       about: () => setDialog("about"),
@@ -256,12 +285,58 @@ export function App() {
         event.preventDefault();
         if (!busy && editor.loaded) setPalette(true);
       }
+      // Ctrl+, (⌘, on a Mac) opens Settings, as in every miille app.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key === "," &&
+        !document.querySelector("dialog[open]")
+      ) {
+        event.preventDefault();
+        if (!busy && editor.loaded) openSettings();
+      }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [busy, editor.loaded]);
+  }, [busy, editor.loaded, openSettings]);
+  // A removal toast steps aside on its own, like every miille toast.
+  // Keyed by the removal, so a second removal gets its own six seconds.
+  const removalId = removalOffer?.id ?? null;
+  useEffect(() => {
+    if (removalId === null) return;
+    const timer = window.setTimeout(dismissRemoval, REMOVAL_TOAST_MS);
+    return () => window.clearTimeout(timer);
+  }, [removalId, dismissRemoval]);
   const modal =
     dialog && !["sound", "subtitles", "film-tools"].includes(dialog);
+  /** Settings save as they change; this applies each saved set to the open film and editor. */
+  const applyPreferences = (next: Preferences, previous: Preferences) => {
+    if (next.locale !== previous.locale) setApplicationLocale(next.locale);
+    if (next.timeline !== previous.timeline) setTimelineMode(next.timeline);
+    if (next.timelineZoom !== previous.timelineZoom)
+      setTimelineZoom(next.timelineZoom);
+    if (next.proxyEditing !== previous.proxyEditing)
+      setPreferProxies(next.proxyEditing);
+    if (
+      next.defaults === previous.defaults ||
+      current.current.present.id !== project.id
+    )
+      return;
+
+    // A portable film can have its own defaults. Apply only the fields the
+    // person changed in Settings, even when the device's other defaults differ.
+    const edits = Object.entries(next.defaults).filter(([field, value]) => {
+      const key = field as keyof Preferences["defaults"];
+      return (
+        previous.defaults[key] !== value &&
+        current.current.present.defaults[key] !== value
+      );
+    });
+    if (edits.length)
+      edit((film) => ({
+        ...film,
+        defaults: { ...film.defaults, ...Object.fromEntries(edits) },
+      }));
+  };
   const bulk = selectedIds.size > 1;
   const panel = useMemo(() => {
     if (dialog === "sound")
@@ -320,13 +395,15 @@ export function App() {
     selectScene,
   ]);
   const home = dialog === "projects";
+  // Settings is a place too; Back returns to wherever it was opened from.
+  const settingsView = dialog === "settings";
   const locked = !!busy || !editor.loaded;
   return (
     <div
       className="editor-shell"
       data-testid="editor-shell"
       data-backend={platform.kind}
-      data-view={home ? "home" : "editor"}
+      data-view={home ? "home" : settingsView ? "settings" : "editor"}
       data-sheet={panel ? "panel" : (sheet ?? undefined)}
       data-frame={platform.windowFrame}
       onDragOver={(event) => {
@@ -365,10 +442,11 @@ export function App() {
         busy={locked}
         canExport={project.scenes.length > 0}
         frame={platform.windowFrame}
+        view={home || settingsView ? "home" : "editor"}
         exportProgress={running ? running.progress.fraction : null}
         onUndo={undoEdit}
         onRedo={redoEdit}
-        onNew={() => setDialog("new")}
+        onNew={startNewFilm}
         onOpen={requestOpen}
         onSave={savePortable}
         onExport={() => {
@@ -380,13 +458,10 @@ export function App() {
         onProjects={showProjects}
         onSound={() => openPanel("sound")}
         onSubtitles={() => openPanel("subtitles")}
-        onSlideshow={() => {
-          pause();
-          setDialog("slideshow");
-        }}
+        onSlideshow={openSlideshow}
         onFilmTools={() => openPanel("film-tools")}
         onCapture={() => setDialog("capture")}
-        onSettings={() => setDialog("settings")}
+        onSettings={openSettings}
         onCommands={() => setPalette(true)}
       />
       <ExportTray
@@ -400,12 +475,9 @@ export function App() {
           currentId={project.id}
           onClose={modalClose}
           onOpen={openSavedProject}
-          onNew={() => setDialog("new")}
-          onPortable={() => {
-            setDialog(null);
-            requestOpen();
-          }}
-          onSlideshow={() => setDialog("slideshow")}
+          onNew={startNewFilm}
+          onPortable={requestOpen}
+          onSlideshow={openSlideshow}
           onTemplate={(theme) => {
             void startTemplate(theme);
           }}
@@ -413,12 +485,19 @@ export function App() {
             if (changed.id === project.id) edit(() => changed);
           }}
           onDeleted={(id) => {
-            if (id === project.id) acceptProject(createProject());
+            if (id === project.id) acceptProject(createProject(), "new");
           }}
-          onRestored={(restored) => {
-            acceptProject(restored);
-            modalClose();
-          }}
+          onRestored={(restored) => openSavedProject(restored.id)}
+          onSettings={openSettings}
+        />
+      ) : settingsView ? (
+        <SettingsPage
+          project={project}
+          platform={platform}
+          preferenceStore={preferenceStore}
+          onApply={applyPreferences}
+          onSaveError={report}
+          onBack={() => setDialog(settingsReturn)}
         />
       ) : (
         <div className="app-body" inert={locked}>
@@ -431,10 +510,7 @@ export function App() {
             backend={platform.kind}
             onImport={chooseMedia}
             onFolder={() => folderInput.current?.click()}
-            onSlideshow={() => {
-              pause();
-              setDialog("slideshow");
-            }}
+            onSlideshow={openSlideshow}
             onReplace={replaceAsset}
             onAdd={addMedia}
             onTitle={addTitleCard}
@@ -666,6 +742,24 @@ export function App() {
             {t("…")}
           </div>
         )}
+        {removalOffer && !busy && (
+          <div className="toast removal-notice" role="status">
+            <Check size={16} aria-hidden="true" />
+            <span>
+              {removalOffer.count === 1
+                ? t("Scene removed")
+                : `${removalOffer.count}${t(" scenes removed")}`}
+            </span>
+            <button className="button" onClick={undoRemoval}>
+              {t("Undo")}
+            </button>
+            <IconButton
+              icon={X}
+              label={t("Dismiss notification")}
+              onClick={dismissRemoval}
+            />
+          </div>
+        )}
         {message && !busy && (
           <div className="toast success-notice" role="status">
             <Check size={16} aria-hidden="true" />
@@ -680,7 +774,7 @@ export function App() {
         {error && (
           <div className="toast error-notice" role="alert">
             <CircleAlert size={18} aria-hidden="true" />
-            <p>{error}</p>
+            <p>{t(error)}</p>
             <IconButton
               icon={X}
               label={t("Dismiss message")}
@@ -706,8 +800,6 @@ export function App() {
         platform={platform}
         resources={resources}
         onClose={modalClose}
-        onSave={savePortable}
-        onTransition={performTransition}
       />
       {palette && (
         <CommandPalette commands={commands} onClose={() => setPalette(false)} />
@@ -717,22 +809,12 @@ export function App() {
           project={project}
           platform={platform}
           resources={resources}
-          onCreate={acceptProject}
-          onClose={modalClose}
-        />
-      )}
-      {dialog === "settings" && (
-        <SettingsDialog
-          project={project}
-          platform={platform}
-          onSave={(preferences) => {
-            setApplicationLocale(preferences.locale);
-            setTimelineMode(preferences.timeline);
-            setTimelineZoom(preferences.timelineZoom);
-            setPreferProxies(preferences.proxyEditing);
-            edit((value) => ({ ...value, defaults: preferences.defaults }));
+          saveCurrent={saveCurrent}
+          onCreate={(draft) => {
+            acceptProject(draft);
+            modalClose();
           }}
-          onClose={modalClose}
+          onClose={() => setDialog(slideshowReturn)}
         />
       )}
       {dialog === "capture" && (

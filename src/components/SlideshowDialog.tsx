@@ -1,5 +1,6 @@
 import { useT } from "../i18n/locale";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus } from "lucide-react";
 import type { MediaAsset, Project } from "../../contracts/project";
 import {
   buildSlideshow,
@@ -15,8 +16,9 @@ import { Choice, Numeric, Toggle, ToolSection } from "./tools/Fields";
 import { Modal } from "./primitives";
 import { soundAnalysis } from "../media/sound-analysis";
 import { bundledSoundFile } from "../media/bundled-sounds";
-import { inspectFile } from "../media/import";
-import { addAsset } from "../domain/project";
+import { inspectFile, posterFromUrl } from "../media/import";
+import { importMedia } from "../media/phone";
+import { addAssets } from "../domain/project";
 import type { MediaResources } from "../hooks/use-resources";
 import { useDraftRequest } from "../hooks/use-draft-request";
 /** Below this many seconds per photo a slideshow starts to feel rushed. */
@@ -60,25 +62,87 @@ export function SlideshowDialog({
   project,
   platform,
   resources = {},
+  saveCurrent,
   onCreate,
   onClose,
 }: {
   project: Project;
   platform: CortoPlatform;
   resources?: MediaResources;
+  saveCurrent: () => Promise<void>;
   onCreate: (project: Project) => void;
   onClose: () => void;
 }) {
   const t = useT();
-  const media = Object.values(project.assets).filter(
-    (asset) =>
-      ["image", "video"].includes(asset.kind) &&
-      !asset.isOriginalOnly &&
-      !asset.isProxy,
+  // Photos chosen here, for a slideshow started from Films or with more
+  // moments than the open film holds. They join the new film only.
+  type ImportedMoment = {
+    asset: MediaAsset;
+    original?: MediaAsset;
+    poster: string | null;
+  };
+  const [chosen, setChosen] = useState<ReadonlyMap<string, ImportedMoment>>(
+    () => new Map(),
   );
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const media = useMemo(
+    () => [
+      ...Object.values(project.assets).filter(
+        (asset) =>
+          ["image", "video"].includes(asset.kind) &&
+          !asset.isOriginalOnly &&
+          !asset.isProxy,
+      ),
+      ...Array.from(chosen.values(), (entry) => entry.asset),
+    ],
+    [project.assets, chosen],
+  );
+  const posterOf = (id: string) =>
+    resources[id]?.poster ?? chosen.get(id)?.poster ?? null;
+  const beginImport = useDraftRequest();
   const [selected, setSelected] = useState(
-    new Set(media.map((asset) => asset.id)),
+    () => new Set(media.map((asset) => asset.id)),
   );
+  const addFiles = async (files: File[]) => {
+    const signal = beginImport();
+    setImporting(true);
+    setError(null);
+    const added: ImportedMoment[] = [];
+    const failures: string[] = [];
+    for (const file of files) {
+      if (signal.aborted) return;
+      try {
+        const { asset, original } = await importMedia(file, platform);
+        if (signal.aborted) return;
+        if (asset.kind !== "image" && asset.kind !== "video") continue;
+        // The poster comes from the converted picture, so HEIC and TIFF show
+        // too; it is a small data URL, so there is nothing to revoke.
+        const poster = await platform
+          .assetUrl(asset.id)
+          .then((url) => posterFromUrl(asset, url))
+          .catch(() => null);
+        added.push({ asset, original, poster });
+      } catch (failure) {
+        failures.push(
+          `${file.name}: ${failure instanceof Error ? failure.message : String(failure)}`,
+        );
+      }
+    }
+    if (signal.aborted) return;
+    setChosen((previous) => {
+      const next = new Map(previous);
+      for (const entry of added) next.set(entry.asset.id, entry);
+      return next;
+    });
+    setSelected((previous) => {
+      const next = new Set(previous);
+      added.forEach((entry) => next.add(entry.asset.id));
+      return next;
+    });
+    if (failures.length) setError(failures.join("\n"));
+    setImporting(false);
+  };
   const [theme, setTheme] = useState<SlideshowOptions["theme"]>("family");
   const [order, setOrder] = useState<SlideshowOptions["order"]>("date");
   const [seconds, setSeconds] = useState(project.defaults.photoSeconds);
@@ -106,12 +170,13 @@ export function SlideshowDialog({
   const moments = useMemo(
     () =>
       sortMedia(
-        Array.from(selected, (id) => project.assets[id]).filter(
-          (asset) => !!asset,
-        ),
+        Array.from(
+          selected,
+          (id) => project.assets[id] ?? chosen.get(id)?.asset,
+        ).filter((asset) => !!asset),
         order,
       ),
-    [selected, project.assets, order],
+    [selected, project.assets, chosen, order],
   );
   const photoCount = moments.filter((asset) => asset.kind === "image").length;
   const fitSeconds =
@@ -141,13 +206,20 @@ export function SlideshowDialog({
     setBusy(true);
     setError(null);
     try {
-      let source = project;
+      const additions: MediaAsset[] = [];
+      for (const id of selected) {
+        const entry = chosen.get(id);
+        if (!entry) continue;
+        if (entry.original) additions.push(entry.original);
+        additions.push(entry.asset);
+      }
       if (themeMusic.track) {
         const { asset, file } = themeMusic.track;
         await platform.putAsset(asset, file);
         signal.throwIfAborted();
-        source = addAsset(source, asset);
+        additions.push(asset);
       }
+      const source = addAssets(project, additions);
       const analysis =
         beats && music && !template
           ? await soundAnalysis(platform, source, music)
@@ -185,11 +257,9 @@ export function SlideshowDialog({
             ? scene
             : { ...scene, caption: t(scene.caption) },
         );
-      if (project.scenes.length || Object.keys(project.assets).length)
-        await platform.saveProject(project);
+      await saveCurrent();
       signal.throwIfAborted();
       onCreate(draft);
-      onClose();
     } catch (failure) {
       if (signal.aborted) return;
       setError(
@@ -290,11 +360,8 @@ export function SlideshowDialog({
                         }}
                       />
                       <span className="slideshow-thumb">
-                        {resources[asset.id]?.poster ? (
-                          <img
-                            src={resources[asset.id]?.poster ?? undefined}
-                            alt=""
-                          />
+                        {posterOf(asset.id) ? (
+                          <img src={posterOf(asset.id) ?? undefined} alt="" />
                         ) : null}
                       </span>
                       <span className="slideshow-name">{asset.name}</span>
@@ -306,11 +373,34 @@ export function SlideshowDialog({
                     </label>
                   ))}
                 </div>
-                {!media.length && (
-                  <p className="dialog-note">
-                    {t("Import photos, clips or a folder in the editor first.")}
-                  </p>
-                )}
+                <input
+                  ref={fileInput}
+                  type="file"
+                  multiple
+                  hidden
+                  accept=".jpg,.jpeg,.png,.webp,.bmp,.heic,.heif,.gif,.tif,.tiff,.mp4,.mov,.m4v,.webm"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = "";
+                    if (files.length) void addFiles(files);
+                  }}
+                />
+                <button
+                  className={
+                    media.length
+                      ? "button secondary slideshow-add"
+                      : "button primary large slideshow-add"
+                  }
+                  disabled={importing}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <ImagePlus size={16} aria-hidden="true" />
+                  {importing
+                    ? t("Adding your photos…")
+                    : media.length
+                      ? t("Add more photos and clips")
+                      : t("Choose photos and clips")}
+                </button>
                 <Choice
                   label={t("Slideshow order")}
                   value={order}
@@ -403,7 +493,7 @@ export function SlideshowDialog({
               translateOptions={false}
               options={[
                 ["", t("No music")],
-                ["theme", t("Theme soundtrack · original CC0 music")],
+                ["theme", t("The theme's music")],
                 ...Object.values(project.assets)
                   .filter(
                     (asset) => asset.kind === "audio" && !asset.isOriginalOnly,
@@ -472,6 +562,7 @@ export function SlideshowDialog({
             disabled={
               (!template && (!selected.size || !!timing.error)) ||
               readingTrack ||
+              importing ||
               busy
             }
             onClick={() => {
@@ -481,7 +572,12 @@ export function SlideshowDialog({
             {busy ? t("Creating draft…") : t("Create editable draft")}
           </button>
         ) : (
-          <button className="button primary" onClick={() => setStep(step + 1)}>
+          <button
+            className="button primary"
+            // With no photos yet, choosing them is the one thing to do.
+            disabled={importing || (step === 0 && !template && !media.length)}
+            onClick={() => setStep(step + 1)}
+          >
             {t("Next")}
           </button>
         )}

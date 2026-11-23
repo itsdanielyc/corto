@@ -1,4 +1,4 @@
-<!-- keel:start -->
+on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502 |on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502 |on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502 |on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502 |on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502 |<!-- keel:start -->
 # Plan
 
 | # | Slice | Done when | Levels | Status |
@@ -101,6 +101,27 @@ Ruling: the finished-export notice still sits over the inspector heading for ten
 ### Independent review of PR #22 (2026-11-21)
 
 The November 21 review resolved the open slice 33 checks. Both macOS window captures show the native controls, the Linux startup diagnostic passed 30 fresh launches, and the layout suite now measures phone sheets. The export notice has its own row. Run links and the additional editing regressions are recorded in the November 21 section of VERIFICATION.md.
+
+## miille family: one design language with Onda and Plico (2026-11-22)
+Source: the owner asked for Corto and Plico to feel like miille apps, with Onda as the reference and the miille, Onda, Plico and Corto brand kits as material, the UI first and then the flows. The shared contract is docs/design/miille.md; DESIGN.md records Corto's part. Role: solo, branch `design/miille-family`. Framework, platforms, project schema and export paths are unchanged.
+
+| # | Slice | Done when | Levels | Status |
+|---|---|---|---|---|
+| 34 | Family tokens and controls | Tokens use the family names and values; Onda's type scale (13 px floor), buttons, switches, segmented controls, keycaps, menus, dialogs and palette | L0/L4/L5 | on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502; tier 3 baselines from snapshots 44978480145 |
+| 35 | Desk and sheet | The library on the desk, the stage, inspector and reel on one sheet with Onda's inset corner; the stage as a dark card; the empty stage as the graphite tile; window chrome in the desk colour | L4/L5/L6 | on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502; tier 3 baselines from snapshots 44978480145 |
+| 36 | Films and Settings as places | Films with ways to start on the desk; Settings as a page that saves as it changes (Ctrl or Cmd and comma); Back returns where it came from | L4 | on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502; tier 3 baselines from snapshots 44978480145 |
+| 37 | Feedback that never moves the editor | Background exports as a status card; ink toasts bottom right; Undo for removed scenes tied to the removal; an untouched film claims nothing about saving | L4 | on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502; tier 3 baselines from snapshots 44978480145 |
+| 38 | Flows without dead ends | New film and Open project act at once; untouched films stay out of Films; a slideshow from Films chooses its own photos; one clip volume control; managing a film from a menu on its poster | L4 | on branch design/miille-family; tested on linux-x64, windows-x64, macos-arm64 and macos-x64 (L0-L6), CI 44981376464 on dfe1502; tier 3 baselines from snapshots 44978480145 |
+| 39 | Proof | Tier 3 baselines from the runners, CI on every target, ledger rows, PR | L0–L7 | baselines from runners (snapshots 44978480145, looked at); CI green on every target (44981376464 on dfe1502); ledger rows written; PR #23 open, independent review findings fixed; installers run on main |
+
+Ruling: the token names follow the family (`--base`, `--panel`, `--fg`…) instead of Corto's old names — a person moving between the three repositories finds the same words. Cost if wrong: one mechanical rename, already done.
+Ruling: the library stays on the desk rather than on a white panel — Films and Settings use the same column for their places, so the window keeps its shape as you move, as Onda's sidebar does. Cost if wrong: media tiles sit on grey instead of white.
+Ruling: the library tabs keep the names Media, Music and Titles — renaming Titles to Text would put two tabs named Text on screen (the inspector's words tab), which is worse for people and for screen readers. Cost if wrong: the phone's Text tab and the library's Titles tab keep different names.
+Ruling: removing a film from Films still asks first — it cannot be undone, which is the family's one reason to ask. Cost if wrong: one extra click for an irreversible action.
+
+### PR #23 review (2026-11-23)
+
+The review amended film persistence, Settings writes, slideshow selection, keyboard navigation and touch access to film management. The packaged Windows title bar was checked in both themes at the minimum supported width. The review section of VERIFICATION.md records the reproductions and runner evidence for slices 34–39.
 
 ## Scaffold retirement mapping
 - Sample greeting contract → versioned project and real/mock repository conformance.
