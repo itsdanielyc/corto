@@ -14,7 +14,7 @@ export function parseColourLut(text: string): ColourLut {
   let minimum: [number, number, number] = [0, 0, 0];
   let maximum: [number, number, number] = [1, 1, 1];
   const entries: number[] = [];
-  for (const raw of text.split(/\r?\n/)) {
+  for (const [index, raw] of text.split(/\r?\n/).entries()) {
     const line = raw.replace(/#.*/, "").trim();
     if (!line || line.startsWith("TITLE ")) continue;
     const [kind, ...values] = line.split(/\s+/);
@@ -35,7 +35,9 @@ export function parseColourLut(text: string): ColourLut {
         numbers.length !== 3 ||
         numbers.some((value) => !Number.isFinite(value))
       )
-        throw new Error("The look's colour domain is invalid");
+        throw new Error(
+          `The look's colour domain is invalid on line ${index + 1}`,
+        );
       if (kind === "DOMAIN_MIN") minimum = numbers as typeof minimum;
       else maximum = numbers as typeof maximum;
       continue;
@@ -48,7 +50,7 @@ export function parseColourLut(text: string): ColourLut {
         (value) => !Number.isFinite(value) || value < -4 || value > 4,
       )
     )
-      throw new Error("This is not a supported 3D .cube look");
+      throw new Error(`Invalid 3D .cube sample on line ${index + 1}`);
     entries.push(...numbers);
   }
   if (

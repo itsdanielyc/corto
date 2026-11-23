@@ -57,7 +57,11 @@ export function parseSrt(text: string): Subtitle[] {
       text: lines
         .slice(timingIndex + 1)
         .join("\n")
-        .replace(/<[^>]*>/g, "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/?(?:b|i|u|s|font)\b[^>]*>/gi, "")
+        .replaceAll("&lt;", "<")
+        .replaceAll("&gt;", ">")
+        .replaceAll("&amp;", "&")
         .trim(),
     };
   });
@@ -71,12 +75,21 @@ function formatSrtTime(seconds: number): string {
 }
 
 /** Preserve Unicode and deliberate line breaks in a portable subtitle sidecar. */
+function encodeCueText(text: string): string {
+  const escaped = text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  // A blank line ends an SRT cue. Represent its line breaks inside the cue instead.
+  return /\n\s*\n/.test(escaped) ? escaped.replaceAll("\n", "<br>") : escaped;
+}
+
 export function serializeSrt(cues: readonly Subtitle[]): string {
   return (
     validateSubtitles(cues)
       .map(
         (cue, index) =>
-          `${index + 1}\n${formatSrtTime(cue.start)} --> ${formatSrtTime(cue.end)}\n${cue.text}`,
+          `${index + 1}\n${formatSrtTime(cue.start)} --> ${formatSrtTime(cue.end)}\n${encodeCueText(cue.text)}`,
       )
       .join("\n\n") + "\n"
   );

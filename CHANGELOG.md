@@ -15,6 +15,9 @@
 - Unnamed films keep edits that leave the storyboard empty, including deleting the last title card or changing only the aspect ratio. Switching films protects edits when local storage fails.
 - Rapid Settings changes are saved in order. Changing a device preference preserves the film's own defaults, and new title cards use the selected style and background.
 - Cancelling a file choice or slideshow returns to Films. Deselected slideshow photos stay out of the new project. Film-management controls are reachable by keyboard and on narrow touch screens.
+- Corto asks before discarding pending edits on close. A damaged or newer working copy is preserved while other films can still be saved and opened from Films.
+- The desktop app reports when its film library is unavailable. Movie and portable exports keep the app's private workspace separate from the selected destination.
+- Subtitles can be added and edited beyond 30 minutes. SRT round trips preserve comparison signs, literal formatting text and blank lines. Invalid colour-look samples report the affected line.
 - "Fade through black" no longer turns title cards and other plain-colour scenes green in exported movies, GIFs and web exports; photo fades keep their colours.
 - Exports and five-second samples that start partway through a transition keep their sound, and no longer fail when the film has music.
 - Animated picture-in-picture and shape layers that shrink no longer leave a smear of earlier frames, and rotated layers that grow are no longer clipped.

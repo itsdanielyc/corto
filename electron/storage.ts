@@ -3,13 +3,13 @@ import {
   copyFile,
   mkdir,
   open,
-  readFile,
   readdir,
+  realpath,
   rm,
   stat,
   writeFile,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import type { ProjectRepository, SavedProject } from "../contracts/platform";
 import { encodeBundleHeader, readBundleIndex } from "../contracts/bundle";
 import {
@@ -34,6 +34,8 @@ import type { ProjectAction } from "../contracts/services";
 import { preferencesSchema } from "../contracts/creative";
 import type { Preferences } from "../contracts/project";
 import { FileVersions } from "./project-versions";
+import { readJsonFile } from "./json-file";
+import { activateWorkingCopy, readWorkingCopy } from "./working-copy";
 
 /** File-backed working copy. Opaque media IDs never become caller-controlled paths. */
 export class FileProjectRepository implements ProjectRepository {
@@ -63,14 +65,26 @@ export class FileProjectRepository implements ProjectRepository {
     return join(this.mediaDirectory, identifierSchema.parse(id));
   }
 
+  /** Native exports may replace user-selected output files outside Corto's private workspace. */
+  async assertExportDestination(destination: string): Promise<void> {
+    await this.initialized;
+    const [workspace, parent] = await Promise.all([
+      realpath(this.directory),
+      realpath(dirname(destination)),
+    ]);
+    const path = relative(workspace, join(parent, basename(destination)));
+    if (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`))
+      throw new Error(
+        "Choose an export destination outside Corto's workspace.",
+      );
+  }
+
   async assetMetadata(id: string): Promise<MediaAsset> {
     await this.initialized;
     const metadataPath = `${this.assetPath(id)}.json`;
     if ((await stat(metadataPath)).size > LIMITS.manifestBytes)
       throw new Error("Media metadata is damaged");
-    const asset = mediaAssetSchema.parse(
-      JSON.parse(await readFile(metadataPath, "utf8")),
-    );
+    const asset = mediaAssetSchema.parse(await readJsonFile(metadataPath));
     if (asset.id !== id) throw new Error("Media identifiers do not match");
     return asset;
   }
@@ -78,101 +92,87 @@ export class FileProjectRepository implements ProjectRepository {
   async loadProject(): Promise<Project | null> {
     await this.initialized;
     await this.pendingSave.catch(() => undefined);
-    let content: string;
-    try {
-      if ((await stat(this.manifestPath)).size > LIMITS.manifestBytes)
-        throw new Error("The saved project is too large to read safely");
-      content = await readFile(this.manifestPath, "utf8");
-    } catch (error) {
-      if (hasFileErrorCode(error, "ENOENT")) return null;
-      throw error;
-    }
-    try {
-      return parseProject(JSON.parse(content));
-    } catch {
-      throw new Error(
-        "The saved project is damaged. Open a portable .corto copy; your original media is still in the local workspace.",
-      );
-    }
+    const current = await readWorkingCopy(this.manifestPath);
+    if (current.kind === "protected") throw new Error(current.reason);
+    return current.kind === "readable" ? current.project : null;
   }
 
   async saveProject(input: Project, activate = true): Promise<void> {
     const project = parseProject(input);
     if (this.deletedIds.has(project.id))
       throw new Error("This film was removed from My films");
-    const save = this.pendingSave
-      .catch(() => undefined)
-      .then(async () => {
-        await this.initialized;
-        await this.verifyMedia(project);
-        const path = join(this.projectsDirectory, `${project.id}.json`);
-        let previous: SavedProject | undefined;
-        try {
-          if ((await stat(path)).size > LIMITS.manifestBytes * 2)
-            throw new Error("The saved record is too large");
-          previous = parseSavedRecord(JSON.parse(await readFile(path, "utf8")));
-        } catch (error) {
-          if (!hasFileErrorCode(error, "ENOENT"))
-            throw new Error(
-              "This film's saved record is damaged. Recover it or save a portable copy before continuing.",
-            );
-        }
-        const record = saveRecord(project, previous);
-        if (
-          previous &&
-          JSON.stringify(previous.project) !== JSON.stringify(project)
-        )
-          await this.versions.archive(previous.project, previous.updatedAt);
-        if (record.previous)
-          await writeAtomic(
-            join(this.projectsDirectory, `${project.id}.previous.json`),
-            (temporary) =>
-              writeFile(temporary, JSON.stringify(record.previous), {
-                flag: "wx",
-                mode: 0o600,
-              }),
+    await this.queueWrite(async () => {
+      await this.initialized;
+      await this.verifyMedia(project);
+      const path = join(this.projectsDirectory, `${project.id}.json`);
+      let previous: SavedProject | undefined;
+      try {
+        if ((await stat(path)).size > LIMITS.manifestBytes * 2)
+          throw new Error("The saved record is too large");
+        previous = parseSavedRecord(await readJsonFile(path));
+      } catch (error) {
+        if (!hasFileErrorCode(error, "ENOENT"))
+          throw new Error(
+            "This film's saved record is damaged. Recover it or save a portable copy before continuing.",
           );
-        await writeAtomic(path, (temporary) =>
-          writeFile(temporary, JSON.stringify(record), {
-            flag: "wx",
-            mode: 0o600,
-          }),
+      }
+      const record = saveRecord(project, previous);
+      if (
+        previous &&
+        JSON.stringify(previous.project) !== JSON.stringify(project)
+      )
+        await this.versions.archive(previous.project, previous.updatedAt);
+      if (record.previous)
+        await writeAtomic(
+          join(this.projectsDirectory, `${project.id}.previous.json`),
+          (temporary) =>
+            writeFile(temporary, JSON.stringify(record.previous), {
+              flag: "wx",
+              mode: 0o600,
+            }),
         );
-        if (!activate) return;
-        try {
-          await copyFile(
-            this.manifestPath,
-            join(this.directory, "previous.json"),
-          );
-        } catch (error) {
-          if (!hasFileErrorCode(error, "ENOENT")) throw error;
-        }
-        await writeAtomic(this.manifestPath, (temporary) =>
-          writeFile(temporary, JSON.stringify(project), {
-            flag: "wx",
-            mode: 0o600,
-          }),
-        );
-      });
-    this.pendingSave = save;
-    return save;
+      await writeAtomic(path, (temporary) =>
+        writeFile(temporary, JSON.stringify(record), {
+          flag: "wx",
+          mode: 0o600,
+        }),
+      );
+      if (activate)
+        await activateWorkingCopy(this.directory, this.manifestPath, project);
+    });
+  }
+
+  /** Catalogue changes and working-copy rotation must finish in the order requested. */
+  private queueWrite(operation: () => Promise<void>): Promise<void> {
+    const write = this.pendingSave.catch(() => undefined).then(operation);
+    this.pendingSave = write;
+    return write;
   }
 
   async projectAction(request: ProjectAction): Promise<Project | null> {
     const id = identifierSchema.parse(request.id);
     const project = await this.openProject(id);
     if (request.operation === "delete") {
+      if (this.deletedIds.has(id))
+        throw new Error("This film was removed from My films");
       this.deletedIds.add(id);
-      await this.pendingSave.catch(() => undefined);
-      const trash = join(this.directory, "trash");
-      await mkdir(trash, { recursive: true, mode: 0o700 });
-      await copyFile(
-        join(this.projectsDirectory, `${id}.json`),
-        join(trash, `${id}.json`),
-      );
-      await rm(join(this.projectsDirectory, `${id}.json`));
-      const active = await this.loadProject();
-      if (active?.id === id) await rm(this.manifestPath);
+      try {
+        await this.queueWrite(async () => {
+          const active = await readWorkingCopy(this.manifestPath);
+          const trash = join(this.directory, "trash");
+          const source = join(this.projectsDirectory, `${id}.json`);
+          await mkdir(trash, { recursive: true, mode: 0o700 });
+          await writeAtomic(join(trash, `${id}.json`), (temporary) =>
+            copyFile(source, temporary),
+          );
+          if (active.kind === "readable" && active.project.id === id)
+            await rm(this.manifestPath);
+          await rm(source);
+        });
+      } catch (error) {
+        this.deletedIds.delete(id);
+        throw error;
+      }
       return null;
     }
     const next = parseProject({
@@ -204,7 +204,7 @@ export class FileProjectRepository implements ProjectRepository {
     try {
       if ((await stat(path)).size > 16384)
         throw new Error("The preferences file is damaged");
-      return preferencesSchema.parse(JSON.parse(await readFile(path, "utf8")));
+      return preferencesSchema.parse(await readJsonFile(path));
     } catch (error) {
       if (hasFileErrorCode(error, "ENOENT")) return preferencesSchema.parse({});
       throw error;
@@ -229,9 +229,7 @@ export class FileProjectRepository implements ProjectRepository {
       try {
         if ((await stat(path)).size > LIMITS.manifestBytes * 2)
           throw new Error("A saved film record is damaged");
-        const record = parseSavedRecord(
-          JSON.parse(await readFile(path, "utf8")),
-        );
+        const record = parseSavedRecord(await readJsonFile(path));
         if (record.project.id !== id)
           throw new Error("Saved film identifiers do not match");
         summaries.push(summarizeProject(record));
@@ -254,7 +252,7 @@ export class FileProjectRepository implements ProjectRepository {
     try {
       if ((await stat(path)).size > LIMITS.manifestBytes * 2)
         throw new Error("This saved film record is damaged");
-      const record = parseSavedRecord(JSON.parse(await readFile(path, "utf8")));
+      const record = parseSavedRecord(await readJsonFile(path));
       if (record.project.id !== id)
         throw new Error("Saved film identifiers do not match");
       project = recover ? recoverRecord(record) : record.project;
@@ -278,7 +276,7 @@ export class FileProjectRepository implements ProjectRepository {
     );
     if ((await stat(path)).size > LIMITS.manifestBytes)
       throw new Error("The recovery snapshot is damaged");
-    return parseProject(JSON.parse(await readFile(path, "utf8")));
+    return parseProject(await readJsonFile(path));
   }
 
   /** Copy an immutable original in bounded chunks, failing rather than overwriting another ID. */
@@ -323,7 +321,7 @@ export class FileProjectRepository implements ProjectRepository {
   /** Write a portable movie project without collecting its original media in memory. */
   async exportPortable(input: Project, destination: string): Promise<void> {
     const project = parseProject(input);
-    await this.initialized;
+    await this.assertExportDestination(destination);
     await this.verifyMedia(project);
     await writeAtomic(destination, async (temporary) => {
       const output = await open(temporary, "wx", 0o600);

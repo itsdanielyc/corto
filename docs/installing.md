@@ -36,6 +36,8 @@ Browser MP4/GIF/audio export uses the bundled local WebAssembly encoder with det
 
 ## Keeping your projects
 
+If Corto reports a damaged working copy or a project from a newer version, open another film from **Films**, or open a portable copy. Corto keeps the unreadable working copy in place. Other films you save remain available in **Films** on the next launch.
+
 The application autosaves named films and retains up to 30 metadata versions. **My films** can restore a version as a separate film. Use **Project actions → Save portable copy** to preserve a transferable `.corto` file containing the edit and original media. Browser storage can be cleared by the browser or operating system; a portable copy is the backup to keep.
 
 Source media is immutable. Locally cached copies can remain for recovery after a working copy is replaced; application caches can consume additional disk space. Your original imported files and portable projects remain under your control.

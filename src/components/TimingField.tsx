@@ -1,12 +1,13 @@
 import { useT } from "../i18n/locale";
 import { useEffect, useState } from "react";
+import { LIMITS } from "../../contracts/project";
 /** Keep incomplete numeric typing local; only finite committed values reach the editing model. */
 export function TimingField({
   label,
   value,
   onCommit,
   min = 0,
-  max = 1800,
+  max = LIMITS.filmSeconds,
   step = 0.01,
 }: {
   label: string;

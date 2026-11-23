@@ -341,8 +341,17 @@ test("after the saved film fails to load, an edit says Not saved instead of Savi
   await expect(
     page.getByRole("heading", { name: "Films", exact: true }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "New film", exact: true }).click();
+  const name = page.getByLabel("Project name");
+  await name.fill("Separate holiday");
+  await name.press("Tab");
+  await expect(status).toHaveText("Saved");
   await page.reload();
   await expect(status).toHaveAttribute("data-status", "error");
+  await page.getByRole("button", { name: "My films", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Open Separate holiday", exact: true }),
+  ).toBeVisible();
 });
 
 test("a sound-only export does not offer picture sizes", async ({ page }) => {

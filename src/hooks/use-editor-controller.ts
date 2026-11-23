@@ -80,6 +80,23 @@ export function useEditorController() {
   );
 
   const editor = useProject(platform, report, busy !== null);
+  const { hasUnsavedEdits } = editor;
+  useEffect(() => {
+    const protectUnsavedChanges = (event: BeforeUnloadEvent) => {
+      const focused = document.activeElement;
+      if (
+        focused instanceof HTMLElement &&
+        focused.matches("input,textarea,select,[contenteditable=true]")
+      )
+        focused.blur();
+      if (!hasUnsavedEdits() && !preferenceStore.hasPendingWrites()) return;
+      event.preventDefault();
+      event.returnValue = "Unsaved changes";
+    };
+    window.addEventListener("beforeunload", protectUnsavedChanges);
+    return () =>
+      window.removeEventListener("beforeunload", protectUnsavedChanges);
+  }, [hasUnsavedEdits, preferenceStore]);
 
   const {
     project,

@@ -54,6 +54,7 @@ export class MovieRenderer {
     progress: (value: ExportProgress) => void,
   ): Promise<void> {
     signal.throwIfAborted();
+    await this.repository.assertExportDestination(destination);
     if (usesCreatorRenderer(request))
       return renderCreatorMovie(
         this.binary,

@@ -20,6 +20,7 @@ The UI sees `CortoPlatform`, never `ipcRenderer`. Shared TypeScript contracts pl
 - Autosave serialises writes and retains a recoverable last project. Explicit portable `.corto` containers include a bounded JSON manifest and streamed original media; no external paths are accepted. See docs/project-format.md.
 - Schema v3 explicitly migrates the strict known v1/v2 shapes; unknown/future schemas fail visibly. Compatible phone copies link to immutable archived originals; both travel in portable projects (ADRs 005–006).
 - Local project catalogues keep distinct named films. Recovery opens a new identity; a corrupt catalogue entry remains visible while other films remain accessible. Desktop snapshots are independent files.
+- Desktop metadata uses strict UTF-8. An unreadable or newer working copy stays intact while other films save to their own catalogue entries. Normal window or tab close asks before discarding edits that have no confirmed local or portable copy.
 
 ## Rendering
 Preview uses one canvas composition surface and a bounded current/next media pool with independent clocks for repeated assets and overlays. Native and browser-WASM export consume the same pure frame/filter plans, render bounded scene/overlap segments, concatenate once and mix sound. Text is rasterised incrementally so typography agrees without aggregating every PNG in IPC. Temporary output is cleaned on failure/cancellation; only a complete movie reaches its destination.

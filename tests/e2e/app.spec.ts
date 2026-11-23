@@ -176,6 +176,44 @@ test.describe("corto in the real shell", () => {
     console.log(`[e2e] screenshot saved: ${file}`);
   });
 
+  test("the desktop owns its profile and the shipped page permits only production connections", async () => {
+    expect
+      .soft(await app.evaluate(({ app }) => app.hasSingleInstanceLock()))
+      .toBe(true);
+    const policy = await win
+      .locator('meta[http-equiv="Content-Security-Policy"]')
+      .getAttribute("content");
+    expect(policy).toContain("connect-src 'self'");
+    expect(policy).not.toMatch(/localhost|127\.0\.0\.1|\bws:|'unsafe-eval'/);
+  });
+
+  test("a desktop window missing its native bridge explains why the film library is unavailable", async () => {
+    const newWindow = app.waitForEvent("window");
+    await app.evaluate(({ BrowserWindow }) => {
+      const url = BrowserWindow.getAllWindows()[0].webContents.getURL();
+      const isolated = new BrowserWindow({
+        show: false,
+        webPreferences: {
+          sandbox: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+          partition: "missing-preload",
+        },
+      });
+      void isolated.loadURL(url);
+    });
+    const isolated = await newWindow;
+    try {
+      await expect(isolated.getByRole("alert")).toContainText(
+        "desktop film library",
+      );
+      await expect(isolated.getByTestId("editor-shell")).toHaveCount(0);
+    } finally {
+      const window = await app.browserWindow(isolated);
+      await window.evaluate((instance) => instance.destroy());
+    }
+  });
+
   test("the appearance channel changes the native theme and refuses anything but the three choices", async () => {
     const nativeSource = () =>
       app.evaluate(({ nativeTheme }) => nativeTheme.themeSource);

@@ -1,12 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   identifierSchema,
@@ -16,6 +9,7 @@ import {
 } from "../contracts/project";
 import type { ProjectVersion } from "../contracts/services";
 import { writeAtomic } from "./atomic-file";
+import { readJsonFile } from "./json-file";
 
 const RETAINED_VERSIONS = 30;
 interface VersionRecord {
@@ -52,7 +46,7 @@ export class FileVersions {
     );
     if ((await stat(path)).size > LIMITS.manifestBytes + 1024)
       throw new Error("This version is too large to read");
-    const value = JSON.parse(await readFile(path, "utf8")) as VersionRecord;
+    const value = (await readJsonFile(path)) as VersionRecord;
     if (value.id !== versionId || !Number.isFinite(Date.parse(value.savedAt)))
       throw new Error("The version metadata is damaged");
     const project = parseProject(value.project);

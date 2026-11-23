@@ -14,6 +14,7 @@ import {
   saveRecord,
   summarizeProject,
   unavailableSummary,
+  UNREADABLE_WORKING_COPY_MESSAGE,
 } from "../domain/catalogue";
 import type { ProjectAction, ProjectVersion } from "../../contracts/services";
 import { preferencesSchema } from "../../contracts/creative";
@@ -23,6 +24,7 @@ const DATABASE_NAME = "corto-local-v1";
 const PROJECT_STORE = "projects";
 const MEDIA_STORE = "originals";
 const CURRENT_PROJECT = "current";
+const UNREADABLE_WORKING_COPY = Symbol("unreadable working copy");
 const VERSION_STORE = "versions";
 const PREFERENCES_STORE = "preferences";
 
@@ -41,6 +43,27 @@ function requestValue<T>(request: IDBRequest<T>): Promise<T> {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+/** Read inside the write transaction so another tab's newer schema stays intact. */
+async function currentForUpdate(
+  store: IDBObjectStore,
+): Promise<Project | undefined | typeof UNREADABLE_WORKING_COPY> {
+  const value: unknown = await requestValue(store.get(CURRENT_PROJECT));
+  if (value === undefined) return undefined;
+  try {
+    return parseProject(value);
+  } catch {
+    return UNREADABLE_WORKING_COPY;
+  }
+}
+
+async function activateProject(
+  store: IDBObjectStore,
+  project: Project,
+): Promise<void> {
+  if ((await currentForUpdate(store)) !== UNREADABLE_WORKING_COPY)
+    store.put(project, CURRENT_PROJECT);
 }
 
 /** Download locally, keeping the object URL alive until the browser has consumed it. */
@@ -106,7 +129,12 @@ export class BrowserProjectRepository implements ProjectRepository {
         .objectStore(PROJECT_STORE)
         .get(CURRENT_PROJECT),
     );
-    return result === undefined ? null : parseProject(result);
+    if (result === undefined) return null;
+    try {
+      return parseProject(result);
+    } catch {
+      throw new Error(UNREADABLE_WORKING_COPY_MESSAGE);
+    }
   }
 
   async saveProject(input: Project, activate = true): Promise<void> {
@@ -123,9 +151,9 @@ export class BrowserProjectRepository implements ProjectRepository {
         );
         const finished = complete(transaction);
         const store = transaction.objectStore(PROJECT_STORE);
-        const previous = await requestValue<SavedProject | undefined>(
-          store.get(project.id),
-        );
+        const stored: unknown = await requestValue(store.get(project.id));
+        const previous =
+          stored === undefined ? undefined : parseSavedRecord(stored);
         if (
           previous &&
           JSON.stringify(previous.project) !== JSON.stringify(project)
@@ -147,14 +175,8 @@ export class BrowserProjectRepository implements ProjectRepository {
             project.id,
           );
         }
-        store.put(
-          saveRecord(
-            project,
-            previous ? parseSavedRecord(previous) : undefined,
-          ),
-          project.id,
-        );
-        if (activate) store.put(project, CURRENT_PROJECT);
+        store.put(saveRecord(project, previous), project.id);
+        if (activate) await activateProject(store, project);
         await finished;
       });
     this.pendingSave = save;
@@ -176,10 +198,9 @@ export class BrowserProjectRepository implements ProjectRepository {
       const store = transaction.objectStore(PROJECT_STORE);
       transaction.objectStore(PREFERENCES_STORE).put(project, `trash:${id}`);
       store.delete(id);
-      const current = await requestValue<Project | undefined>(
-        store.get(CURRENT_PROJECT),
-      );
-      if (current?.id === id) store.delete(CURRENT_PROJECT);
+      const current = await currentForUpdate(store);
+      if (current !== UNREADABLE_WORKING_COPY && current?.id === id)
+        store.delete(CURRENT_PROJECT);
       await finished;
       return null;
     }
@@ -372,9 +393,10 @@ export class BrowserProjectRepository implements ProjectRepository {
         file.slice(offset, offset + asset.size, asset.mime),
         remapped.identifiers.get(asset.id)!,
       );
-    transaction
-      .objectStore(PROJECT_STORE)
-      .put(remapped.project, CURRENT_PROJECT);
+    await activateProject(
+      transaction.objectStore(PROJECT_STORE),
+      remapped.project,
+    );
     transaction
       .objectStore(PROJECT_STORE)
       .put(saveRecord(remapped.project), remapped.project.id);

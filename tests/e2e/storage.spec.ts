@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test } from "@playwright/test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import {
   addAsset,
@@ -9,6 +9,56 @@ import {
   createScene,
 } from "../../src/domain/project";
 import { FileProjectRepository } from "../../electron/storage";
+
+test("closing during autosave offers to keep the latest edit", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "corto-close-edit-"));
+  const app = await electron.launch({
+    args: ["."],
+    env: {
+      ...process.env,
+      CORTO_E2E: "1",
+      CORTO_WORKSPACE_ROOT: join(directory, "workspace"),
+    },
+  });
+  try {
+    const page = await app.firstWindow();
+    const add = page.getByRole("button", {
+      name: "Add title card",
+      exact: true,
+    });
+    await add.click();
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+    await app.evaluate(({ dialog }) => {
+      const original = dialog.showMessageBoxSync;
+      dialog.showMessageBoxSync = () => {
+        dialog.showMessageBoxSync = original;
+        return 0;
+      };
+    });
+    await add.evaluate((button) => {
+      (button as HTMLButtonElement).click();
+      window.close();
+    });
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+    await expect
+      .poll(
+        async () =>
+          (
+            await new FileProjectRepository(
+              join(directory, "workspace"),
+            ).loadProject()
+          )?.scenes.length,
+      )
+      .toBe(2);
+  } finally {
+    if (app.process().exitCode === null) await app.close();
+    if (
+      dirname(resolve(directory)) === resolve(tmpdir()) &&
+      basename(directory).startsWith("corto-close-edit-")
+    )
+      await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("native project commands save and reopen original media through the sandboxed preload", async () => {
   const directory = await mkdtemp(join(tmpdir(), "corto-shell-storage-"));

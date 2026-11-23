@@ -27,8 +27,7 @@ const projectFiles = projectOpenIntegration(
   () => repositoryForOpen,
   () => mainWindow,
 );
-if (process.env.CORTO_E2E !== "1" && !app.requestSingleInstanceLock())
-  app.exit(0);
+if (!app.requestSingleInstanceLock()) app.exit(0);
 
 function reportInstallerReadiness(): void {
   const output = process.env.CORTO_SMOKE_OUTPUT;
@@ -96,6 +95,19 @@ function createWindow(): void {
     },
   });
   mainWindow = win;
+  win.webContents.on("will-prevent-unload", (event) => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: "warning",
+      message: "Some changes have not been saved.",
+      detail:
+        "Keep editing until Corto shows Saved, or save a portable copy before leaving.",
+      buttons: ["Keep editing", "Leave without saving"],
+      defaultId: 0,
+      cancelId: 0,
+    });
+    // Electron only overrides the renderer's veto when the person chooses to leave.
+    if (choice === 1) event.preventDefault();
+  });
   win.on("closed", () => {
     if (mainWindow === win) mainWindow = null;
   });
@@ -119,7 +131,7 @@ function createWindow(): void {
         if (result.response === 1) {
           await nativeExporter?.cancelAndWait();
           await nativeMediaJobs?.cancelAndWait();
-          win.destroy();
+          if (!win.isDestroyed()) win.close();
         }
       });
   });

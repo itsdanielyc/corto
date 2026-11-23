@@ -177,3 +177,40 @@ test("export offers destination presets, an honest size estimate and a sample", 
     page.getByRole("button", { name: "Export 5-second sample at playhead" }),
   ).toBeVisible();
 });
+test("a subtitle can be added and edited after the first half hour", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByTestId("save-status")).toHaveAttribute(
+    "data-status",
+    "blank",
+  );
+  await page.evaluate(async () => {
+    const repositoryModule = "/src/platform/browser-repository.ts";
+    const projectModule = "/src/domain/project.ts";
+    const { BrowserProjectRepository } = await import(repositoryModule);
+    const { createProject, createScene } = await import(projectModule);
+    await new BrowserProjectRepository().saveProject({
+      ...createProject("Long film"),
+      scenes: [
+        { ...createScene(null), duration: 1860 },
+        { ...createScene(null), duration: 10 },
+      ],
+    });
+  });
+  await page.reload();
+  await page.getByTestId("scene-card").nth(1).click();
+  await page
+    .getByRole("button", { name: "Project actions", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Timed subtitles", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Add subtitle at playhead" }).click();
+  const end = page.getByLabel("Subtitle 1 end", { exact: true });
+  await expect(end).toBeVisible();
+  expect(Number(await end.inputValue())).toBeGreaterThan(1860);
+  await end.fill("1866");
+  await end.press("Tab");
+  await expect(end).toHaveValue("1866");
+});

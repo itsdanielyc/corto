@@ -21,6 +21,7 @@ export default defineConfig({
     },
   },
   renderer: {
+    define: { "import.meta.env.CORTO_DESKTOP": "true" },
     optimizeDeps: {
       include: [
         "webm-duration-fix/lib/ebml/index.js",

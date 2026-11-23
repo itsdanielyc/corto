@@ -182,6 +182,12 @@ export function useProject(
     return saved;
   }, [platform]);
 
+  const hasUnsavedEdits = useCallback(
+    () =>
+      !untouched.current && recoverable.current !== historyRef.current.present,
+    [],
+  );
+
   return {
     project: history.present,
     current: historyRef,
@@ -192,6 +198,7 @@ export function useProject(
     commit,
     replace,
     saveCurrent,
+    hasUnsavedEdits,
     savePortableCopy,
     undo,
     redo,

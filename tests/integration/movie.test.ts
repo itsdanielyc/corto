@@ -120,6 +120,17 @@ function toneMagnitude(pcm: Buffer, frequency: number): number {
 }
 
 describe("real native movies", () => {
+  it("reserves the private workspace for movie exports", async () => {
+    const project = await film();
+    await expect(
+      new MovieRenderer(ffmpeg!, repository).render(
+        { project, resolution: "720p", overlays: [] },
+        join(directory, "workspace", "example.mp4"),
+        new AbortController().signal,
+        () => {},
+      ),
+    ).rejects.toThrow(/outside.*workspace/i);
+  });
   it("encodes a playable MP4 with ordered frames, correct dimensions, source audio and music", async () => {
     const project = await film();
     const output = join(directory, "Family movie.mp4");

@@ -1,6 +1,6 @@
 import { useT } from "../i18n/locale";
 import { useEffect, useRef, useState } from "react";
-import type { Project, Subtitle } from "../../contracts/project";
+import { LIMITS, type Project, type Subtitle } from "../../contracts/project";
 import { parseSrt, serializeSrt, validateSubtitles } from "../domain/subtitles";
 import { downloadBlob, projectFileName } from "../platform/browser-repository";
 import { Panel } from "./primitives";
@@ -8,6 +8,8 @@ import { TimingField } from "./TimingField";
 import type { CortoPlatform } from "../platform/types";
 import { AutomaticCaptions } from "./AutomaticCaptions";
 import { Choice, Colour, Slider } from "./tools/Fields";
+const DEFAULT_CUE_SECONDS = 2;
+const MILLISECONDS_PER_SECOND = 1000;
 /** Plain, editable timed captions stay local and portable; no transcription service is called. */
 export function SubtitlesDialog({
   project,
@@ -23,6 +25,8 @@ export function SubtitlesDialog({
   platform: CortoPlatform;
 }) {
   const t = useT();
+  const cueStart =
+    Math.round(time * MILLISECONDS_PER_SECOND) / MILLISECONDS_PER_SECOND;
   const [error, setError] = useState("");
   const [generating, setGenerating] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -123,13 +127,17 @@ export function SubtitlesDialog({
         <div className="dialog-toolbar">
           <button
             className="button secondary"
+            disabled={cueStart >= LIMITS.filmSeconds}
             onClick={() =>
               commit([
                 ...project.subtitles,
                 {
                   id: crypto.randomUUID(),
-                  start: Math.round(time * 1000) / 1000,
-                  end: Math.min(1800, Math.round(time * 1000) / 1000 + 2),
+                  start: cueStart,
+                  end: Math.min(
+                    LIMITS.filmSeconds,
+                    cueStart + DEFAULT_CUE_SECONDS,
+                  ),
                   text: "Your subtitle",
                 },
               ])

@@ -68,6 +68,47 @@ describe.each(["memory", "native"] as const)(
 );
 
 describe("native original media and portable files", () => {
+  it("reserves the private workspace when choosing a portable export destination", async () => {
+    const repository = new FileProjectRepository(directory);
+    await expect(
+      repository.exportPortable(
+        createProject(),
+        join(directory, "example.corto"),
+      ),
+    ).rejects.toThrow(/outside.*workspace/i);
+  });
+  it("refuses malformed UTF-8 inside a working film's name and preserves its bytes", async () => {
+    const repository = new FileProjectRepository(directory);
+    const film = createProject("Alpine holiday");
+    await repository.saveProject(film);
+    const working = join(directory, "current.json");
+    const damaged = await readFile(working);
+    const nameOffset = damaged.indexOf(film.name);
+    expect(nameOffset).toBeGreaterThan(0);
+    damaged[nameOffset] = 0xff;
+    await writeFile(working, damaged);
+    await expect(repository.loadProject()).rejects.toThrow();
+    expect(await readFile(working)).toEqual(damaged);
+  });
+
+  it("keeps an unreadable working copy intact across saves and removal of a different film", async () => {
+    const repository = new FileProjectRepository(directory);
+    const working = join(directory, "current.json");
+    await repository.saveProject(createProject("Earlier film"));
+    const future = JSON.stringify({
+      schemaVersion: 999,
+      name: "Future holiday",
+    });
+    await writeFile(working, future);
+    await expect(repository.loadProject()).rejects.toThrow();
+    const next = createProject("New holiday");
+    await repository.saveProject(next);
+    await repository.saveProject({ ...next, name: "Second edit" });
+    expect(await readFile(working, "utf8")).toBe(future);
+    expect((await repository.openProject(next.id)).name).toBe("Second edit");
+    await repository.projectAction({ operation: "delete", id: next.id });
+    expect(await readFile(working, "utf8")).toBe(future);
+  });
   it("keeps healthy films accessible and recovers a damaged catalogue entry from its independent snapshot", async () => {
     const repository = new FileProjectRepository(directory);
     const first = createProject("Recover this");

@@ -12,14 +12,24 @@ import "./editor.css";
 applyTheme(loadTheme());
 const root = document.getElementById("root");
 if (!root) throw new Error("Corto could not find its application root");
+const missingDesktopLibrary =
+  import.meta.env.CORTO_DESKTOP === true && !window.electronBridge;
 createRoot(root).render(
-  <LocaleProvider>
-    <App />
-  </LocaleProvider>,
+  missingDesktopLibrary ? (
+    <main role="alert">
+      <h1>Corto could not open its desktop film library</h1>
+      <p>Close and reopen Corto to reconnect to your films.</p>
+    </main>
+  ) : (
+    <LocaleProvider>
+      <App />
+    </LocaleProvider>
+  ),
 );
 
 if (
   import.meta.env.PROD &&
+  !missingDesktopLibrary &&
   !window.electronBridge &&
   "serviceWorker" in navigator
 ) {

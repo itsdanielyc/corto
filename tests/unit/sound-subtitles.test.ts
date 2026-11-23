@@ -105,6 +105,20 @@ describe("sound and subtitle editing", () => {
       ),
     ).toThrow(/overlap/);
   });
+
+  it("preserves comparisons, literal markup, ampersands and blank lines in editable SRT text", () => {
+    const cue = {
+      id: "cue-1",
+      start: 0,
+      end: 2,
+      text: "2 < 3 and 5 > 4 & <i>literal</i>\n\nNext line",
+    };
+    expect(parseSrt(serializeSrt([cue]))[0].text).toBe(cue.text);
+    expect(
+      parseSrt("1\n00:00:00,000 --> 00:00:02,000\n<i>2 < 3 and 5 > 4</i>")[0]
+        .text,
+    ).toBe("2 < 3 and 5 > 4");
+  });
   it("estimates smaller sharing output and cuts a sample without changing the film", () => {
     const project = {
       ...createProject(),

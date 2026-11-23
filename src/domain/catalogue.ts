@@ -2,6 +2,9 @@ import type { ProjectSummary, SavedProject } from "../../contracts/platform";
 import { parseProject, type Project } from "../../contracts/project";
 import { filmDuration } from "./timeline";
 
+export const UNREADABLE_WORKING_COPY_MESSAGE =
+  "The saved project is damaged or needs a newer version of Corto. Open another film from Films or a portable copy.";
+
 /** Keep the last distinct edit rather than replacing recovery with identical autosaves. */
 export function saveRecord(
   project: Project,
